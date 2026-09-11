@@ -725,7 +725,7 @@ const SignIn = () => {
                     transition={{ delay: 0.3 }}
                     className="text-center mt-1"
                   >
-                    <h3 className="text-3xl font-semibold text-white">
+                    <h3 className="text-4xl font-extrabold text-white">
                       {slides[currentImageIndex].title}
                     </h3>
                     <p className="text-white/70 text-sm mt-1">

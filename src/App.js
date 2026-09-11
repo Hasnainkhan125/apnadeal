@@ -88,15 +88,16 @@ function App() {
                   </Layout>
                 } />
 
-                {/* ─── Chat Page ───────────────────────────────────────────── */}
-                <Route path="/chat" element={
-                  <Layout>
-                    <ProtectedRoute requirePremium={true}>
-                      <ChatPage />
-                    </ProtectedRoute>
-                  </Layout>
-                } />
-
+          {/* ─── Chat Page (Inside SidebarLayout) ────────────────────── */}
+<Route path="/chat" element={
+  <Layout>
+    <ProtectedRoute requirePremium={true}>
+      <SidebarLayout>
+        <ChatPage />
+      </SidebarLayout>
+    </ProtectedRoute>
+  </Layout>
+} />
                 {/* ─── How It Works ────────────────────────────────────────── */}
                 <Route path="/how-it-works" element={
                   <Layout>

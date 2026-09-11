@@ -685,4 +685,4 @@ const QuizPage = () => {
   );
 };
 
-export default QuizPage;f
+export default QuizPage;

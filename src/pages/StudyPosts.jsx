@@ -512,7 +512,7 @@ const StudyPosts = () => {
       }
 
       const postData = {
-        title: postTitle || 'Untitled Post',
+        title: postTitle || '',
         content: postContent,
         group_id: selectedGroup,
         user_id: user.id,
