@@ -6,6 +6,9 @@ import { useEffect, useState, useCallback } from "react";
 
 const STORAGE_KEY = "theme";
 
+/* ⭐ Light is now the default for new users */
+const DEFAULT_THEME = "light";
+
 /* Apply the theme classes to <html>. Safe to call anytime. */
 function applyThemeToDOM(theme) {
   if (typeof document === "undefined") return;
@@ -14,19 +17,19 @@ function applyThemeToDOM(theme) {
   if (theme === "light") {
     html.classList.add("theme-light");
   } else {
-    // Dark is default — add both so Tailwind dark: AND your CSS vars work
+    // Dark — add both so Tailwind dark: AND your CSS vars work
     html.classList.add("theme-dark", "dark");
   }
   html.style.colorScheme = theme === "light" ? "light" : "dark";
 }
 
-/* Read persisted theme (falls back to dark). */
+/* Read persisted theme (falls back to LIGHT). */
 function readStoredTheme() {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "light" || v === "dark") return v;
   } catch {}
-  return "dark";
+  return DEFAULT_THEME; // ⭐ was "dark"
 }
 
 export function useTheme() {

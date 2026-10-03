@@ -86,7 +86,7 @@ import { useTheme } from "./hooks/useTheme";
 const ADMIN_EMAILS = ["hasnainwebdeveloper1122@gmail.com"];
 
 /* ═══════════════════════════════════════════════════════════════
-  GLOBAL THEME STYLES
+  GLOBAL THEME STYLES  — LIGHT IS THE DEFAULT
   ═══════════════════════════════════════════════════════════════ */
 const GlobalThemeStyles = () => (
   <style>{`
@@ -111,11 +111,43 @@ const GlobalThemeStyles = () => (
       color-scheme: light;
     }
 
+    /* ⭐ DEFAULT (no class yet) → LIGHT colors */
     html:not(.theme-dark):not(.theme-light),
     html:not(.theme-dark):not(.theme-light) body,
     html:not(.theme-dark):not(.theme-light) #root {
-      background-color: #0A0A12;
-      color-scheme: dark;
+      background-color: #FFFFFF;
+      color-scheme: light;
+      color: #1A1613;
+    }
+
+    /* ⭐ Also seed light-mode CSS vars on the root before hydration */
+    html:not(.theme-dark):not(.theme-light) {
+      --nav-bg:           #FFFFFF;
+      --nav-bg-2:         #FAF7F3;
+      --nav-panel:        #FFFFFF;
+      --nav-panel-2:      #F8F7FB;
+      --nav-surface:      rgba(0,0,0,0.04);
+      --nav-surface-2:    rgba(0,0,0,0.02);
+      --nav-line:         rgba(20,20,30,0.08);
+      --nav-line-str:     rgba(20,20,30,0.15);
+      --nav-txt:          #1A1613;
+      --nav-txt-soft:     rgba(26,22,19,0.62);
+      --nav-txt-faint:    rgba(26,22,19,0.42);
+      --nav-primary:      #c8631f;
+      --nav-primary-2:    #eb7d34;
+      --nav-primary-3:    #f59e0b;
+      --nav-primary-soft: rgba(200,99,31,0.10);
+      --nav-primary-glow: rgba(200,99,31,0.35);
+      --nav-shadow:       0 8px 24px -12px rgba(0,0,0,0.12);
+
+      --app-bg:           #FFFFFF;
+      --app-bg-2:         #FAF7F3;
+      --app-txt:          #1A1613;
+      --app-txt-soft:     rgba(26,22,19,0.62);
+      --app-txt-faint:    rgba(26,22,19,0.42);
+      --app-line:         rgba(20,20,30,0.08);
+      --app-primary:      #c8631f;
+      --app-primary-2:    #eb7d34;
     }
 
     html.theme-dark {
@@ -177,8 +209,8 @@ const GlobalThemeStyles = () => (
     }
 
     .app-shell {
-      background-color: var(--app-bg, #0A0A12);
-      color: var(--app-txt, #FFFFFF);
+      background-color: var(--app-bg, #FFFFFF);
+      color: var(--app-txt, #1A1613);
       transition: background-color 0.35s ease, color 0.35s ease;
     }
   `}</style>
@@ -225,9 +257,8 @@ const Layout = ({ children }) => {
     isRemoveBgPage || isAIChatPage || isImageGenPage ||
     isPrivacyPage || isContactPage || isTermsPage;
 
-  /* ⭐ Footer hides on certain pages AND whenever a user is signed in */
   const shouldHideFooter =
-    !!user ||                                     // ⭐ logged-in → no footer
+    !!user ||
     isAuthPage || isChatPage || isAdminPage || isAIImagePage ||
     isLibraryPage || isRemoveBgPage || isAIChatPage || isImageGenPage ||
     isPrivacyPage || isContactPage || isTermsPage;
@@ -270,7 +301,6 @@ const GlobalOnboarding = () => {
 const GlobalAIAssistant = () => {
   const location = useLocation();
   const HIDDEN_PATHS = [
-    // ── auth pages ──
     "/signin",
     "/signup",
     "/reset-password",
@@ -280,7 +310,6 @@ const GlobalAIAssistant = () => {
     "/library",
     "/remove-bg",
     "/ai-chat",
-    // ── chat pages ──
     "/chat",
     "/study-group-chat",
     "/feed",
@@ -300,8 +329,7 @@ const PaymentListener = () => {
   return null;
 };
 
-/* ⭐ NEW — Picks Boost vs regular Checkout based on ?boost= query param.
-  ⭐ ALWAYS PROTECTED — guests must sign in to checkout. */
+/* ⭐ Picks Boost vs regular Checkout based on ?boost= query param. */
 const SmartCheckout = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -326,10 +354,7 @@ const GuestAwareChatDock = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
 
-  // Only show on /feed
   if (location.pathname !== "/feed") return null;
-
-  // Only show for signed-in users
   if (loading) return null;
   if (!user) return null;
 
@@ -340,13 +365,8 @@ const GuestAwareChatDock = () => {
 const SmartLanding = () => {
   const { user, loading } = useAuth();
 
-  // While auth is still loading, render nothing to avoid a flash
   if (loading) return null;
-
-  // Signed-in user → go straight to the feed
   if (user) return <Navigate to="/feed" replace />;
-
-  // Guest → show the landing page
   return <Landing />;
 };
 
@@ -377,18 +397,18 @@ function App() {
                         <Route path="/reset-password/verify" element={<Layout><ResetPasswordVerify /></Layout>} />
                         <Route path="/reset-password/update" element={<Layout><ResetPasswordUpdate /></Layout>} />
 
-                        {/* ═══ ADMIN — still guarded ═══ */}
+                        {/* ═══ ADMIN ═══ */}
                         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                         <Route path="/admin/onboarding" element={<AdminRoute><AdminOnboarding /></AdminRoute>} />
 
-                        {/* ═══ AI TOOLS — guests can try them freely ═══ */}
+                        {/* ═══ AI TOOLS ═══ */}
                         <Route path="/ai-image" element={<AIImageGenerator />} />
                         <Route path="/image-generator" element={<Img_GeneratorPro />} />
                         <Route path="/library" element={<Library />} />
                         <Route path="/remove-bg" element={<RemoveBackground />} />
                         <Route path="/ai-chat" element={<AIChat />} />
 
-                        {/* ═══ Chat pages — guests CAN browse (no dock though) ═══ */}
+                        {/* ═══ Chat pages ═══ */}
                         <Route path="/chat" element={
                           <Layout>
                             <ChatPage />
@@ -400,17 +420,16 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ═══ Public Pages — NO sign-in required ═══ */}
+                        {/* ═══ Public Pages ═══ */}
                         <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
 
-                        {/* ⭐ Landing — redirects signed-in users to /feed */}
                         <Route path="/" element={<SmartLanding />} />
 
                         <Route path="/home" element={<Layout><Home /></Layout>} />
                         <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
                         <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
 
-                        {/* ═══ Premium — guests can view pricing ═══ */}
+                        {/* ═══ Premium ═══ */}
                         <Route path="/premium" element={<Layout><Premium /></Layout>} />
                         <Route path="/subscription" element={<Navigate to="/premium" replace />} />
 
@@ -453,7 +472,7 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ═══ Cart & Orders — guests can VIEW, checkout guards ═══ */}
+                        {/* ═══ Cart & Orders ═══ */}
                         <Route path="/cart" element={
                           <Layout>
                             <Orders initialTab="cart" />
@@ -476,14 +495,14 @@ function App() {
                         } />
                         <Route path="/orders/track" element={<Navigate to="/orders" replace />} />
 
-                        {/* ⭐ Checkout — ALWAYS requires sign-in */}
+                        {/* ⭐ Checkout ═══ */}
                         <Route path="/checkout" element={
                           <Layout>
                             <SmartCheckout />
                           </Layout>
                         } />
 
-                        {/* ⭐ Boost — ALWAYS requires sign-in */}
+                        {/* ⭐ Boost ═══ */}
                         <Route path="/boost" element={
                           <Layout>
                             <ProtectedRoute>
@@ -492,21 +511,21 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ═══ Feed — guests can browse ═══ */}
+                        {/* ═══ Feed ═══ */}
                         <Route path="/feed" element={
                           <Layout>
                             <Feed />
                           </Layout>
                         } />
 
-                        {/* ═══ My Listings — guests can browse ═══ */}
+                        {/* ═══ My Listings ═══ */}
                         <Route path="/my-listings" element={
                           <Layout>
                             <MyListings />
                           </Layout>
                         } />
 
-                        {/* ⭐ Listing status — public ═══ */}
+                        {/* ⭐ Listing status ═══ */}
                         <Route path="/listing/:id" element={
                           <Layout>
                             <ListingStatusPage />
@@ -518,7 +537,7 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ═══ Post Ad — guests can browse form ═══ */}
+                        {/* ═══ Post Ad ═══ */}
                         <Route path="/post-ad" element={
                           <Layout>
                             <PostAd />
@@ -577,7 +596,7 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ⭐ Deep link for shared posts, shorts, videos, reels */}
+                        {/* ⭐ Deep links — posts, shorts, videos, reels */}
                         <Route path="/momento/post/:id" element={
                           <Layout>
                             <Momento />
@@ -599,7 +618,7 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ⭐ NEW — Shorts deep-link routes (path + query) */}
+                        {/* ⭐ Shorts deep-link routes (path + query) */}
                         <Route path="/momento/shorts" element={
                           <Layout>
                             <Momento />
@@ -623,7 +642,7 @@ function App() {
                           </Layout>
                         } />
 
-                        {/* ⭐ Fallback — signed-in → /feed, guest → Landing */}
+                        {/* ⭐ Fallback ═══ */}
                         <Route path="*" element={<SmartLanding />} />
                       </Routes>
 
