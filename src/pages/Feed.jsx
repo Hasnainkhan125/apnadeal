@@ -2244,14 +2244,14 @@ const SidebarFilters = ({
 
   /* Available toggle */
   const [availableNow, setAvailableNow] = useState(false);
-
 /* ── Interactive price slider (dual-thumb) — PKR ── */
 const PRICE_MIN = 0;
-const PRICE_MAX = 500000;       // Rs. 5 Lac max
-const PRICE_STEP = 1000;         // Rs. 1k step
-const [priceLo, setPriceLo] = useState(50000);   // Rs. 50,000
-const [priceHi, setPriceHi] = useState(300000);  // Rs. 3 Lac
-
+const PRICE_MAX = 500000;              // slider max (still 5 Lac)
+const PRICE_STEP = 1000;
+const DEFAULT_PRICE_LO = 0;            // ⭐ start at 0
+const DEFAULT_PRICE_HI = 300000;       // ⭐ default upper = Rs. 3 Lac
+const [priceLo, setPriceLo] = useState(DEFAULT_PRICE_LO);
+const [priceHi, setPriceHi] = useState(DEFAULT_PRICE_HI);
 /* Sync to global filter (in raw rupees) */
 useEffect(() => {
   if (filter.setPriceMin) filter.setPriceMin(String(priceLo));
