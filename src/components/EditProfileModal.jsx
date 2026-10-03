@@ -121,9 +121,6 @@ const EditProfileModal = ({ isOpen, onClose, onUpdate }) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}_${Date.now()}.${fileExt}`;
       
-      console.log('📤 Uploading file:', fileName);
-      console.log('📊 File size:', file.size);
-      console.log('📁 File type:', file.type);
 
       // Upload to Supabase Storage
       const { error: uploadError, data } = await supabase.storage

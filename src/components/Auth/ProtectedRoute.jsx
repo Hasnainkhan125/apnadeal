@@ -1,12 +1,15 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+// src/components/Auth/ProtectedRoute.jsx
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { usePlan } from "../../contexts/PlanContext";
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requirePremium = false }) => {
   const { user, loading } = useAuth();
+  const planCtx = usePlan();
+  const location = useLocation();
 
-  // Show loading state while checking authentication
-  if (loading) {
+  if (loading || planCtx?.loading) {
     return (
       <div className="min-h-screen pt-20 bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
         <div className="text-center">
@@ -17,12 +20,24 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // If not authenticated, redirect to sign in
   if (!user) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
   }
 
-  // If authenticated, render the children
+  if (requirePremium) {
+    const planId = planCtx?.planId || "free";
+    const isPaid = planId !== "free";
+    if (!isPaid) {
+      return (
+        <Navigate
+          to="/premium"
+          replace
+          state={{ from: location.pathname, reason: "premium_required" }}
+        />
+      );
+    }
+  }
+
   return children;
 };
 

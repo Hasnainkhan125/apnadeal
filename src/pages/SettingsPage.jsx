@@ -1,17 +1,21 @@
+// pages/SettingsPage.jsx — Modern Settings (CSS-variable theme + real-time sync)
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { 
-  FaArrowLeft, 
-  FaUser, 
-  FaBell, 
-  FaLock, 
+import {
+  FaArrowLeft,
+  FaUser,
+  FaBell,
+  FaLock,
   FaPalette,
   FaMoon,
+  FaCrown,
+  FaStar,
+  FaClock,
+  FaList,
   FaSun,
   FaSave,
   FaSpinner,
   FaCheckCircle,
-  FaEdit,
   FaEye,
   FaEyeSlash,
   FaEnvelope,
@@ -29,16 +33,107 @@ import {
   FaTrash,
   FaInfoCircle,
   FaCheck,
-  FaChevronDown  ,
+  FaChevronDown,
   FaExclamationTriangle,
-  FaBars
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
+import { useProfile } from "../contexts/ProfileContext";   // ⭐ NEW
 import { supabase } from "../lib/supabase";
 
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS — THEME TOKENS (CSS variables)
+   ═══════════════════════════════════════════════════════════════ */
+const SettingsStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Manrope:wght@400;500;600;700;800&display=swap');
+    .font-ticket-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+    .font-ticket-body { font-family: 'Manrope', system-ui, sans-serif; }
+
+    /* ── DARK THEME ─────────────────────────────────────────── */
+    .theme-dark {
+      --st-bg-1:           #0A0A12;
+      --st-bg-2:           #0F0F1A;
+      --st-panel:          rgba(255,255,255,0.045);
+      --st-panel-2:        rgba(255,255,255,0.02);
+      --st-line:           rgba(255,255,255,0.08);
+      --st-line-str:       rgba(255,255,255,0.15);
+      --st-txt:            #FFFFFF;
+      --st-txt-soft:       rgba(255,255,255,0.65);
+      --st-txt-faint:      rgba(255,255,255,0.45);
+      --st-dot:            rgba(255,255,255,0.06);
+      --st-primary:        #eb7d34;
+      --st-primary-2:      #f59e0b;
+      --st-primary-3:      #c8631f;
+      --st-primary-soft:   rgba(235,125,52,0.14);
+      --st-primary-glow:   rgba(235,125,52,0.45);
+      --st-danger:         #E2795F;
+      --st-danger-soft:    rgba(226,121,95,0.14);
+      --st-success:        #3fa77f;
+      --st-success-soft:   rgba(63,167,127,0.10);
+    }
+
+    /* ── LIGHT THEME ────────────────────────────────────────── */
+    .theme-light {
+      --st-bg-1:           #FFFFFF;
+      --st-bg-2:           #FAF7F3;
+      --st-panel:          rgba(255,255,255,0.85);
+      --st-panel-2:        rgba(255,255,255,0.95);
+      --st-line:           rgba(20,20,30,0.08);
+      --st-line-str:       rgba(20,20,30,0.15);
+      --st-txt:            #1A1613;
+      --st-txt-soft:       rgba(26,22,19,0.62);
+      --st-txt-faint:      rgba(26,22,19,0.42);
+      --st-dot:            rgba(20,20,30,0.08);
+      --st-primary:        #c8631f;
+      --st-primary-2:      #eb7d34;
+      --st-primary-3:      #f59e0b;
+      --st-primary-soft:   rgba(200,99,31,0.10);
+      --st-primary-glow:   rgba(200,99,31,0.35);
+      --st-danger:         #B23A2E;
+      --st-danger-soft:    rgba(178,58,46,0.10);
+      --st-success:        #164B3B;
+      --st-success-soft:   rgba(22,75,59,0.08);
+    }
+
+    /* ── Reusable utilities ─────────────────────────────────── */
+    .st-bg {
+      background:
+        radial-gradient(1200px 600px at 15% -10%, var(--st-primary-soft), transparent 60%),
+        linear-gradient(180deg, var(--st-bg-1) 0%, var(--st-bg-2) 100%);
+      color: var(--st-txt);
+      transition: background 0.35s ease, color 0.35s ease;
+    }
+    .st-panel {
+      background: var(--st-panel);
+      border: 1px solid var(--st-line);
+      transition: background 0.35s ease, border-color 0.35s ease;
+    }
+    .st-panel-solid {
+      background: var(--st-bg-1);
+      border: 1px solid var(--st-line);
+      transition: background 0.35s ease, border-color 0.35s ease;
+    }
+    .st-input {
+      background: var(--st-bg-1);
+      border: 1px solid var(--st-line-str);
+      color: var(--st-txt);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .st-input:focus {
+      border-color: var(--st-primary);
+      outline: none;
+      box-shadow: 0 0 0 2px var(--st-primary-soft);
+    }
+    .st-hover:hover { background: var(--st-panel); }
+  `}</style>
+);
+
 const SettingsPage = () => {
-  const { user, passkeys, registerPasskey, signInWithPasskey, deletePasskey, isPasskeySupported, updatePassword } = useAuth();
+  const { user, passkeys, registerPasskey, deletePasskey, isPasskeySupported, updatePassword, isPremium } = useAuth();
+  // ⭐ NEW — hook into global real-time profile context
+  const { broadcastRefresh, updateProfile } = useProfile();
+
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -47,11 +142,16 @@ const SettingsPage = () => {
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
-  const [passkeyError, setPasskeyError] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fileInputRef = useRef(null);
 
-  // ─── Password Change States ─────────────────────────────────────────
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [premiumSince, setPremiumSince] = useState(null);
+  const [isVerified, setIsVerified] = useState(false);
+
+  const [myListingsCount, setMyListingsCount] = useState(0);
+  const [mySoldCount, setMySoldCount] = useState(0);
+
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,210 +163,236 @@ const SettingsPage = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState({
-    score: 0,
-    label: "Weak",
-    color: "red",
-    checks: {
-      length: false,
-      uppercase: false,
-      lowercase: false,
-      number: false,
-      special: false
-    }
+    score: 0, label: "Weak", color: "red",
+    checks: { length: false, uppercase: false, lowercase: false, number: false, special: false },
   });
 
-  // Profile Settings
   const [profile, setProfile] = useState({
     fullName: user?.user_metadata?.full_name || "",
     email: user?.email || "",
-    phone: "",
-    bio: "",
-    location: "",
-    website: "",
-    avatar: null
+    phone: "", location: "", avatar: null,
   });
 
-  // Notification Settings
   const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    studyReminders: true,
-    weeklyReports: true,
-    newFeatures: true,
-    marketingEmails: false,
-    quizReminders: true,
-    flashcardReminders: false
+    emailNotifications: true, pushNotifications: true, studyReminders: true,
+    weeklyReports: true, newFeatures: true, marketingEmails: false,
+    quizReminders: true, flashcardReminders: false,
   });
 
-  // ─── Appearance Settings ────────────────────────────────────────────
   const [appearance, setAppearance] = useState({
-    theme: "light",
-    fontSize: "medium",
-    compactMode: false,
-    animations: true,
-    accentColor: "amber",
-    sidebarStyle: "modern"
+    theme: "light", fontSize: "medium", compactMode: false, animations: true,
+    accentColor: "amber", sidebarStyle: "modern",
   });
 
-  // Privacy Settings
   const [privacy, setPrivacy] = useState({
-    profileVisibility: "public",
-    showActivity: true,
-    showProgress: true,
-    dataSharing: false,
-    cookies: true
+    profileVisibility: "public", showActivity: true, showProgress: true,
+    dataSharing: false, cookies: true,
   });
 
-  // Security Settings
   const [security, setSecurity] = useState({
-    twoFactorAuth: false,
-    sessionTimeout: "30",
-    loginAlerts: true,
-    deviceManagement: true,
-    passwordLastChanged: ""
+    twoFactorAuth: false, sessionTimeout: "30", loginAlerts: true,
+    deviceManagement: true, passwordLastChanged: "",
   });
 
-  // Tabs configuration
   const tabs = [
     { id: "profile", label: "Profile", icon: FaUser },
     { id: "notifications", label: "Notifications", icon: FaBell },
     { id: "appearance", label: "Appearance", icon: FaPalette },
     { id: "privacy", label: "Privacy", icon: FaLock },
-    { id: "security", label: "Security", icon: FaShieldAlt }
+    { id: "security", label: "Security", icon: FaShieldAlt },
   ];
 
-  // Load settings from Supabase
   useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
+    let cancelled = false;
+    const loadStatus = async () => {
+      if (!user) return;
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("is_premium, premium_since")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (data?.is_premium === true) {
+          setIsPremiumUser(true);
+          setPremiumSince(data.premium_since);
+        } else {
+          setIsPremiumUser(!!(isPremium && isPremium()));
+        }
+
+        setIsVerified(!!user.email_confirmed_at);
+      } catch {
+        if (!cancelled) setIsPremiumUser(!!(isPremium && isPremium()));
+      }
+    };
+    loadStatus();
+    return () => { cancelled = true; };
+  }, [user, isPremium]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadListingStats = async () => {
+      if (!user) return;
+      try {
+        const { count: activeCount } = await supabase
+          .from("listings")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "active");
+
+        const { count: soldCount } = await supabase
+          .from("listings")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "sold");
+
+        if (cancelled) return;
+        setMyListingsCount(activeCount || 0);
+        setMySoldCount(soldCount || 0);
+      } catch (err) {
+        console.error("Failed to load listing stats:", err);
+      }
+    };
+    loadListingStats();
+    return () => { cancelled = true; };
   }, [user]);
 
-  // ─── Apply Appearance Settings Globally ────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel("my-listings-stats")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "listings", filter: `user_id=eq.${user.id}` },
+        async () => {
+          const { count: activeCount } = await supabase
+            .from("listings")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("status", "active");
+
+          const { count: soldCount } = await supabase
+            .from("listings")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("status", "sold");
+
+          setMyListingsCount(activeCount || 0);
+          setMySoldCount(soldCount || 0);
+        }
+      )
+      .subscribe();
+
+    return () => channel.unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (user) loadSettings();
+  }, [user]);
+
+  /* ═══ Apply appearance — now also sets theme-dark / theme-light ═══ */
   useEffect(() => {
     const applyAppearance = () => {
       const root = document.documentElement;
-      
-      if (appearance.theme === 'dark') {
-        root.classList.add('dark');
-      } else if (appearance.theme === 'light') {
-        root.classList.remove('dark');
-      } else if (appearance.theme === 'system') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (prefersDark) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
-      }
-      
-      root.setAttribute('data-accent', appearance.accentColor);
-      root.setAttribute('data-font-size', appearance.fontSize);
-      
-      if (appearance.compactMode) {
-        root.classList.add('compact');
-      } else {
-        root.classList.remove('compact');
-      }
-      
-      if (!appearance.animations) {
-        root.classList.add('reduce-motion');
-      } else {
-        root.classList.remove('reduce-motion');
-      }
-    };
 
+      // Dark/light/system
+      root.classList.remove("theme-dark", "theme-light", "dark");
+      if (appearance.theme === "dark") {
+        root.classList.add("theme-dark", "dark");
+      } else if (appearance.theme === "light") {
+        root.classList.add("theme-light");
+      } else if (appearance.theme === "system") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (prefersDark) root.classList.add("theme-dark", "dark");
+        else root.classList.add("theme-light");
+      }
+
+      root.setAttribute("data-accent", appearance.accentColor);
+      root.setAttribute("data-font-size", appearance.fontSize);
+      if (appearance.compactMode) root.classList.add("compact");
+      else root.classList.remove("compact");
+      if (!appearance.animations) root.classList.add("reduce-motion");
+      else root.classList.remove("reduce-motion");
+
+      // Persist theme key so App.jsx boot effect stays in sync
+      try {
+        localStorage.setItem("theme", appearance.theme === "light" ? "light" : "dark");
+      } catch {}
+    };
     applyAppearance();
   }, [appearance.theme, appearance.accentColor, appearance.fontSize, appearance.compactMode, appearance.animations]);
 
-  // ─── Listen for System Theme Changes ──────────────────────────────
   useEffect(() => {
-    if (appearance.theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (appearance.theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = () => {
         const root = document.documentElement;
-        if (mediaQuery.matches) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
+        root.classList.remove("theme-dark", "theme-light", "dark");
+        if (mediaQuery.matches) root.classList.add("theme-dark", "dark");
+        else root.classList.add("theme-light");
       };
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
   }, [appearance.theme]);
 
-  // ─── Check Password Strength ────────────────────────────────────────
   const checkPasswordStrength = (password) => {
     const checks = {
       length: password.length >= 8,
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /[0-9]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
     };
-
     const passedCount = Object.values(checks).filter(Boolean).length;
-    let label, color;
-
-    if (passedCount <= 2) {
-      label = "Weak";
-      color = "red";
-    } else if (passedCount === 3) {
-      label = "Fair";
-      color = "orange";
-    } else if (passedCount === 4) {
-      label = "Good";
-      color = "green";
-    } else {
-      label = "Strong";
-      color = "emerald";
-    }
-
-    setPasswordStrength({
-      score: passedCount,
-      label,
-      color,
-      checks
-    });
+    let label = "Weak", color = "red";
+    if (passedCount === 3) { label = "Fair"; color = "orange"; }
+    else if (passedCount === 4) { label = "Good"; color = "green"; }
+    else if (passedCount === 5) { label = "Strong"; color = "emerald"; }
+    setPasswordStrength({ score: passedCount, label, color, checks });
   };
 
-  // ─── Password Strength Indicator ────────────────────────────────────
   const PasswordStrengthIndicator = () => {
     const { score, label, color, checks } = passwordStrength;
     const percentage = (score / 5) * 100;
 
+    const barColor =
+      color === "red" ? "var(--st-danger)"
+      : color === "orange" ? "var(--st-primary)"
+      : "var(--st-success)";
+    const textColor = barColor;
+
     return (
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-stone-700 dark:text-stone-300">
-            Password Strength: <span className={`text-${color}-500 font-bold`}>{label}</span>
+          <span className="font-ticket-body text-xs font-bold" style={{ color: "var(--st-txt-soft)" }}>
+            Password Strength: <span style={{ color: textColor }} className="font-bold">{label}</span>
           </span>
-          <span className="text-xs text-stone-500 dark:text-stone-400">{score}/5</span>
+          <span className="font-ticket-body text-xs" style={{ color: "var(--st-txt-soft)" }}>{score}/5</span>
         </div>
-        <div className="w-full h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-          <div
-            className={`h-full bg-${color}-500 rounded-full transition-all duration-500`}
-            style={{ width: `${percentage}%` }}
-          />
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--st-line)" }}>
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percentage}%`, background: barColor }} />
         </div>
         <div className="grid grid-cols-2 gap-1">
           {Object.entries(checks).map(([key, passed]) => {
             const labels = {
-              length: "8+ characters",
-              uppercase: "Uppercase",
-              lowercase: "Lowercase",
-              number: "Number",
-              special: "Special char"
+              length: "8+ characters", uppercase: "Uppercase", lowercase: "Lowercase",
+              number: "Number", special: "Special char",
             };
             return (
               <div key={key} className="flex items-center gap-1">
                 {passed ? (
-                  <FaCheck className="text-emerald-500 text-[10px]" />
+                  <FaCheck className="text-[10px]" style={{ color: "var(--st-success)" }} />
                 ) : (
-                  <FaTimes className="text-red-400 text-[10px]" />
+                  <FaTimes className="text-[10px]" style={{ color: "var(--st-danger)" }} />
                 )}
-                <span className={`text-[10px] ${passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500'}`}>
+                <span
+                  className="font-ticket-body text-[10px]"
+                  style={{ color: passed ? "var(--st-success)" : "var(--st-txt-soft)" }}
+                >
                   {labels[key]}
                 </span>
               </div>
@@ -277,72 +403,33 @@ const SettingsPage = () => {
     );
   };
 
-  // ─── Handle Password Change ────────────────────────────────────────
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     setPasswordError("");
     setPasswordSuccess(false);
 
-    if (!currentPassword) {
-      setPasswordError("Please enter your current password.");
-      return;
-    }
-
-    if (!newPassword) {
-      setPasswordError("Please enter a new password.");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match.");
-      return;
-    }
-
-    if (newPassword === currentPassword) {
-      setPasswordError("New password must be different from current password.");
-      return;
-    }
+    if (!currentPassword) return setPasswordError("Please enter your current password.");
+    if (!newPassword) return setPasswordError("Please enter a new password.");
+    if (newPassword.length < 8) return setPasswordError("New password must be at least 8 characters.");
+    if (newPassword !== confirmPassword) return setPasswordError("Passwords do not match.");
+    if (newPassword === currentPassword) return setPasswordError("New password must be different from current password.");
 
     setPasswordLoading(true);
-
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
+        email: user.email, password: currentPassword,
       });
-
-      if (signInError) {
-        setPasswordError("Current password is incorrect.");
-        setPasswordLoading(false);
-        return;
-      }
+      if (signInError) { setPasswordError("Current password is incorrect."); setPasswordLoading(false); return; }
 
       const result = await updatePassword(newPassword);
-      
       if (result.error) {
         setPasswordError(result.error);
       } else {
         setPasswordSuccess(true);
-        setPasswordError("");
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
+        setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
         setPasswordStrength({ score: 0, label: "Weak", color: "red", checks: { length: false, uppercase: false, lowercase: false, number: false, special: false } });
-
-        setSecurity(prev => ({
-          ...prev,
-          passwordLastChanged: new Date().toLocaleString()
-        }));
-
-        setTimeout(() => {
-          setShowChangePassword(false);
-          setPasswordSuccess(false);
-        }, 3000);
+        setSecurity((prev) => ({ ...prev, passwordLastChanged: new Date().toLocaleString() }));
+        setTimeout(() => { setShowChangePassword(false); setPasswordSuccess(false); }, 3000);
       }
     } catch (error) {
       setPasswordError(error.message || "Failed to change password. Please try again.");
@@ -351,221 +438,100 @@ const SettingsPage = () => {
     }
   };
 
-  // Load settings from Supabase
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading settings:', error);
-      }
+      const { data, error } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single();
+      if (error && error.code !== "PGRST116") console.error("Error loading settings:", error);
 
       if (data) {
         setProfile({
           fullName: data.full_name || user?.user_metadata?.full_name || "",
           email: data.email || user?.email || "",
           phone: data.phone || "",
-          bio: data.bio || "",
           location: data.location || "",
-          website: data.website || "",
-          avatar: data.avatar || null
+          avatar: data.avatar || null,
         });
+        if (data.avatar) setAvatarPreview(data.avatar);
 
-        if (data.avatar) {
-          setAvatarPreview(data.avatar);
-        }
-
-        setNotifications(data.notifications || {
-          emailNotifications: true,
-          pushNotifications: true,
-          studyReminders: true,
-          weeklyReports: true,
-          newFeatures: true,
-          marketingEmails: false,
-          quizReminders: true,
-          flashcardReminders: false
-        });
-
-        setAppearance(data.appearance || {
-          theme: "light",
-          fontSize: "medium",
-          compactMode: false,
-          animations: true,
-          accentColor: "amber",
-          sidebarStyle: "modern"
-        });
-
-        setPrivacy(data.privacy || {
-          profileVisibility: "public",
-          showActivity: true,
-          showProgress: true,
-          dataSharing: false,
-          cookies: true
-        });
-
-        setSecurity(data.security || {
-          twoFactorAuth: false,
-          sessionTimeout: "30",
-          loginAlerts: true,
-          deviceManagement: true,
-          passwordLastChanged: data.password_last_changed || "Not set"
-        });
+        setNotifications({ emailNotifications: true, pushNotifications: true, studyReminders: true, weeklyReports: true, newFeatures: true, marketingEmails: false, quizReminders: true, flashcardReminders: false, ...(data.notifications || {}) });
+        setAppearance({ theme: "light", fontSize: "medium", compactMode: false, animations: true, accentColor: "amber", sidebarStyle: "modern", ...(data.appearance || {}) });
+        setPrivacy({ profileVisibility: "public", showActivity: true, showProgress: true, dataSharing: false, cookies: true, ...(data.privacy || {}) });
+        setSecurity({ twoFactorAuth: false, sessionTimeout: "30", loginAlerts: true, deviceManagement: true, passwordLastChanged: data.password_last_changed || "Not set", ...(data.security || {}) });
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error("Error loading settings:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Passkey Handlers ──────────────────────────────────────────────
-
   const handleRegisterPasskey = async () => {
     setPasskeyLoading(true);
-    setPasskeyError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        alert('⚠️ Please sign in first before registering a passkey.');
-        return;
-      }
-
+      if (!session) return alert("⚠️ Please sign in first before registering a passkey.");
       const result = await registerPasskey();
-      if (result.error) {
-        setPasskeyError(result.error);
-        alert(`❌ ${result.error}`);
-      } else {
-        alert('✅ Passkey registered successfully!');
-      }
+      if (result.error) alert(`❌ ${result.error}`);
+      else alert("✅ Passkey registered successfully!");
     } catch (err) {
-      setPasskeyError(err.message);
       alert(`❌ Error: ${err.message}`);
-    } finally {
-      setPasskeyLoading(false);
-    }
-  };
-
-  const handleSignInWithPasskey = async () => {
-    setPasskeyLoading(true);
-    setPasskeyError(null);
-    try {
-      const result = await signInWithPasskey();
-      if (result.error) {
-        setPasskeyError(result.error);
-        alert(`❌ ${result.error}`);
-      } else {
-        alert(`✅ Welcome ${result.data.user.email}!`);
-      }
-    } catch (err) {
-      setPasskeyError(err.message);
-      alert(`❌ Error: ${err.message}`);
-    } finally {
-      setPasskeyLoading(false);
-    }
+    } finally { setPasskeyLoading(false); }
   };
 
   const handleDeletePasskey = async (passkeyId) => {
-    if (!window.confirm('Are you sure you want to delete this passkey?')) return;
-    
+    if (!window.confirm("Are you sure you want to delete this passkey?")) return;
     setPasskeyLoading(true);
     try {
       const result = await deletePasskey(passkeyId);
-      if (result.error) {
-        alert(`❌ ${result.error}`);
-      } else {
-        alert('✅ Passkey deleted successfully!');
-      }
+      if (result.error) alert(`❌ ${result.error}`);
+      else alert("✅ Passkey deleted successfully!");
     } catch (err) {
       alert(`❌ Error: ${err.message}`);
-    } finally {
-      setPasskeyLoading(false);
-    }
+    } finally { setPasskeyLoading(false); }
   };
-
-  // ─── Avatar Upload Functions ─────────────────────────────────────────
 
   const uploadAvatar = async (file) => {
     if (!file) return null;
-
     setUploading(true);
     try {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image must be less than 5MB.');
-        return null;
-      }
-
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please select a valid image (JPEG, PNG, GIF, or WebP).');
-        return null;
-      }
+      if (file.size > 5 * 1024 * 1024) { alert("Image must be less than 5MB."); return null; }
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      if (!allowedTypes.includes(file.type)) { alert("Please select a valid image (JPEG, PNG, GIF, or WebP)."); return null; }
 
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}_${timestamp}_${random}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('profile-pics')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+        .from("profile-pics")
+        .upload(fileName, file, { cacheControl: "3600", upsert: true });
 
-      if (uploadError) {
-        console.error('❌ Upload error:', uploadError);
-        alert(`Upload failed: ${uploadError.message}`);
-        return null;
-      }
+      if (uploadError) { console.error("❌ Upload error:", uploadError); alert(`Upload failed: ${uploadError.message}`); return null; }
 
-      const { data: urlData } = supabase.storage
-        .from('profile-pics')
-        .getPublicUrl(fileName);
-
+      const { data: urlData } = supabase.storage.from("profile-pics").getPublicUrl(fileName);
       return urlData.publicUrl;
     } catch (error) {
-      console.error('❌ Unexpected error:', error);
-      alert(`Error: ${error.message || 'Unknown error occurred'}`);
+      console.error("❌ Unexpected error:", error);
+      alert(`Error: ${error.message || "Unknown error occurred"}`);
       return null;
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file.');
-      e.target.value = '';
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB.');
-      e.target.value = '';
-      return;
-    }
+    if (!file.type.startsWith("image/")) { alert("Please select an image file."); e.target.value = ""; return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Image must be less than 5MB."); e.target.value = ""; return; }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setAvatarPreview(reader.result);
-    };
+    reader.onloadend = () => setAvatarPreview(reader.result);
     reader.readAsDataURL(file);
 
     const avatarUrl = await uploadAvatar(file);
-    if (avatarUrl) {
-      setProfile({ ...profile, avatar: avatarUrl });
-    } else {
-      setAvatarPreview(null);
-      e.target.value = '';
-    }
+    if (avatarUrl) setProfile({ ...profile, avatar: avatarUrl });
+    else { setAvatarPreview(null); e.target.value = ""; }
   };
 
   const removeAvatar = async () => {
@@ -573,143 +539,168 @@ const SettingsPage = () => {
     setProfile({ ...profile, avatar: null });
   };
 
-  // ─── Save Settings ──────────────────────────────────────────────────
-
+  /* ⭐ SAVE — now syncs user_settings + users + profiles and broadcasts refresh */
   const handleSaveSettings = async () => {
-    setIsSaving(true);
-    setSaveSuccess(false);
-    setSaveError(null);
-
+    setIsSaving(true); setSaveSuccess(false); setSaveError(null);
     try {
       const settingsData = {
         user_id: user.id,
         full_name: profile.fullName,
         email: profile.email,
         phone: profile.phone || null,
-        bio: profile.bio || null,
         location: profile.location || null,
-        website: profile.website || null,
         avatar: profile.avatar || null,
-        notifications: notifications,
-        appearance: appearance,
-        privacy: privacy,
-        security: security,
-        updated_at: new Date().toISOString()
+        notifications, appearance, privacy, security,
+        updated_at: new Date().toISOString(),
       };
 
       const { data: existingData, error: checkError } = await supabase
-        .from('user_settings')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .from("user_settings").select("id").eq("user_id", user.id).maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing settings:', checkError);
-        throw new Error(checkError.message);
-      }
+      if (checkError && checkError.code !== "PGRST116") throw new Error(checkError.message);
 
       let result;
       if (existingData) {
-        result = await supabase
-          .from('user_settings')
-          .update(settingsData)
-          .eq('user_id', user.id);
+        result = await supabase.from("user_settings").update(settingsData).eq("user_id", user.id);
       } else {
-        result = await supabase
-          .from('user_settings')
-          .insert([settingsData]);
+        result = await supabase.from("user_settings").insert([settingsData]);
       }
+      if (result.error) throw new Error(result.error.message);
 
-      if (result.error) {
-        console.error('❌ Save error:', result.error);
-        throw new Error(result.error.message);
-      }
+      // ⭐ ALSO write to users + profiles so every page (feed/chat/groups) reads the same data
+      await Promise.all([
+        supabase
+          .from("users")
+          .update({
+            full_name: profile.fullName,
+            name: profile.fullName,
+            avatar_url: profile.avatar || null,
+          })
+          .eq("id", user.id),
+        supabase
+          .from("profiles")
+          .update({
+            full_name: profile.fullName,
+            avatar_url: profile.avatar || null,
+          })
+          .eq("id", user.id),
+      ]);
+
+      // ⭐ Push instantly to global context (no wait for realtime)
+      updateProfile({
+        fullName: profile.fullName,
+        avatar: profile.avatar,
+        email: profile.email,
+        phone: profile.phone,
+        location: profile.location,
+      });
+
+      // ⭐ Broadcast to all tabs + reload from DB
+      broadcastRefresh();
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-
     } catch (error) {
-      console.error('❌ Error saving settings:', error);
-      setSaveError(error.message || 'Failed to save settings');
-      alert(`Error saving settings: ${error.message || 'Please try again.'}`);
-    } finally {
-      setIsSaving(false);
-    }
+      console.error("❌ Error saving settings:", error);
+      setSaveError(error.message || "Failed to save settings");
+      alert(`Error saving settings: ${error.message || "Please try again."}`);
+    } finally { setIsSaving(false); }
   };
-
-  // ─── Render ──────────────────────────────────────────────────────────
 
   const container = {
     hidden: {},
-    show: {
-      transition: { staggerChildren: 0.05, delayChildren: 0.05 }
-    }
+    show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
   };
 
-  const item = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } }
-  };
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : "—";
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
-        <div className="text-center">
-          <FaSpinner className="text-4xl text-amber-500 animate-spin mx-auto mb-4" />
-          <p className="text-stone-500 dark:text-stone-400">Loading settings...</p>
+      <div className="min-h-screen st-bg flex items-center justify-center relative">
+        <SettingsStyles />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.3] dark:opacity-[0.12]"
+          style={{
+            backgroundImage: "radial-gradient(var(--st-primary) 0.6px, transparent 0.6px)",
+            backgroundSize: "18px 18px",
+          }}
+        />
+        <div className="relative text-center">
+          <FaSpinner className="text-4xl animate-spin mx-auto mb-4" style={{ color: "var(--st-primary-2)" }} />
+          <p className="font-ticket-body text-sm" style={{ color: "var(--st-txt-soft)" }}>Loading settings...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-20 bg-stone-50 dark:bg-stone-950 overflow-x-hidden">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+    <div className="min-h-screen st-bg relative overflow-x-hidden">
+      <SettingsStyles />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.3] dark:opacity-[0.12]"
+        style={{
+          backgroundImage: "radial-gradient(var(--st-primary) 0.6px, transparent 0.6px)",
+          backgroundSize: "18px 18px",
+        }}
+      />
+
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-2 sm:px-2 lg:px-4 pt-10 pb-10 sm:pt-14 sm:pb-12">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-xs sm:text-sm text-stone-500 dark:text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors mb-3 sm:mb-4"
+        <div className="mb-8 sm:mb-10">
+          <Link
+            to="/feed"
+            className="inline-flex items-center gap-2 font-ticket-body text-xs sm:text-sm transition-colors mb-4"
+            style={{ color: "var(--st-txt-soft)" }}
           >
             <FaArrowLeft className="text-[10px] sm:text-xs" />
             Back to Home
           </Link>
-          
+
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500">
-              <FaCog className="text-xl sm:text-3xl text-white" />
+            <div
+              className="h-11 w-11 sm:h-14 sm:w-14 flex-shrink-0 rounded-2xl flex items-center justify-center"
+              style={{ border: "1px solid var(--st-primary)", background: "var(--st-primary-soft)" }}
+            >
+              <FaCog className="text-lg sm:text-2xl" style={{ color: "var(--st-primary-2)" }} />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-stone-900 dark:text-white">
+              <h1
+                className="font-ticket-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight"
+                style={{ color: "var(--st-txt)" }}
+              >
                 Settings
               </h1>
-              <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5 sm:mt-1">
+              <p className="font-ticket-body text-xs sm:text-sm mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
                 Manage your account preferences and settings
               </p>
             </div>
           </div>
         </div>
 
-        {/* Settings Layout */}
-        <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Sidebar Tabs - Mobile Dropdown */}
+        {/* Layout */}
+        <div className="grid lg:grid-cols-4 gap-5 sm:gap-6">
+          {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-stone-900 rounded-xl sm:rounded-2xl border border-stone-200 dark:border-stone-800 p-2 sm:p-3 sticky top-24">
-              {/* Mobile Menu Toggle */}
+            <div className="rounded-[22px] st-panel-solid p-3 sticky top-24">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-stone-50 dark:bg-stone-800/50 text-stone-700 dark:text-stone-300 font-medium text-sm"
+                className="lg:hidden w-full flex items-center justify-between px-4 py-3 rounded-2xl st-input font-ticket-body text-sm font-bold"
               >
                 <span className="flex items-center gap-2">
-                  {tabs.find(t => t.id === activeTab)?.icon && (
-                    <span className="text-amber-500">{React.createElement(tabs.find(t => t.id === activeTab)?.icon || FaUser)}</span>
-                  )}
-                  {tabs.find(t => t.id === activeTab)?.label || "Profile"}
+                  {React.createElement(tabs.find((t) => t.id === activeTab)?.icon || FaUser, {
+                    className: "text-sm",
+                    style: { color: "var(--st-primary-2)" },
+                  })}
+                  {tabs.find((t) => t.id === activeTab)?.label || "Profile"}
                 </span>
-                <FaChevronDown className={`transition-transform duration-300 ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+                <FaChevronDown
+                  className={`text-xs transition-transform duration-300 ${mobileMenuOpen ? "rotate-180" : ""}`}
+                  style={{ color: "var(--st-txt-soft)" }}
+                />
               </button>
 
-              {/* Mobile Dropdown */}
               <AnimatePresence>
                 {mobileMenuOpen && (
                   <motion.div
@@ -725,17 +716,18 @@ const SettingsPage = () => {
                       return (
                         <button
                           key={tab.id}
-                          onClick={() => {
-                            setActiveTab(tab.id);
-                            setMobileMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-ticket-body text-sm font-bold transition-all"
+                          style={
                             isActive
-                              ? "bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 text-amber-600 dark:text-amber-400"
-                              : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
-                          }`}
+                              ? { background: "var(--st-primary)", color: "#fff" }
+                              : { color: "var(--st-txt)" }
+                          }
                         >
-                          <Icon className={`text-sm sm:text-base ${isActive ? 'text-amber-500' : ''}`} />
+                          <Icon
+                            className="text-sm"
+                            style={{ color: isActive ? "#fff" : "var(--st-primary-2)" }}
+                          />
                           {tab.label}
                         </button>
                       );
@@ -744,7 +736,6 @@ const SettingsPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* Desktop Tabs */}
               <div className="hidden lg:block space-y-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -753,47 +744,47 @@ const SettingsPage = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-ticket-body text-sm font-bold transition-all st-hover"
+                      style={
                         isActive
-                          ? "bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 text-amber-600 dark:text-amber-400"
-                          : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-amber-600 dark:hover:text-amber-400"
-                      }`}
+                          ? { background: "var(--st-primary)", color: "#fff" }
+                          : { color: "var(--st-txt)" }
+                      }
                     >
-                      <Icon className={`text-sm sm:text-base ${isActive ? 'text-amber-500' : ''}`} />
+                      <Icon
+                        className="text-sm"
+                        style={{ color: isActive ? "#fff" : "var(--st-primary-2)" }}
+                      />
                       {tab.label}
-                      {isActive && (
-                        <span className="ml-auto w-1 h-6 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
-                      )}
+                      {isActive && <span className="ml-auto w-1.5 h-6 rounded-full bg-white/20" />}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Save Button - Mobile */}
-              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-stone-200 dark:border-stone-800">
+              <div className="mt-4 pt-4">
                 <button
                   onClick={handleSaveSettings}
                   disabled={isSaving}
-                  className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-semibold text-sm transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="group/save relative w-full py-3 rounded-2xl overflow-hidden text-white font-ticket-body font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ background: "var(--st-primary)" }}
                 >
-                  {isSaving ? (
-                    <FaSpinner className="animate-spin text-sm sm:text-base" />
-                  ) : (
-                    <FaSave className="text-sm sm:text-base" />
-                  )}
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/save:translate-x-full transition-transform duration-700" />
+                  {isSaving ? <FaSpinner className="animate-spin text-sm relative z-10" /> : <FaSave className="text-sm relative z-10" />}
+                  <span className="relative z-10">{isSaving ? "Saving..." : "Save Changes"}</span>
                 </button>
                 {saveSuccess && (
                   <motion.p
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-center text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm mt-2 flex items-center justify-center gap-1"
+                    className="text-center font-ticket-body text-xs font-bold mt-2 flex items-center justify-center gap-1"
+                    style={{ color: "var(--st-success)" }}
                   >
-                    <FaCheckCircle className="text-xs sm:text-sm" /> Settings saved successfully!
+                    <FaCheckCircle className="text-xs" /> Settings saved!
                   </motion.p>
                 )}
                 {saveError && (
-                  <p className="text-center text-red-600 dark:text-red-400 text-xs sm:text-sm mt-2">
+                  <p className="text-center font-ticket-body text-xs font-bold mt-2" style={{ color: "var(--st-danger)" }}>
                     ❌ {saveError}
                   </p>
                 )}
@@ -807,10 +798,10 @@ const SettingsPage = () => {
               variants={container}
               initial="hidden"
               animate="show"
-              className="bg-white dark:bg-stone-900 rounded-xl sm:rounded-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-6 lg:p-8"
+              className="rounded-[22px] st-panel-solid p-2 sm:p-7 lg:p-8"
             >
               <AnimatePresence mode="wait">
-                {/* Profile Tab */}
+                {/* ─── PROFILE ─── */}
                 {activeTab === "profile" && (
                   <motion.div
                     key="profile"
@@ -818,56 +809,144 @@ const SettingsPage = () => {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-4 sm:space-y-6"
+                    className="space-y-5"
                   >
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2 sm:gap-3">
-                      <FaUserCircle className="text-amber-500 text-lg sm:text-xl" />
-                      Profile Settings
-                    </h2>
+                    {/* PROFILE HERO CARD */}
+                    <div className="relative overflow-hidden rounded-[24px] st-panel-solid p-3 sm:p-7">
+                      <div
+                        className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full blur-3xl opacity-25"
+                        style={{ background: "var(--st-primary)" }}
+                      />
 
-                    {/* Avatar Upload Section */}
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                      <div className="relative group shrink-0">
-                        {avatarPreview ? (
-                          <img
-                            src={avatarPreview}
-                            alt="Profile"
-                            className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover ring-4 ring-amber-300/20"
-                          />
-                        ) : (
-                          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold ring-4 ring-amber-500/20">
-                            {profile.fullName.charAt(0) || "U"}
+                      <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
+                        <div className="relative group shrink-0">
+                          {avatarPreview ? (
+                            <img
+                              src={avatarPreview}
+                              alt="Profile"
+                              className="h-24 w-24 sm:h-28 sm:w-28 rounded-full object-cover"
+                              style={{ border: "2px solid var(--st-primary)" }}
+                            />
+                          ) : (
+                            <div
+                              className="h-24 w-24 sm:h-28 sm:w-28 rounded-full flex items-center justify-center font-ticket-display text-4xl sm:text-5xl font-bold"
+                              style={{
+                                border: "2px solid var(--st-primary)",
+                                background: "var(--st-primary-soft)",
+                                color: "var(--st-primary-2)",
+                              }}
+                            >
+                              {(profile.fullName || user?.email || "U").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+
+                          <div
+                            className="absolute -bottom-1 -right-1 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center"
+                            style={{
+                              background: "var(--st-success)",
+                              border: "3px solid var(--st-bg-1)",
+                            }}
+                          >
+                            <FaCheck className="text-white text-xs sm:text-sm" />
                           </div>
-                        )}
-                        
-                        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button
+
+                          <div
+                            className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}
-                            className="text-white text-center"
                           >
-                            <FaUpload className="text-xl sm:text-2xl mx-auto" />
-                            <span className="text-[10px] sm:text-xs mt-1 block">Upload</span>
-                          </button>
+                            <FaUpload className="text-white text-xl" />
+                          </div>
                         </div>
-                        
-                        {avatarPreview && (
-                          <button
-                            onClick={removeAvatar}
-                            className="absolute -top-1 -right-1 p-1 sm:p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
-                          >
-                            <FaTimes className="text-[10px] sm:text-xs" />
-                          </button>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 text-center sm:text-left">
-                        <h3 className="font-semibold text-stone-900 dark:text-white text-sm sm:text-base">
-                          {profile.fullName || "User"}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 break-all">
-                          {profile.email}
-                        </p>
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-3">
+
+                        <div className="flex-1 text-center sm:text-left min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                            <h3
+                              className="font-ticket-display text-xl sm:text-2xl font-bold truncate"
+                              style={{ color: "var(--st-txt)" }}
+                            >
+                              {profile.fullName || "Unnamed User"}
+                            </h3>
+
+                            {isPremiumUser ? (
+                              <motion.div
+                                initial={{ scale: 0, rotate: -12, opacity: 0 }}
+                                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                transition={{ type: "spring", stiffness: 240, damping: 14 }}
+                                className="relative inline-flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-full overflow-hidden self-center sm:self-auto"
+                                style={{
+                                  background: "linear-gradient(135deg, var(--st-primary-2) 0%, var(--st-primary-3) 50%, var(--st-primary-2) 100%)",
+                                }}
+                              >
+                                <motion.span
+                                  animate={{ x: ["-150%", "250%"] }}
+                                  transition={{ duration: 3, repeat: Infinity, repeatDelay: 1.2, ease: "easeInOut" }}
+                                  className="absolute inset-y-0 w-1/2 pointer-events-none"
+                                  style={{
+                                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)",
+                                    filter: "blur(2px)",
+                                  }}
+                                />
+                                <FaCrown className="relative text-white text-[10px]" />
+                                <span className="relative font-ticket-body text-[10px] font-black uppercase tracking-wider text-white">Premium</span>
+                                <span className="relative h-1.5 w-1.5 rounded-full bg-white" />
+                                <span className="relative font-ticket-body text-[9px] font-bold uppercase tracking-wider text-white/80">Member</span>
+                              </motion.div>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-ticket-body text-[10px] font-bold uppercase tracking-wider self-center sm:self-auto"
+                                style={{ background: "var(--st-panel)", color: "var(--st-txt-soft)" }}
+                              >
+                                <FaCrown className="text-[8px]" />
+                                Free
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="font-ticket-body text-xs sm:text-sm break-all mb-1" style={{ color: "var(--st-txt-soft)" }}>
+                            {profile.email || user?.email || "no-email@example.com"}
+                          </p>
+
+                          {isPremiumUser && premiumSince && (
+                            <p className="font-ticket-body text-[10px] font-semibold mb-2" style={{ color: "var(--st-primary-2)" }}>
+                              ✦ Premium since {new Date(premiumSince).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-3">
+                            {isVerified && (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-ticket-body text-[10px] font-bold"
+                                style={{
+                                  border: "1px solid var(--st-success)",
+                                  background: "var(--st-success-soft)",
+                                  color: "var(--st-success)",
+                                }}
+                              >
+                                <FaCheckCircle className="text-[9px]" /> Email Verified
+                              </span>
+                            )}
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-ticket-body text-[10px] font-bold"
+                              style={{
+                                border: "1px solid var(--st-success)",
+                                background: "var(--st-success-soft)",
+                                color: "var(--st-success)",
+                              }}
+                            >
+                              <FaShieldAlt className="text-[9px]" /> ID Pending
+                            </span>
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-ticket-body text-[10px] font-bold"
+                              style={{
+                                border: "1px solid var(--st-primary)",
+                                background: "var(--st-primary-soft)",
+                                color: "var(--st-primary-2)",
+                              }}
+                            >
+                              <FaStar className="text-[9px]" /> New Seller
+                            </span>
+                          </div>
+
                           <input
                             ref={fileInputRef}
                             type="file"
@@ -875,143 +954,285 @@ const SettingsPage = () => {
                             onChange={handleFileSelect}
                             className="hidden"
                           />
-                          <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors disabled:opacity-50 flex items-center gap-1.5 sm:gap-2"
-                          >
-                            {uploading ? (
-                              <>
-                                <FaSpinner className="animate-spin text-xs sm:text-sm" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <FaUpload className="text-xs sm:text-sm" /> Change Avatar
-                              </>
+                          <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploading}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-ticket-body text-xs font-bold transition-colors disabled:opacity-50"
+                              style={{ border: "1px solid var(--st-primary)", color: "var(--st-primary-2)" }}
+                            >
+                              {uploading ? (
+                                <>
+                                  <FaSpinner className="animate-spin text-xs" /> Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <FaUpload className="text-xs" /> Change Avatar
+                                </>
+                              )}
+                            </button>
+                            {avatarPreview && (
+                              <button
+                                onClick={removeAvatar}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-ticket-body text-xs font-bold transition-colors"
+                                style={{ border: "1px solid var(--st-danger)", color: "var(--st-danger)" }}
+                              >
+                                <FaTrash className="text-xs" /> Remove
+                              </button>
                             )}
-                          </button>
+                          </div>
                         </div>
+                      </div>
+
+                      {/* PROFILE COMPLETENESS */}
+                      <div className="relative mt-6 pt-5 border-t border-dashed" style={{ borderColor: "var(--st-line-str)" }}>
+                        {(() => {
+                          const checks = [
+                            !!profile.fullName,
+                            !!profile.email,
+                            !!profile.phone,
+                            !!profile.location,
+                            !!profile.avatar,
+                          ];
+                          const completed = checks.filter(Boolean).length;
+                          const total = checks.length;
+                          const percent = Math.round((completed / total) * 100);
+
+                          const barColor =
+                            percent >= 80 ? "var(--st-success)"
+                            : percent >= 50 ? "var(--st-primary)"
+                            : "var(--st-danger)";
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between mb-2">
+                                <span
+                                  className="font-ticket-body text-[10px] font-bold uppercase tracking-widest"
+                                  style={{ color: "var(--st-txt-soft)" }}
+                                >
+                                  Profile Completeness
+                                </span>
+                                <span className="font-ticket-display text-sm font-bold" style={{ color: "var(--st-txt)" }}>
+                                  {completed}/{total} · {percent}%
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--st-line)" }}>
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${percent}%` }}
+                                  transition={{ duration: 0.7, ease: "easeOut" }}
+                                  className="h-full rounded-full"
+                                  style={{ background: barColor }}
+                                />
+                              </div>
+                              <p className="font-ticket-body text-[10px] mt-2" style={{ color: "var(--st-txt-soft)" }}>
+                                {percent >= 80
+                                  ? "🎉 Your profile is looking great!"
+                                  : percent >= 50
+                                  ? "Add a few more details to build trust with buyers."
+                                  : "Complete your profile to build trust and boost visibility."}
+                              </p>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
-                    {/* Form Fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={profile.fullName}
-                          onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                          Email
-                        </label>
-                        <div className="relative">
-                          <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs sm:text-sm" />
-                          <input
-                            type="email"
-                            value={profile.email}
-                            onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                            className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                          Phone
-                        </label>
-                        <div className="relative">
-                          <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs sm:text-sm" />
-                          <input
-                            type="text"
-                            value={profile.phone}
-                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                            className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                          Location
-                        </label>
-                        <input
-                          type="text"
-                          value={profile.location}
-                          onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                        />
+                    {/* ACCOUNT STATS STRIP */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: "Member Since", value: memberSince, icon: FaClock },
+                        { label: "Active Ads", value: myListingsCount, icon: FaList },
+                        { label: "Total Sold", value: mySoldCount, icon: FaCheckCircle },
+                        { label: "Rating", value: "—", icon: FaStar },
+                      ].map((s) => {
+                        const Icon = s.icon;
+                        return (
+                          <div
+                            key={s.label}
+                            className="rounded-2xl st-panel-solid p-4 text-center"
+                          >
+                            <Icon className="text-base mx-auto mb-1.5" style={{ color: "var(--st-primary-2)" }} />
+                            <p
+                              className="font-ticket-display text-lg font-bold leading-none tabular-nums"
+                              style={{ color: "var(--st-txt)" }}
+                            >
+                              {s.value}
+                            </p>
+                            <p className="font-ticket-body text-[10px] font-medium mt-1" style={{ color: "var(--st-txt-soft)" }}>
+                              {s.label}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* CONTACT FIELDS */}
+                    <div className="rounded-[22px] st-panel-solid p-1 sm:p-6">
+                      <h3
+                        className="font-ticket-display text-sm sm:text-base font-bold mb-4 flex items-center gap-2"
+                        style={{ color: "var(--st-txt)" }}
+                      >
+                        <FaUserCircle className="text-sm" style={{ color: "var(--st-primary-2)" }} />
+                        Contact Information
+                      </h3>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {[
+                          { label: "Full Name", key: "fullName", icon: FaUserCircle, type: "text" },
+                          { label: "Email", key: "email", icon: FaEnvelope, type: "email" },
+                          { label: "Phone", key: "phone", icon: FaPhone, type: "text" },
+                          { label: "Location", key: "location", icon: null, type: "text" },
+                        ].map((f) => {
+                          const Icon = f.icon;
+                          return (
+                            <div key={f.key}>
+                              <label
+                                className="block font-ticket-body text-[10px] font-bold uppercase tracking-widest mb-2"
+                                style={{ color: "var(--st-txt-soft)" }}
+                              >
+                                {f.label}
+                              </label>
+                              <div className="relative">
+                                {Icon && (
+                                  <Icon
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-xs"
+                                    style={{ color: "var(--st-primary-2)" }}
+                                  />
+                                )}
+                                <input
+                                  type={f.type}
+                                  value={profile[f.key]}
+                                  onChange={(e) => setProfile({ ...profile, [f.key]: e.target.value })}
+                                  className={`font-ticket-body w-full ${
+                                    Icon ? "pl-10" : "pl-4"
+                                  } pr-4 py-3 rounded-xl text-sm st-input`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                        Bio
-                      </label>
-                      <textarea
-                        value={profile.bio}
-                        onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                        rows="3"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 resize-none"
-                      />
-                    </div>
+                    {/* VERIFICATION PANEL */}
+                    <div className="rounded-[22px] st-panel-solid p-1 sm:p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div
+                          className="h-9 w-9 rounded-xl flex items-center justify-center"
+                          style={{ background: "var(--st-success-soft)" }}
+                        >
+                          <FaShieldAlt className="text-sm" style={{ color: "var(--st-success)" }} />
+                        </div>
+                        <div>
+                          <h3
+                            className="font-ticket-display text-sm sm:text-base font-bold"
+                            style={{ color: "var(--st-txt)" }}
+                          >
+                            Verification Status
+                          </h3>
+                          <p className="font-ticket-body text-[10px]" style={{ color: "var(--st-txt-soft)" }}>
+                            Build buyer trust with verified badges
+                          </p>
+                        </div>
+                      </div>
 
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                        Website
-                      </label>
-                      <input
-                        type="url"
-                        value={profile.website}
-                        onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                      />
+                      <div className="space-y-2.5">
+                        {[
+                          { label: "Email", desc: "Confirm your email address", done: isVerified },
+                          { label: "Phone Number", desc: "Verify via SMS code", done: false },
+                          { label: "Government ID", desc: "Upload CNIC for full verification", done: false },
+                          { label: "Address", desc: "Confirm your delivery address", done: false },
+                        ].map((v) => (
+                          <div
+                            key={v.label}
+                            className="flex items-center gap-3 p-3 rounded-xl"
+                            style={{ background: "var(--st-panel)" }}
+                          >
+                            <div
+                              className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={
+                                v.done
+                                  ? { background: "var(--st-success)", color: "#fff" }
+                                  : { background: "var(--st-panel)", color: "var(--st-txt-soft)" }
+                              }
+                            >
+                              {v.done ? (
+                                <FaCheck className="text-[11px]" />
+                              ) : (
+                                <FaLock className="text-[10px]" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-ticket-body text-xs font-bold" style={{ color: "var(--st-txt)" }}>
+                                {v.label}
+                              </p>
+                              <p className="font-ticket-body text-[10px] truncate" style={{ color: "var(--st-txt-soft)" }}>
+                                {v.desc}
+                              </p>
+                            </div>
+                            <button
+                              disabled={v.done}
+                              className="px-3 py-1.5 rounded-lg font-ticket-body text-[10px] font-bold transition-colors"
+                              style={
+                                v.done
+                                  ? {
+                                      background: "var(--st-success-soft)",
+                                      color: "var(--st-success)",
+                                      cursor: "default",
+                                    }
+                                  : {
+                                      background: "var(--st-primary)",
+                                      color: "#fff",
+                                    }
+                              }
+                            >
+                              {v.done ? "Verified" : "Verify"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </motion.div>
                 )}
 
-                {/* Notifications Tab */}
+                {/* ─── NOTIFICATIONS ─── */}
                 {activeTab === "notifications" && (
-                  <motion.div
-                    key="notifications"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2 sm:gap-3">
-                      <FaBell className="text-amber-500 text-lg sm:text-xl" />
+                  <motion.div key="notifications" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.3 }} className="space-y-6">
+                    <h2
+                      className="font-ticket-display text-lg sm:text-xl font-bold flex items-center gap-3"
+                      style={{ color: "var(--st-txt)" }}
+                    >
+                      <FaBell className="text-lg sm:text-xl" style={{ color: "var(--st-primary-2)" }} />
                       Notification Preferences
                     </h2>
 
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3">
                       {Object.entries(notifications).map(([key, value]) => {
-                        const label = key
-                          .replace(/([A-Z])/g, ' $1')
-                          .replace(/^./, str => str.toUpperCase());
+                        const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
                         return (
-                          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
+                          <div
+                            key={key}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl st-panel-solid"
+                          >
                             <div>
-                              <p className="text-sm sm:text-base font-medium text-stone-900 dark:text-white">{label}</p>
-                              <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">
+                              <p className="font-ticket-display text-sm sm:text-base font-bold" style={{ color: "var(--st-txt)" }}>
+                                {label}
+                              </p>
+                              <p className="font-ticket-body text-[11px] sm:text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
                                 Receive notifications for {key}
                               </p>
                             </div>
                             <button
                               onClick={() => setNotifications({ ...notifications, [key]: !value })}
-                              className={`relative w-10 sm:w-12 h-5 sm:h-6 rounded-full transition-colors duration-300 shrink-0 ${
-                                value ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
-                              }`}
+                              className="relative w-12 h-6 rounded-full transition-colors duration-300 shrink-0"
+                              style={{ background: value ? "var(--st-primary)" : "var(--st-line-str)" }}
                             >
-                              <div className={`absolute top-0.5 sm:top-1 left-0.5 sm:left-1 h-4 w-4 sm:h-4 sm:w-4 rounded-full bg-white transition-transform duration-300 ${
-                                value ? 'translate-x-5 sm:translate-x-6' : ''
-                              }`} />
+                              <div
+                                className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
+                                  value ? "translate-x-6" : ""
+                                }`}
+                              />
                             </button>
                           </div>
                         );
@@ -1020,254 +1241,237 @@ const SettingsPage = () => {
                   </motion.div>
                 )}
 
-                {/* Appearance Tab */}
+                {/* ─── APPEARANCE ─── */}
                 {activeTab === "appearance" && (
-                  <motion.div
-                    key="appearance"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2 sm:gap-3">
-                      <FaPalette className="text-amber-500 text-lg sm:text-xl" />
+                  <motion.div key="appearance" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.3 }} className="space-y-6">
+                    <h2
+                      className="font-ticket-display text-lg sm:text-xl font-bold flex items-center gap-3"
+                      style={{ color: "var(--st-txt)" }}
+                    >
+                      <FaPalette className="text-lg sm:text-xl" style={{ color: "var(--st-primary-2)" }} />
                       Appearance Settings
                     </h2>
 
-                    <div className="space-y-3 sm:space-y-4">
-                      {/* Theme Selection */}
-                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 sm:mb-3">
-                          Theme
-                        </label>
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                          {[
-                            { id: 'light', label: 'Light', icon: FaSun },
-                            { id: 'dark', label: 'Dark', icon: FaMoon },
-                            { id: 'system', label: 'System', icon: FaDesktop }
-                          ].map((theme) => {
-                            const Icon = theme.icon;
-                            const isActive = appearance.theme === theme.id;
-                            return (
-                              <button
-                                key={theme.id}
-                                onClick={() => {
-                                  setAppearance({ ...appearance, theme: theme.id });
-                                  const root = document.documentElement;
-                                  if (theme.id === 'dark') {
-                                    root.classList.add('dark');
-                                  } else if (theme.id === 'light') {
-                                    root.classList.remove('dark');
-                                  } else {
-                                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                                    if (prefersDark) {
-                                      root.classList.add('dark');
-                                    } else {
-                                      root.classList.remove('dark');
-                                    }
-                                  }
-                                }}
-                                className={`p-2 sm:p-3 rounded-xl border-2 transition-all ${
-                                  isActive
-                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 shadow-lg shadow-amber-500/20'
-                                    : 'border-stone-200 dark:border-stone-700 hover:border-amber-300 dark:hover:border-amber-700'
-                                }`}
-                              >
-                                <Icon className={`text-xl sm:text-2xl mx-auto ${isActive ? 'text-amber-500' : 'text-stone-500 dark:text-stone-400'}`} />
-                                <p className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-stone-600 dark:text-stone-400'}`}>
-                                  {theme.label}
-                                </p>
-                                <div className="mt-1 sm:mt-2 flex justify-center gap-0.5 sm:gap-1">
-                                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white border border-stone-200" />
-                                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-stone-800" />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400 mt-1.5 sm:mt-2 text-center">
-                          {appearance.theme === 'system' ? 'Follows your system preference' : `${appearance.theme.charAt(0).toUpperCase() + appearance.theme.slice(1)} theme active`}
-                        </p>
-                      </div>
-
-                      {/* Font Size */}
-                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 sm:mb-3">
-                          Font Size
-                        </label>
-                        <div className="flex gap-2 sm:gap-3">
-                          {['small', 'medium', 'large'].map((size) => {
-                            const isActive = appearance.fontSize === size;
-                            const sizeClasses = {
-                              small: "text-xs",
-                              medium: "text-sm",
-                              large: "text-lg"
-                            };
-                            return (
-                              <button
-                                key={size}
-                                onClick={() => {
-                                  setAppearance({ ...appearance, fontSize: size });
-                                  document.documentElement.setAttribute('data-font-size', size);
-                                }}
-                                className={`flex-1 p-2 sm:p-3 rounded-xl border-2 transition-all ${
-                                  isActive
-                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 shadow-lg shadow-amber-500/20'
-                                    : 'border-stone-200 dark:border-stone-700 hover:border-amber-300 dark:hover:border-amber-700'
-                                }`}
-                              >
-                                <FaFont className={`mx-auto ${size === 'small' ? 'text-xs sm:text-sm' : size === 'large' ? 'text-xl sm:text-2xl' : 'text-sm sm:text-base'} ${isActive ? 'text-amber-500' : 'text-stone-500 dark:text-stone-400'}`} />
-                                <p className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 capitalize font-medium ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-stone-600 dark:text-stone-400'}`}>
-                                  {size}
-                                </p>
-                                <p className={`mt-0.5 sm:mt-1 text-stone-500 dark:text-stone-400 ${sizeClasses[size]}`}>
-                                  Aa
-                                </p>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Accent Color */}
-                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                        <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 sm:mb-3">
-                          Accent Color
-                        </label>
-                        <div className="flex flex-wrap gap-2 sm:gap-3">
-                          {[
-                            { id: 'amber', color: '#f59e0b' },
-                            { id: 'blue', color: '#3b82f6' },
-                            { id: 'purple', color: '#8b5cf6' },
-                            { id: 'green', color: '#22c55e' },
-                            { id: 'red', color: '#ef4444' },
-                            { id: 'pink', color: '#ec4899' },
-                            { id: 'indigo', color: '#6366f1' }
-                          ].map(({ id, color }) => {
-                            const isActive = appearance.accentColor === id;
-                            return (
-                              <button
-                                key={id}
-                                onClick={() => {
-                                  setAppearance({ ...appearance, accentColor: id });
-                                  document.documentElement.setAttribute('data-accent', id);
-                                }}
-                                className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all ${
-                                  isActive
-                                    ? 'ring-2 ring-offset-2 ring-stone-400 dark:ring-stone-600 scale-110 shadow-lg'
-                                    : 'hover:scale-110'
-                                }`}
-                                style={{ backgroundColor: color }}
+                    <div className="p-4 rounded-2xl st-panel-solid">
+                      <label
+                        className="block font-ticket-body text-[10px] font-bold uppercase tracking-widest mb-3"
+                        style={{ color: "var(--st-txt-soft)" }}
+                      >
+                        Theme
+                      </label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { id: "light", label: "Light", icon: FaSun },
+                          { id: "dark", label: "Dark", icon: FaMoon },
+                          { id: "system", label: "System", icon: FaDesktop },
+                        ].map((theme) => {
+                          const Icon = theme.icon;
+                          const isActive = appearance.theme === theme.id;
+                          return (
+                            <button
+                              key={theme.id}
+                              onClick={() => {
+                                setAppearance({ ...appearance, theme: theme.id });
+                                const root = document.documentElement;
+                                root.classList.remove("theme-dark", "theme-light", "dark");
+                                if (theme.id === "dark") root.classList.add("theme-dark", "dark");
+                                else if (theme.id === "light") root.classList.add("theme-light");
+                                else {
+                                  if (window.matchMedia("(prefers-color-scheme: dark)").matches)
+                                    root.classList.add("theme-dark", "dark");
+                                  else root.classList.add("theme-light");
+                                }
+                                try {
+                                  localStorage.setItem("theme", theme.id === "light" ? "light" : "dark");
+                                } catch {}
+                              }}
+                              className="p-3 rounded-2xl border transition-all"
+                              style={
+                                isActive
+                                  ? { borderColor: "var(--st-primary)", background: "var(--st-primary-soft)" }
+                                  : { borderColor: "var(--st-line)" }
+                              }
+                            >
+                              <Icon
+                                className="text-xl mx-auto"
+                                style={{ color: isActive ? "var(--st-primary-2)" : "var(--st-txt-soft)" }}
                               />
-                            );
-                          })}
-                        </div>
+                              <p
+                                className="font-ticket-body text-xs mt-2 font-bold"
+                                style={{ color: isActive ? "var(--st-primary-2)" : "var(--st-txt-soft)" }}
+                              >
+                                {theme.label}
+                              </p>
+                            </button>
+                          );
+                        })}
                       </div>
+                      <p className="font-ticket-body text-[11px] mt-3 text-center" style={{ color: "var(--st-txt-soft)" }}>
+                        {appearance.theme === "system"
+                          ? "Follows your system preference"
+                          : `${(appearance.theme || "light").charAt(0).toUpperCase() + (appearance.theme || "light").slice(1)} theme active`}
+                      </p>
+                    </div>
 
-                      {/* Compact Mode Toggle */}
-                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm sm:text-base font-medium text-stone-900 dark:text-white">Compact Mode</p>
-                            <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">Reduce spacing between elements</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setAppearance({ ...appearance, compactMode: !appearance.compactMode });
-                              if (!appearance.compactMode) {
-                                document.documentElement.classList.add('compact');
-                              } else {
-                                document.documentElement.classList.remove('compact');
+                    <div className="p-4 rounded-2xl st-panel-solid">
+                      <label
+                        className="block font-ticket-body text-[10px] font-bold uppercase tracking-widest mb-3"
+                        style={{ color: "var(--st-txt-soft)" }}
+                      >
+                        Font Size
+                      </label>
+                      <div className="flex gap-3">
+                        {["small", "medium", "large"].map((size) => {
+                          const isActive = appearance.fontSize === size;
+                          return (
+                            <button
+                              key={size}
+                              onClick={() => {
+                                setAppearance({ ...appearance, fontSize: size });
+                                document.documentElement.setAttribute("data-font-size", size);
+                              }}
+                              className="flex-1 p-3 rounded-2xl border transition-all"
+                              style={
+                                isActive
+                                  ? { borderColor: "var(--st-primary)", background: "var(--st-primary-soft)" }
+                                  : { borderColor: "var(--st-line)" }
                               }
-                            }}
-                            className={`relative w-10 sm:w-12 h-5 sm:h-6 rounded-full transition-colors duration-300 shrink-0 ${
-                              appearance.compactMode ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
-                            }`}
-                          >
-                            <div className={`absolute top-0.5 sm:top-1 left-0.5 sm:left-1 h-4 w-4 sm:h-4 sm:w-4 rounded-full bg-white transition-transform duration-300 ${
-                              appearance.compactMode ? 'translate-x-5 sm:translate-x-6' : ''
-                            }`} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Animations Toggle */}
-                      <div className="p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm sm:text-base font-medium text-stone-900 dark:text-white">Animations</p>
-                            <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">Enable smooth animations and transitions</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setAppearance({ ...appearance, animations: !appearance.animations });
-                              if (!appearance.animations) {
-                                document.documentElement.classList.add('reduce-motion');
-                              } else {
-                                document.documentElement.classList.remove('reduce-motion');
-                              }
-                            }}
-                            className={`relative w-10 sm:w-12 h-5 sm:h-6 rounded-full transition-colors duration-300 shrink-0 ${
-                              appearance.animations ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
-                            }`}
-                          >
-                            <div className={`absolute top-0.5 sm:top-1 left-0.5 sm:left-1 h-4 w-4 sm:h-4 sm:w-4 rounded-full bg-white transition-transform duration-300 ${
-                              appearance.animations ? 'translate-x-5 sm:translate-x-6' : ''
-                            }`} />
-                          </button>
-                        </div>
+                            >
+                              <FaFont
+                                className={`mx-auto ${
+                                  size === "small" ? "text-sm" : size === "large" ? "text-2xl" : "text-base"
+                                }`}
+                                style={{ color: isActive ? "var(--st-primary-2)" : "var(--st-txt-soft)" }}
+                              />
+                              <p
+                                className="font-ticket-body text-xs mt-1 capitalize font-bold"
+                                style={{ color: isActive ? "var(--st-primary-2)" : "var(--st-txt-soft)" }}
+                              >
+                                {size}
+                              </p>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
+
+                    <div className="p-4 rounded-2xl st-panel-solid">
+                      <label
+                        className="block font-ticket-body text-[10px] font-bold uppercase tracking-widest mb-3"
+                        style={{ color: "var(--st-txt-soft)" }}
+                      >
+                        Accent Color
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {[
+                          { id: "amber", color: "#f59e0b" },
+                          { id: "blue", color: "#3b82f6" },
+                          { id: "purple", color: "#8b5cf6" },
+                          { id: "green", color: "#22c55e" },
+                          { id: "red", color: "#ef4444" },
+                          { id: "pink", color: "#ec4899" },
+                          { id: "indigo", color: "#6366f1" },
+                        ].map(({ id, color }) => {
+                          const isActive = appearance.accentColor === id;
+                          return (
+                            <button
+                              key={id}
+                              onClick={() => {
+                                setAppearance({ ...appearance, accentColor: id });
+                                document.documentElement.setAttribute("data-accent", id);
+                              }}
+                              className={`h-10 w-10 rounded-full transition-all ${
+                                isActive ? "scale-110" : "hover:scale-110"
+                              }`}
+                              style={{
+                                backgroundColor: color,
+                                boxShadow: isActive ? "0 0 0 2px var(--st-bg-1), 0 0 0 4px var(--st-primary)" : undefined,
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {[
+                      { key: "compactMode", label: "Compact Mode", desc: "Reduce spacing between elements" },
+                      { key: "animations", label: "Animations", desc: "Enable smooth animations and transitions" },
+                    ].map(({ key, label, desc }) => {
+                      const value = appearance[key];
+                      return (
+                        <div
+                          key={key}
+                          className="p-4 rounded-2xl st-panel-solid flex items-center justify-between gap-3"
+                        >
+                          <div>
+                            <p className="font-ticket-display text-sm sm:text-base font-bold" style={{ color: "var(--st-txt)" }}>
+                              {label}
+                            </p>
+                            <p className="font-ticket-body text-[11px] sm:text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
+                              {desc}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setAppearance({ ...appearance, [key]: !value })}
+                            className="relative w-12 h-6 rounded-full transition-colors duration-300 shrink-0"
+                            style={{ background: value ? "var(--st-primary)" : "var(--st-line-str)" }}
+                          >
+                            <div
+                              className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
+                                value ? "translate-x-6" : ""
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </motion.div>
                 )}
 
-                {/* Privacy Tab */}
+                {/* ─── PRIVACY ─── */}
                 {activeTab === "privacy" && (
-                  <motion.div
-                    key="privacy"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2 sm:gap-3">
-                      <FaLock className="text-amber-500 text-lg sm:text-xl" />
+                  <motion.div key="privacy" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.3 }} className="space-y-6">
+                    <h2
+                      className="font-ticket-display text-lg sm:text-xl font-bold flex items-center gap-3"
+                      style={{ color: "var(--st-txt)" }}
+                    >
+                      <FaLock className="text-lg sm:text-xl" style={{ color: "var(--st-primary-2)" }} />
                       Privacy Settings
                     </h2>
 
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3">
                       {Object.entries(privacy).map(([key, value]) => {
-                        const label = key
-                          .replace(/([A-Z])/g, ' $1')
-                          .replace(/^./, str => str.toUpperCase());
+                        const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
                         return (
-                          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
+                          <div
+                            key={key}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl st-panel-solid"
+                          >
                             <div>
-                              <p className="text-sm sm:text-base font-medium text-stone-900 dark:text-white">{label}</p>
-                              <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">
-                                {typeof value === 'boolean' 
-                                  ? value ? 'Enabled' : 'Disabled'
-                                  : value}
+                              <p className="font-ticket-display text-sm sm:text-base font-bold" style={{ color: "var(--st-txt)" }}>
+                                {label}
+                              </p>
+                              <p className="font-ticket-body text-[11px] sm:text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
+                                {typeof value === "boolean" ? (value ? "Enabled" : "Disabled") : value}
                               </p>
                             </div>
-                            {typeof value === 'boolean' ? (
+                            {typeof value === "boolean" ? (
                               <button
                                 onClick={() => setPrivacy({ ...privacy, [key]: !value })}
-                                className={`relative w-10 sm:w-12 h-5 sm:h-6 rounded-full transition-colors duration-300 shrink-0 ${
-                                  value ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
-                                }`}
+                                className="relative w-12 h-6 rounded-full transition-colors duration-300 shrink-0"
+                                style={{ background: value ? "var(--st-primary)" : "var(--st-line-str)" }}
                               >
-                                <div className={`absolute top-0.5 sm:top-1 left-0.5 sm:left-1 h-4 w-4 sm:h-4 sm:w-4 rounded-full bg-white transition-transform duration-300 ${
-                                  value ? 'translate-x-5 sm:translate-x-6' : ''
-                                }`} />
+                                <div
+                                  className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
+                                    value ? "translate-x-6" : ""
+                                  }`}
+                                />
                               </button>
                             ) : (
                               <select
                                 value={value}
                                 onChange={(e) => setPrivacy({ ...privacy, [key]: e.target.value })}
-                                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs sm:text-sm focus:outline-none focus:border-amber-500"
+                                className="font-ticket-body px-3 py-2 rounded-xl text-xs font-bold st-input cursor-pointer"
                               >
                                 <option value="public">Public</option>
                                 <option value="private">Private</option>
@@ -1279,12 +1483,17 @@ const SettingsPage = () => {
                       })}
                     </div>
 
-                    <div className="p-3 sm:p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30">
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <FaShieldAlt className="text-amber-500 mt-0.5 text-sm sm:text-base" />
+                    <div
+                      className="p-4 rounded-2xl"
+                      style={{ background: "var(--st-primary-soft)", border: "1px solid var(--st-primary)" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <FaShieldAlt className="mt-0.5 text-base flex-shrink-0" style={{ color: "var(--st-primary-2)" }} />
                         <div>
-                          <p className="text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-300">Privacy Tip</p>
-                          <p className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-400">
+                          <p className="font-ticket-display text-sm font-bold" style={{ color: "var(--st-primary-2)" }}>
+                            Privacy Tip
+                          </p>
+                          <p className="font-ticket-body text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
                             Keep your profile private if you want to limit visibility to only trusted users.
                           </p>
                         </div>
@@ -1293,44 +1502,49 @@ const SettingsPage = () => {
                   </motion.div>
                 )}
 
-                {/* Security Tab */}
+                {/* ─── SECURITY ─── */}
                 {activeTab === "security" && (
-                  <motion.div
-                    key="security"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-white flex items-center gap-2 sm:gap-3">
-                      <FaShieldAlt className="text-amber-500 text-lg sm:text-xl" />
+                  <motion.div key="security" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.3 }} className="space-y-6">
+                    <h2
+                      className="font-ticket-display text-lg sm:text-xl font-bold flex items-center gap-3"
+                      style={{ color: "var(--st-txt)" }}
+                    >
+                      <FaShieldAlt className="text-lg sm:text-xl" style={{ color: "var(--st-primary-2)" }} />
                       Security Settings
                     </h2>
 
-                    {/* Password Change Section */}
-                    <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/30">
-                      <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                        <div className="p-2 sm:p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                          <FaLock className="text-2xl sm:text-3xl" />
+                    <div className="p-5 rounded-[22px] st-panel-solid">
+                      <div className="flex flex-col sm:flex-row items-start gap-4">
+                        <div
+                          className="p-3 rounded-2xl"
+                          style={{
+                            border: "1px solid var(--st-primary)",
+                            background: "var(--st-primary-soft)",
+                          }}
+                        >
+                          <FaLock className="text-xl" style={{ color: "var(--st-primary-2)" }} />
                         </div>
                         <div className="flex-1 w-full">
-                          <h3 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex flex-wrap items-center gap-2">
-                            <FaKey className="text-blue-500 text-xs sm:text-sm" />
+                          <h3
+                            className="font-ticket-display text-base sm:text-lg font-bold flex flex-wrap items-center gap-2"
+                            style={{ color: "var(--st-txt)" }}
+                          >
+                            <FaKey className="text-xs" style={{ color: "var(--st-primary-2)" }} />
                             Change Password
                             {security.passwordLastChanged && security.passwordLastChanged !== "Not set" && (
-                              <span className="text-[10px] sm:text-xs font-medium text-stone-500 dark:text-stone-400">
+                              <span className="font-ticket-body text-[10px] font-bold" style={{ color: "var(--st-txt-soft)" }}>
                                 Last changed: {security.passwordLastChanged}
                               </span>
                             )}
                           </h3>
-                          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 mt-0.5 sm:mt-1">
+                          <p className="font-ticket-body text-xs sm:text-sm mt-1" style={{ color: "var(--st-txt-soft)" }}>
                             Keep your account secure by changing your password regularly.
                           </p>
 
                           <button
                             onClick={() => setShowChangePassword(!showChangePassword)}
-                            className="mt-2 sm:mt-3 px-4 sm:px-5 py-1.5 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                            className="mt-3 px-5 py-2.5 rounded-2xl text-white font-ticket-body font-bold text-xs sm:text-sm hover:scale-[1.02] active:scale-95 transition-all"
+                            style={{ background: "var(--st-primary)" }}
                           >
                             {showChangePassword ? "Cancel" : "Change Password"}
                           </button>
@@ -1343,86 +1557,53 @@ const SettingsPage = () => {
                                 exit={{ opacity: 0, height: 0 }}
                                 transition={{ duration: 0.3 }}
                                 onSubmit={handlePasswordChange}
-                                className="mt-3 sm:mt-4 space-y-3 sm:space-y-4 overflow-hidden"
+                                className="mt-4 space-y-4 overflow-hidden"
                               >
-                                <div>
-                                  <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                                    Current Password
-                                  </label>
-                                  <div className="relative">
-                                    <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs sm:text-sm" />
-                                    <input
-                                      type={showCurrentPassword ? 'text' : 'password'}
-                                      value={currentPassword}
-                                      onChange={(e) => setCurrentPassword(e.target.value)}
-                                      placeholder="Enter current password"
-                                      className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                                      required
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-                                    >
-                                      {showCurrentPassword ? <FaEyeSlash className="text-xs sm:text-sm" /> : <FaEye className="text-xs sm:text-sm" />}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                                    New Password
-                                  </label>
-                                  <div className="relative">
-                                    <FaKey className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs sm:text-sm" />
-                                    <input
-                                      type={showNewPassword ? 'text' : 'password'}
-                                      value={newPassword}
-                                      onChange={(e) => {
-                                        setNewPassword(e.target.value);
-                                        checkPasswordStrength(e.target.value);
-                                      }}
-                                      placeholder="Enter new password"
-                                      className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                                      required
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowNewPassword(!showNewPassword)}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-                                    >
-                                      {showNewPassword ? <FaEyeSlash className="text-xs sm:text-sm" /> : <FaEye className="text-xs sm:text-sm" />}
-                                    </button>
-                                  </div>
-                                  {newPassword && <PasswordStrengthIndicator />}
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs sm:text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                                    Confirm New Password
-                                  </label>
-                                  <div className="relative">
-                                    <FaKey className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs sm:text-sm" />
-                                    <input
-                                      type={showConfirmPassword ? 'text' : 'password'}
-                                      value={confirmPassword}
-                                      onChange={(e) => setConfirmPassword(e.target.value)}
-                                      placeholder="Confirm new password"
-                                      className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                                      required
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-                                    >
-                                      {showConfirmPassword ? <FaEyeSlash className="text-xs sm:text-sm" /> : <FaEye className="text-xs sm:text-sm" />}
-                                    </button>
-                                  </div>
-                                  {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                                    <p className="text-[10px] sm:text-xs text-red-500 mt-1">⚠️ Passwords do not match</p>
-                                  )}
-                                </div>
+                                {[
+                                  { label: "Current Password", value: currentPassword, set: setCurrentPassword, show: showCurrentPassword, setShow: setShowCurrentPassword, icon: FaLock, placeholder: "Enter current password" },
+                                  { label: "New Password", value: newPassword, set: (v) => { setNewPassword(v); checkPasswordStrength(v); }, show: showNewPassword, setShow: setShowNewPassword, icon: FaKey, placeholder: "Enter new password" },
+                                  { label: "Confirm New Password", value: confirmPassword, set: setConfirmPassword, show: showConfirmPassword, setShow: setShowConfirmPassword, icon: FaKey, placeholder: "Confirm new password" },
+                                ].map((f) => {
+                                  const Icon = f.icon;
+                                  return (
+                                    <div key={f.label}>
+                                      <label
+                                        className="block font-ticket-body text-[10px] font-bold uppercase tracking-widest mb-2"
+                                        style={{ color: "var(--st-txt-soft)" }}
+                                      >
+                                        {f.label}
+                                      </label>
+                                      <div className="relative">
+                                        <Icon
+                                          className="absolute left-4 top-1/2 -translate-y-1/2 text-xs"
+                                          style={{ color: "var(--st-primary-2)" }}
+                                        />
+                                        <input
+                                          type={f.show ? "text" : "password"}
+                                          value={f.value}
+                                          onChange={(e) => f.set(e.target.value)}
+                                          placeholder={f.placeholder}
+                                          className="font-ticket-body w-full pl-10 pr-10 py-3 rounded-xl text-sm st-input"
+                                          required
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => f.setShow(!f.show)}
+                                          className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                                          style={{ color: "var(--st-txt-soft)" }}
+                                        >
+                                          {f.show ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                                        </button>
+                                      </div>
+                                      {f.label === "New Password" && newPassword && <PasswordStrengthIndicator />}
+                                      {f.label === "Confirm New Password" && newPassword && confirmPassword && newPassword !== confirmPassword && (
+                                        <p className="font-ticket-body text-[10px] mt-1 font-bold" style={{ color: "var(--st-danger)" }}>
+                                          ⚠️ Passwords do not match
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
 
                                 <AnimatePresence>
                                   {passwordError && (
@@ -1430,9 +1611,10 @@ const SettingsPage = () => {
                                       initial={{ opacity: 0, y: -5 }}
                                       animate={{ opacity: 1, y: 0 }}
                                       exit={{ opacity: 0, y: -5 }}
-                                      className="p-2 sm:p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 text-red-600 dark:text-red-400 text-xs sm:text-sm flex items-start gap-2"
+                                      className="p-3 rounded-xl text-xs font-bold flex items-start gap-2"
+                                      style={{ background: "var(--st-danger-soft)", border: "1px solid var(--st-danger)", color: "var(--st-danger)" }}
                                     >
-                                      <FaExclamationTriangle className="text-red-500 mt-0.5 flex-shrink-0 text-xs sm:text-sm" />
+                                      <FaExclamationTriangle className="mt-0.5 flex-shrink-0 text-xs" />
                                       <span>{passwordError}</span>
                                     </motion.div>
                                   )}
@@ -1441,43 +1623,37 @@ const SettingsPage = () => {
                                       initial={{ opacity: 0, y: -5 }}
                                       animate={{ opacity: 1, y: 0 }}
                                       exit={{ opacity: 0, y: -5 }}
-                                      className="p-2 sm:p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm flex items-start gap-2"
+                                      className="p-3 rounded-xl text-xs font-bold flex items-start gap-2"
+                                      style={{ background: "var(--st-success-soft)", border: "1px solid var(--st-success)", color: "var(--st-success)" }}
                                     >
-                                      <FaCheckCircle className="text-emerald-500 mt-0.5 flex-shrink-0 text-xs sm:text-sm" />
+                                      <FaCheckCircle className="mt-0.5 flex-shrink-0 text-xs" />
                                       <span>✅ Password changed successfully!</span>
                                     </motion.div>
                                   )}
                                 </AnimatePresence>
 
-                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
+                                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                                   <button
                                     type="submit"
                                     disabled={passwordLoading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                                    className="w-full sm:flex-1 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="flex-1 px-6 py-3 rounded-2xl text-white font-ticket-body font-bold text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
+                                    style={{ background: "var(--st-primary)" }}
                                   >
                                     {passwordLoading ? (
-                                      <>
-                                        <FaSpinner className="animate-spin text-xs sm:text-sm" />
-                                        Updating...
-                                      </>
+                                      <><FaSpinner className="animate-spin text-xs" /> Updating...</>
                                     ) : (
-                                      <>
-                                        <FaSave className="text-xs sm:text-sm" />
-                                        Update Password
-                                      </>
+                                      <><FaSave className="text-xs" /> Update Password</>
                                     )}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setShowChangePassword(false);
-                                      setCurrentPassword("");
-                                      setNewPassword("");
-                                      setConfirmPassword("");
-                                      setPasswordError("");
-                                      setPasswordSuccess(false);
+                                      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+                                      setPasswordError(""); setPasswordSuccess(false);
                                     }}
-                                    className="w-full sm:px-6 py-2 sm:py-2.5 rounded-xl border-2 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 font-semibold text-xs sm:text-sm hover:bg-stone-50 dark:hover:bg-stone-800 transition-all"
+                                    className="sm:px-6 py-3 rounded-2xl font-ticket-body font-bold text-xs sm:text-sm transition-colors"
+                                    style={{ border: "1px solid var(--st-line-str)", color: "var(--st-txt)" }}
                                   >
                                     Cancel
                                   </button>
@@ -1489,85 +1665,106 @@ const SettingsPage = () => {
                       </div>
                     </div>
 
-                    {/* Passkey Authentication Section */}
-                    <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border border-purple-200 dark:border-purple-800/30">
-                      <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                        <div className="p-2 sm:p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                          <FaFingerprint className="text-2xl sm:text-3xl" />
+                    <div className="p-5 rounded-[22px] st-panel-solid">
+                      <div className="flex flex-col sm:flex-row items-start gap-4">
+                        <div
+                          className="p-3 rounded-2xl"
+                          style={{
+                            border: "1px solid var(--st-primary)",
+                            background: "var(--st-primary-soft)",
+                          }}
+                        >
+                          <FaFingerprint className="text-xl" style={{ color: "var(--st-primary-2)" }} />
                         </div>
                         <div className="flex-1 w-full">
-                          <h3 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex flex-wrap items-center gap-2">
-                            <FaKey className="text-purple-500 text-xs sm:text-sm" />
+                          <h3
+                            className="font-ticket-display text-base sm:text-lg font-bold flex flex-wrap items-center gap-2"
+                            style={{ color: "var(--st-txt)" }}
+                          >
+                            <FaKey className="text-xs" style={{ color: "var(--st-primary-2)" }} />
                             Passkey Authentication
                             {!isPasskeySupported() && (
-                              <span className="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
+                              <span
+                                className="font-ticket-body text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                style={{
+                                  background: "var(--st-danger-soft)",
+                                  color: "var(--st-danger)",
+                                  border: "1px solid var(--st-danger)",
+                                }}
+                              >
                                 Not Supported
                               </span>
                             )}
                             {passkeys && passkeys.length > 0 && (
-                              <span className="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                              <span
+                                className="font-ticket-body text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                style={{
+                                  background: "var(--st-success-soft)",
+                                  color: "var(--st-success)",
+                                  border: "1px solid var(--st-success)",
+                                }}
+                              >
                                 {passkeys.length} Active
                               </span>
                             )}
                           </h3>
-                          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 mt-0.5 sm:mt-1">
-                            Sign in securely using Face ID, Fingerprint, or PIN. 
-                            Passkeys are more secure than passwords and phishing-resistant.
+                          <p className="font-ticket-body text-xs sm:text-sm mt-1" style={{ color: "var(--st-txt-soft)" }}>
+                            Sign in securely using Face ID, Fingerprint, or PIN. Passkeys are more secure than passwords.
                           </p>
 
                           {!isPasskeySupported() && (
-                            <div className="mt-2 sm:mt-3 p-2 sm:p-3 rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800/30">
-                              <div className="flex items-start gap-2">
-                                <FaInfoCircle className="text-yellow-600 dark:text-yellow-400 mt-0.5 text-xs sm:text-sm" />
-                                <p className="text-[10px] sm:text-xs text-yellow-700 dark:text-yellow-400">
-                                  Passkeys are not supported on this device or browser. 
-                                  Please use a supported browser like Chrome, Safari, or Edge.
-                                </p>
-                              </div>
+                            <div
+                              className="mt-3 p-3 rounded-xl"
+                              style={{ background: "var(--st-primary-soft)", border: "1px solid var(--st-primary)" }}
+                            >
+                              <p className="font-ticket-body text-xs flex items-start gap-2" style={{ color: "var(--st-primary-2)" }}>
+                                <FaInfoCircle className="mt-0.5 flex-shrink-0" />
+                                Passkeys not supported on this device. Try Chrome, Safari, or Edge.
+                              </p>
                             </div>
                           )}
 
-                          <div className="flex flex-wrap gap-2 sm:gap-3 mt-3 sm:mt-4">
+                          <div className="flex flex-wrap gap-3 mt-4">
                             <button
                               onClick={handleRegisterPasskey}
                               disabled={!isPasskeySupported() || passkeyLoading}
-                              className="px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
+                              className="px-4 py-2.5 rounded-2xl text-white font-ticket-body font-bold text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
+                              style={{ background: "var(--st-primary)" }}
                             >
-                              {passkeyLoading ? (
-                                <FaSpinner className="animate-spin text-xs sm:text-sm" />
-                              ) : (
-                                <FaPlus className="text-xs sm:text-sm" />
-                              )}
+                              {passkeyLoading ? <FaSpinner className="animate-spin text-xs" /> : <FaPlus className="text-xs" />}
                               {passkeyLoading ? "Processing..." : "Register New Passkey"}
                             </button>
-
-                            {passkeys && passkeys.length > 0 && (
-                              <button
-                                onClick={() => window.open('https://accounts.google.com/signin/v2/passkeys', '_blank')}
-                                className="px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-xl border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-semibold text-xs sm:text-sm hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-all flex items-center gap-1.5 sm:gap-2"
-                              >
-                                <FaEye className="text-xs sm:text-sm" />
-                                Manage Passkeys
-                              </button>
-                            )}
                           </div>
 
                           {passkeys && passkeys.length > 0 && (
-                            <div className="mt-3 sm:mt-4 space-y-2">
-                              <p className="text-[10px] sm:text-xs font-medium text-stone-600 dark:text-stone-400">
-                                Registered Passkeys:
+                            <div className="mt-4 space-y-2">
+                              <p
+                                className="font-ticket-body text-[10px] font-bold uppercase tracking-widest"
+                                style={{ color: "var(--st-txt-soft)" }}
+                              >
+                                Registered Passkeys
                               </p>
                               {passkeys.map((key) => (
-                                <div key={key.id} className="flex items-center justify-between p-2 sm:p-3 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
-                                      <FaKey className="text-[10px] sm:text-sm" />
+                                <div
+                                  key={key.id}
+                                  className="flex items-center justify-between p-3 rounded-2xl"
+                                  style={{ background: "var(--st-panel)", border: "1px solid var(--st-line)" }}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div
+                                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                      style={{
+                                        border: "1px solid var(--st-primary)",
+                                        color: "var(--st-primary-2)",
+                                      }}
+                                    >
+                                      <FaKey className="text-xs" />
                                     </div>
                                     <div className="min-w-0">
-                                      <p className="text-xs sm:text-sm font-medium text-stone-900 dark:text-white truncate">
+                                      <p className="font-ticket-body text-sm font-bold truncate" style={{ color: "var(--st-txt)" }}>
                                         {key.friendlyName || `Passkey ${key.id.slice(0, 8)}`}
                                       </p>
-                                      <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">
+                                      <p className="font-ticket-body text-[10px]" style={{ color: "var(--st-txt-soft)" }}>
                                         Added {new Date(key.created_at).toLocaleDateString()}
                                       </p>
                                     </div>
@@ -1575,59 +1772,55 @@ const SettingsPage = () => {
                                   <button
                                     onClick={() => handleDeletePasskey(key.id)}
                                     disabled={passkeyLoading}
-                                    className="p-1 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all disabled:opacity-50 shrink-0"
+                                    className="p-2 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                                    style={{ color: "var(--st-danger)" }}
                                   >
-                                    <FaTrash className="text-xs sm:text-sm" />
+                                    <FaTrash className="text-xs" />
                                   </button>
                                 </div>
                               ))}
                             </div>
                           )}
-
-                          <div className="mt-2 sm:mt-3 p-2 sm:p-3 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/30">
-                            <p className="text-[10px] sm:text-xs text-purple-700 dark:text-purple-400 flex items-center gap-1.5 sm:gap-2">
-                              <FaInfoCircle className="text-xs sm:text-sm" />
-                              Passkeys are stored securely on your device and never shared with us.
-                            </p>
-                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Existing Security Settings */}
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-3">
                       {Object.entries(security).map(([key, value]) => {
-                        const label = key
-                          .replace(/([A-Z])/g, ' $1')
-                          .replace(/^./, str => str.toUpperCase());
-                        const isToggle = typeof value === 'boolean';
-                        const isSelect = key === 'sessionTimeout';
-                        const isText = key === 'passwordLastChanged';
-
+                        if (key === "passwordLastChanged") return null;
+                        const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+                        const isToggle = typeof value === "boolean";
+                        const isSelect = key === "sessionTimeout";
                         return (
-                          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
+                          <div
+                            key={key}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl st-panel-solid"
+                          >
                             <div>
-                              <p className="text-sm sm:text-base font-medium text-stone-900 dark:text-white">{label}</p>
-                              <p className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400">
-                                {isText ? `Last changed: ${value}` : value ? 'Enabled' : 'Disabled'}
+                              <p className="font-ticket-display text-sm sm:text-base font-bold" style={{ color: "var(--st-txt)" }}>
+                                {label}
+                              </p>
+                              <p className="font-ticket-body text-[11px] sm:text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
+                                {isToggle ? (value ? "Enabled" : "Disabled") : value}
                               </p>
                             </div>
                             {isToggle ? (
                               <button
                                 onClick={() => setSecurity({ ...security, [key]: !value })}
-                                className={`relative w-10 sm:w-12 h-5 sm:h-6 rounded-full transition-colors duration-300 shrink-0 ${
-                                  value ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
-                                }`}
+                                className="relative w-12 h-6 rounded-full transition-colors duration-300 shrink-0"
+                                style={{ background: value ? "var(--st-primary)" : "var(--st-line-str)" }}
                               >
-                                <div className={`absolute top-0.5 sm:top-1 left-0.5 sm:left-1 h-4 w-4 sm:h-4 sm:w-4 rounded-full bg-white transition-transform duration-300 ${
-                                  value ? 'translate-x-5 sm:translate-x-6' : ''
-                                }`} />
+                                <div
+                                  className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
+                                    value ? "translate-x-6" : ""
+                                  }`}
+                                />
                               </button>
                             ) : isSelect ? (
                               <select
                                 value={value}
                                 onChange={(e) => setSecurity({ ...security, [key]: e.target.value })}
-                                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs sm:text-sm focus:outline-none focus:border-amber-500"
+                                className="font-ticket-body px-3 py-2 rounded-xl text-xs font-bold st-input cursor-pointer"
                               >
                                 <option value="15">15 minutes</option>
                                 <option value="30">30 minutes</option>
@@ -1635,19 +1828,26 @@ const SettingsPage = () => {
                                 <option value="120">2 hours</option>
                               </select>
                             ) : (
-                              <span className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">{value}</span>
+                              <span className="font-ticket-body text-xs" style={{ color: "var(--st-txt-soft)" }}>
+                                {value}
+                              </span>
                             )}
                           </div>
                         );
                       })}
                     </div>
 
-                    <div className="p-3 sm:p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30">
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <FaShieldAlt className="text-red-500 mt-0.5 text-sm sm:text-base" />
+                    <div
+                      className="p-4 rounded-2xl"
+                      style={{ background: "var(--st-danger-soft)", border: "1px solid var(--st-danger)" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <FaShieldAlt className="mt-0.5 text-base flex-shrink-0" style={{ color: "var(--st-danger)" }} />
                         <div>
-                          <p className="text-xs sm:text-sm font-medium text-red-800 dark:text-red-300">Security Tip</p>
-                          <p className="text-[10px] sm:text-xs text-red-700 dark:text-red-400">
+                          <p className="font-ticket-display text-sm font-bold" style={{ color: "var(--st-danger)" }}>
+                            Security Tip
+                          </p>
+                          <p className="font-ticket-body text-xs mt-0.5" style={{ color: "var(--st-txt-soft)" }}>
                             Use a strong, unique password and enable two-factor authentication for extra security.
                           </p>
                         </div>

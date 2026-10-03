@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>Vision Test</title><meta charset="UTF-8" /></head>
+<body style="font-family: monospace; padding: 30px; font-size: 14px; background: #111; color: #eee;">
+
+<h2>Testing /vision-chat with an image…</h2>
+<pre id="out" style="background:#000; padding:20px; border-radius:10px; white-space:pre-wrap; word-break:break-word;">Loading…</pre>
+
+<script>
+const out = document.getElementById("out");
+out.textContent = "Sending request with image...\n";
+
+const imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/280px-Red_Apple.jpg";
+
+fetch("https://floral-bush-c3e1.hasnainwebdeveloper1122.workers.dev/vision-chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    messages: [{
+      role: "user",
+      content: "What is in this image? Answer briefly.",
+      images: [{ url: imageUrl }]
+    }],
+    system: "You are a helpful assistant. Reply with plain text."
+  })
+})
+.then(r => {
+  out.textContent = "STATUS: " + r.status + " " + r.statusText + "\n\n";
+  return r.text();
+})
+.then(text => {
+  out.textContent += "RESPONSE:\n" + text;
+})
+.catch(e => {
+  out.textContent = "❌ FETCH ERROR:\n" + e.message;
+});
+</script>
+</body>
+</html>

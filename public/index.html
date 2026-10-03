@@ -2,24 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    
+
+    <!-- ===== FAVICON & LOGO ===== -->
+    <link rel="icon" href="%PUBLIC_URL%/logo.png" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/logo.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
     <!-- ===== DISABLE ZOOM ON MOBILE ===== -->
     <meta 
       name="viewport" 
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" 
     />
-    
+
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="AI Study Assistant - AI-powered study tools to help you learn faster, retain more, and achieve better results."
+      content="Apna Deal Market - Buy and sell anything fast and secure. AI-powered listings, verified sellers, and escrow payments."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <title>AI Study Assistant</title>
-    
+    <!-- ===== OPEN GRAPH / SOCIAL ===== -->
+    <meta property="og:title" content="Apna Deal Market" />
+    <meta
+      property="og:description"
+      content="Buy and sell anything fast and secure. AI-powered listings, verified sellers, and escrow payments."
+    />
+    <meta property="og:image" content="%PUBLIC_URL%/logo.png" />
+    <meta property="og:type" content="website" />
+
+    <!-- ===== TWITTER ===== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Apna Deal Market" />
+    <meta
+      name="twitter:description"
+      content="Buy and sell anything fast and secure. AI-powered listings, verified sellers, and escrow payments."
+    />
+    <meta name="twitter:image" content="%PUBLIC_URL%/logo.png" />
+
+    <title>APNA DEAL</title>
+
     <!-- ===== ADDITIONAL: Disable zoom with CSS (Android Chrome) ===== -->
     <style>
       /* Prevent zoom on touch */
@@ -29,6 +50,11 @@
         -moz-text-size-adjust: 100%;
         -ms-text-size-adjust: 100%;
         text-size-adjust: 100%;
+        background: #000;
+      }
+
+      html.light, body.light {
+        background: #fff;
       }
       
       /* Prevent zoom on inputs */

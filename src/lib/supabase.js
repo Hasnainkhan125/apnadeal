@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     experimental: {
-      passkey: true, // ✅ Enable passkey support
+      passkey: true,
     },
   },
 });

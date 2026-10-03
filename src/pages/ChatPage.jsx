@@ -1,743 +1,986 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { 
+// pages/ChatPage.jsx — Modern 3-panel chat (Chats · Messages · Details)
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import {
   FaPaperPlane, FaUser, FaUsers, FaTimes, FaSearch, FaBell,
   FaUserPlus, FaPhone, FaVideo as FaVideoCall,
-  FaCheck, FaTimes as FaTimesIcon, FaSpinner, FaBan, FaUndo,
-  FaBars, FaTrash, FaCheckDouble, FaComment, 
-  FaArrowLeft as FaBack, FaPhone as FaPhoneIcon, FaMicrophone,
-  FaMicrophoneSlash, FaPhoneSlash, FaClipboardList, FaSignOutAlt,
-  FaVolumeUp, FaImage, FaReply, FaVolumeOff,
-  FaStop, FaPlay, FaPause, FaMicrophone as FaMicrophoneIcon,
-  FaDownload, FaExpand, FaCompress
+  FaCheck, FaSpinner, FaBan, FaUndo,
+  FaTrash, FaCheckDouble, FaComment, FaSmile,
+  FaArrowLeft as FaBack, FaMicrophone, FaMicrophoneSlash,
+  FaPhoneSlash, FaClipboardList, FaVolumeUp, FaImage, FaReply,
+  FaVolumeOff, FaStop, FaPlay, FaPause, FaDownload, FaExpand,
+  FaCompress, FaExclamationCircle, FaMapMarkerAlt, FaBriefcase,
+  FaEllipsisH, FaLink, FaPalette, FaStickyNote, FaChevronDown,
+  FaChevronRight, FaPlus, FaCamera, FaSmileBeam, FaHeart,
+  FaCat, FaUtensils, FaFutbol, FaPlane, FaMusic, FaPalette as FaPaletteIcon,
+  FaTrashAlt, FaCheckCircle,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
+import { useProfile } from "../contexts/ProfileContext";
 import { supabase } from "../lib/supabase";
-import io from 'socket.io-client';
-import Peer from 'simple-peer';
-import { 
-  X, 
-  Search, 
-  UserPlus, 
-  Bell, 
-  UserMinus,
-  Check,
-  Loader2,
-  Users,
-  MessageCircle,
-  Phone as PhoneIcon,
-  Video,
-  ArrowLeft,
-  Send,
-  Smile,
-  Image as ImageIcon,
-  Mic,
-  Volume2,
-  VolumeX,
-  User,
-  Settings,
-  CheckCheck,
-  Download as DownloadIcon,
-  ZoomIn,
-  ZoomOut
-} from 'lucide-react';
+import io from "socket.io-client";
+import Peer from "simple-peer";
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = "http://localhost:5000";
 
-// Speech Synthesis
-const speakNotification = (message, onEnd) => {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(message);
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-  const voices = window.speechSynthesis.getVoices();
-  const femaleVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google UK Female'));
-  if (femaleVoice) utterance.voice = femaleVoice;
-  if (onEnd) utterance.onend = onEnd;
-  window.speechSynthesis.speak(utterance);
+/* ═══════════════════════════════════════════════════════════════
+   STICKER CATEGORIES
+   ═══════════════════════════════════════════════════════════════ */
+const STICKER_CATEGORIES = {
+  Smileys: {
+    icon: FaSmileBeam,
+    stickers: [
+      "😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃",
+      "😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙",
+      "😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔",
+      "🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥",
+      "😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮",
+      "🥵","🥶","😵","🤯","🤠","🥳","😎","🤓","🧐","😕",
+    ],
+  },
+  Love: {
+    icon: FaHeart,
+    stickers: [
+      "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔",
+      "❣️","💕","💞","💓","💗","💖","💘","💝","💟","♥️",
+      "😍","🥰","😘","💋","💌","🌹","💐","🌸","💒","💍",
+      "😻","😽","🫶","🫰","🤗","😚","😙","💑","💏","👩‍❤️‍👨",
+    ],
+  },
+  Animals: {
+    icon: FaCat,
+    stickers: [
+      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
+      "🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔",
+      "🐧","🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐗","🐴",
+      "🦄","🐝","🐛","🦋","🐌","🐞","🐜","🕷️","🦂","🐢",
+      "🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡",
+      "🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓",
+    ],
+  },
+  Food: {
+    icon: FaUtensils,
+    stickers: [
+      "🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🍈",
+      "🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦",
+      "🥬","🥒","🌶️","🌽","🥕","🧄","🧅","🥔","🍠","🥐",
+      "🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓",
+      "🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥙","🧆","🥘",
+      "🍝","🍜","🍲","🍛","🍣","🍱","🥟","🍤","🍙","🍚",
+    ],
+  },
+  Activities: {
+    icon: FaFutbol,
+    stickers: [
+      "⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱",
+      "🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳",
+      "🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷",
+      "⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","⛹️",
+      "🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗",
+    ],
+  },
+  Travel: {
+    icon: FaPlane,
+    stickers: [
+      "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐",
+      "🛻","🚚","🚛","🚜","🏍️","🛵","🚲","🛴","🛺","🚨",
+      "🚔","🚍","🚘","🚖","🚡","🚠","🚟","🚃","🚋","🚞",
+      "🚝","🚄","🚅","🚈","🚂","🚆","🚇","🚊","🚉","✈️",
+      "🛫","🛬","🛩️","💺","🛰️","🚀","🛸","🚁","🛶","⛵",
+      "🚤","🛥️","🛳️","⛴️","🚢","🗺️","🗿","🗽","🗼","🏰",
+    ],
+  },
+  Symbols: {
+    icon: FaHeart,
+    stickers: [
+      "✨","⭐","🌟","💫","⚡","🔥","💥","💢","💦","💨",
+      "🎉","🎊","🎈","🎁","🎀","🎗️","🎟️","🎫","🏆","🥇",
+      "🥈","🥉","🏅","🎖️","🎨","🎭","🎪","🎤","🎧","🎼",
+      "🎵","🎶","🎷","🎸","🎹","🎺","🎻","🥁","🎬","📸",
+      "💡","🔔","🔕","📣","📢","💬","💭","🗯️","♠️","♣️",
+    ],
+  },
+  Music: {
+    icon: FaMusic,
+    stickers: [
+      "🎵","🎶","🎼","🎤","🎧","🎷","🎸","🎹","🎺","🎻",
+      "🥁","🪘","📯","🎙️","🎚️","🎛️","📻","🎬","🎭","🎨",
+      "💿","📀","💽","📼","📷","📸","📹","🎥","📽️","🎞️",
+    ],
+  },
 };
 
-// Emojis
-const STICKER_CATEGORIES = [
-  { name: 'Happy', emojis: ['😊', '😄', '😁', '🥳', '😍', '🤗', '😎', '🌟'] },
-  { name: 'Sad', emojis: ['😢', '😭', '😔', '🥺', '😞', '💔', '😩'] },
-  { name: 'Angry', emojis: ['😠', '😡', '🤬', '😤', '👿', '💢'] },
-  { name: 'Love', emojis: ['❤️', '💕', '💗', '💖', '💘', '💝', '🥰'] },
-  { name: 'Celebrate', emojis: ['🎉', '🎊', '✨', '🎈', '🎁', '🏆', '💪'] },
-  { name: 'Funny', emojis: ['😂', '🤣', '😅', '🤪', '🤡', '😜', '👻'] },
-  { name: 'Study', emojis: ['📚', '📝', '✏️', '📖', '🎓', '🧠', '💡'] },
-  { name: 'Animals', emojis: ['🐱', '🐶', '🐰', '🦊', '🐼', '🐨', '🦄'] },
+/* ═══════════════════════════════════════════════════════════════
+   CHAT THEMES
+   ═══════════════════════════════════════════════════════════════ */
+const CHAT_THEMES = [
+  { id: "default", name: "Default",    bg: null,                          bubbleMe: null,                            bubbleThem: null },
+  { id: "midnight", name: "Midnight",  bg: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)", bubbleMe: "linear-gradient(135deg, #6366f1, #8b5cf6)", bubbleThem: "rgba(255,255,255,0.08)" },
+  { id: "sunset",   name: "Sunset",    bg: "linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)", bubbleMe: "linear-gradient(135deg, #f97316, #ef4444)", bubbleThem: "rgba(255,255,255,0.85)" },
+  { id: "ocean",    name: "Ocean",     bg: "linear-gradient(135deg, #2193b0, #6dd5ed)", bubbleMe: "linear-gradient(135deg, #0284c7, #0369a1)", bubbleThem: "rgba(255,255,255,0.85)" },
+  { id: "forest",   name: "Forest",    bg: "linear-gradient(135deg, #134e5e, #71b280)", bubbleMe: "linear-gradient(135deg, #16a34a, #15803d)", bubbleThem: "rgba(255,255,255,0.85)" },
+  { id: "lavender", name: "Lavender",  bg: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)", bubbleMe: "linear-gradient(135deg, #8b5cf6, #7c3aed)", bubbleThem: "rgba(255,255,255,0.9)" },
+  { id: "peach",    name: "Peach",     bg: "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)", bubbleMe: "linear-gradient(135deg, #f97316, #ea580c)", bubbleThem: "rgba(255,255,255,0.9)" },
+  { id: "mono",     name: "Mono",      bg: "linear-gradient(135deg, #232526, #414345)", bubbleMe: "linear-gradient(135deg, #525252, #404040)", bubbleThem: "rgba(255,255,255,0.1)" },
 ];
 
-const playNotificationSound = () => {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 800; osc.type = 'sine';
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
-    setTimeout(() => {
-      const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
-      o2.connect(g2); g2.connect(ctx.destination);
-      o2.frequency.value = 1000; o2.type = 'sine';
-      g2.gain.setValueAtTime(0.2, ctx.currentTime);
-      g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      o2.start(ctx.currentTime); o2.stop(ctx.currentTime + 0.2);
-    }, 150);
-  } catch (e) {}
-};
+/* ═══════════════════════════════════════════════════════════════
+   THEME TOKENS — Light cream + dark charcoal
+   ═══════════════════════════════════════════════════════════════ */
+const ChatStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Manrope:wght@400;500;600;700;800&display=swap');
+    .font-ticket-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+    .font-ticket-body { font-family: 'Manrope', system-ui, sans-serif; }
 
-const playMessageSound = () => {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 600; osc.type = 'sine';
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {}
-};
+    .theme-dark {
+      --ch-app-bg:        #0A0A12;
+      --ch-sidebar:       #0F0F1A;
+      --ch-middle:        #13131C;
+      --ch-right:         #0F0F1A;
+      --ch-panel:         #16161F;
+      --ch-panel-2:       #1C1C28;
+      --ch-card:          #1A1A24;
+      --ch-line:          rgba(255,255,255,0.06);
+      --ch-line-str:      rgba(255,255,255,0.14);
+      --ch-txt:           #FFFFFF;
+      --ch-txt-soft:      rgba(255,255,255,0.62);
+      --ch-txt-faint:     rgba(255,255,255,0.38);
+      --ch-primary:       #eb7d34;
+      --ch-primary-2:     #f59e0b;
+      --ch-primary-soft:  rgba(235,125,52,0.14);
+      --ch-primary-glow:  rgba(235,125,52,0.45);
+      --ch-sage-bg:       rgba(235,125,52,0.15);
+      --ch-sage-fg:       #f59e0b;
+      --ch-mint:          #7BAE9A;
+      --ch-mint-soft:     rgba(123,174,154,0.16);
+      --ch-danger:        #E2795F;
+      --ch-danger-soft:   rgba(226,121,95,0.14);
+      --ch-bubble-me:     linear-gradient(135deg, #eb7d34 0%, #d76a20 100%);
+      --ch-bubble-them:   #1C1C28;
+    }
 
+    .theme-light {
+      --ch-app-bg:        #F7F5F0;
+      --ch-sidebar:       #FFFFFF;
+      --ch-middle:        #FFFFFF;
+      --ch-right:         #FAF8F3;
+      --ch-panel:         #FFFFFF;
+      --ch-panel-2:       #F7F5F0;
+      --ch-card:          #FFFFFF;
+      --ch-line:          rgba(20,20,30,0.06);
+      --ch-line-str:      rgba(20,20,30,0.12);
+      --ch-txt:           #1A1A22;
+      --ch-txt-soft:      rgba(26,26,34,0.6);
+      --ch-txt-faint:     rgba(26,26,34,0.4);
+      --ch-primary:       #4C7C5A;
+      --ch-primary-2:     #7BAE9A;
+      --ch-primary-soft:  rgba(76,124,90,0.10);
+      --ch-primary-glow:  rgba(76,124,90,0.30);
+      --ch-sage-bg:       #E8F0E8;
+      --ch-sage-fg:       #4C7C5A;
+      --ch-mint:          #7BAE9A;
+      --ch-mint-soft:     rgba(123,174,154,0.14);
+      --ch-danger:        #B23A2E;
+      --ch-danger-soft:   rgba(178,58,46,0.10);
+      --ch-bubble-me:     linear-gradient(135deg, #4C7C5A 0%, #3F6A4B 100%);
+      --ch-bubble-them:   #FFFFFF;
+    }
+
+    .ch-app {
+      background: var(--ch-app-bg);
+      color: var(--ch-txt);
+      font-family: 'Manrope', system-ui, sans-serif;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    .ch-sidebar { background: var(--ch-sidebar); border-right: 1px solid var(--ch-line); }
+    .ch-middle  { background: var(--ch-middle); }
+    .ch-right   { background: var(--ch-right); border-left: 1px solid var(--ch-line); }
+    .ch-panel   { background: var(--ch-panel); border: 1px solid var(--ch-line); }
+    .ch-panel-2 { background: var(--ch-panel-2); }
+
+    .ch-input {
+      background: var(--ch-panel);
+      color: var(--ch-txt);
+      border: 1px solid var(--ch-line);
+    }
+    .ch-input::placeholder { color: var(--ch-txt-faint); }
+
+    .ch-conv-row {
+      transition: background 0.15s ease;
+      border-radius: 14px;
+    }
+    .ch-conv-row:hover { background: var(--ch-primary-soft); }
+    .ch-conv-row--active {
+      background: var(--ch-sage-bg);
+      border: 1px solid transparent;
+    }
+
+    .ch-bubble-them {
+      background: var(--ch-bubble-them);
+      color: var(--ch-txt);
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .ch-bubble-me {
+      background: var(--ch-sage-bg);
+      color: var(--ch-sage-fg);
+      border-radius: 18px 18px 4px 18px;
+    }
+    .theme-dark .ch-bubble-me {
+      background: var(--ch-bubble-me);
+      color: #FFFFFF;
+    }
+
+    .ch-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .ch-scroll::-webkit-scrollbar-track { background: transparent; }
+    .ch-scroll::-webkit-scrollbar-thumb {
+      background: var(--ch-line-str);
+      border-radius: 4px;
+    }
+    .ch-scroll::-webkit-scrollbar-thumb:hover { background: var(--ch-primary); }
+
+    /* Sticker / emoji grid */
+    .ch-sticker-btn {
+      font-size: 24px;
+      line-height: 1;
+      padding: 6px;
+      border-radius: 10px;
+      transition: transform 0.12s ease, background 0.12s ease;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ch-sticker-btn:hover { background: var(--ch-primary-soft); transform: scale(1.15); }
+
+    /* Theme card */
+    .ch-theme-card {
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      border: 2px solid transparent;
+    }
+    .ch-theme-card:hover { transform: scale(1.03); }
+    .ch-theme-card--active { border-color: var(--ch-primary); }
+  `}</style>
+);
+
+/* ────────────────────────────────────────────────────────────
+   HELPERS
+   ──────────────────────────────────────────────────────────── */
 const getInitials = (name) => {
-  if (!name) return 'U';
-  const parts = name.split(' ');
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 };
 
-const AvatarWithFallback = ({ 
-  seed, 
-  name, 
-  avatarUrl, 
-  size = 'h-10 w-10', 
-  textSize = 'text-sm', 
-  className = '',
-  rounded = 'rounded-full'
+const AvatarWithFallback = ({
+  seed, name, avatarUrl,
+  size = "h-10 w-10", textSize = "text-sm",
+  className = "", rounded = "rounded-full",
 }) => {
-  const displayName = name || seed || 'User';
+  const displayName = name || seed || "User";
   const initials = getInitials(displayName);
   const imageUrl = avatarUrl || seed?.avatar_url || null;
 
   return (
-    <div className={`${size} ${rounded} bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold ${textSize} shadow-lg overflow-hidden flex-shrink-0 ${className}`}>
+    <div
+      className={`${size} ${rounded} text-white font-ticket-body font-bold ${textSize} overflow-hidden flex-shrink-0 flex items-center justify-center ${className}`}
+      style={{
+        background: imageUrl ? undefined : "linear-gradient(135deg, var(--ch-mint), var(--ch-primary-2))",
+      }}
+    >
       {imageUrl ? (
-        <img 
-          src={imageUrl} 
-          alt={displayName} 
+        <img
+          src={imageUrl}
+          alt={displayName}
           className="h-full w-full object-cover"
-          onError={(e) => {
-            e.target.style.display = 'none';
-            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-          }}
+          onError={(e) => { e.target.style.display = "none"; }}
         />
-      ) : null}
-      <span 
-        className="items-center justify-center w-full h-full"
-        style={{ display: imageUrl ? 'none' : 'flex' }}
-      >
-        {initials}
-      </span>
+      ) : (
+        initials
+      )}
     </div>
   );
 };
 
-// ✅ NEW: Full-screen Image Viewer
+/* ────────────────────────────────────────────────────────────
+   TOAST
+   ──────────────────────────────────────────────────────────── */
+const Toast = ({ toast, onDismiss }) => {
+  if (!toast) return null;
+  const isError = toast.type === "error";
+  const accent = isError ? "var(--ch-danger)" : "var(--ch-primary)";
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={toast.id}
+        initial={{ opacity: 0, y: -20, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.94 }}
+        transition={{ type: "spring", stiffness: 340, damping: 26 }}
+        onClick={onDismiss}
+        className="fixed top-20 right-4 z-[200] cursor-pointer"
+      >
+        <div
+          className="rounded-xl border shadow-lg w-[280px] px-3 py-2.5 flex items-center gap-2.5"
+          style={{ background: "var(--ch-panel)", borderColor: accent }}
+        >
+          <span
+            className="flex-shrink-0 h-6 w-6 rounded-lg flex items-center justify-center"
+            style={{ background: isError ? "var(--ch-danger-soft)" : "var(--ch-primary-soft)", color: accent }}
+          >
+            {isError ? <FaExclamationCircle className="text-[10px]" /> : <FaCheck className="text-[10px]" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-ticket-body text-[11px] font-extrabold truncate" style={{ color: "var(--ch-txt)" }}>
+              {toast.title}
+            </p>
+            {toast.message && (
+              <p className="font-ticket-body text-[9.5px] truncate mt-0.5" style={{ color: "var(--ch-txt-soft)" }}>
+                {toast.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────
+   IMAGE VIEWER
+   ──────────────────────────────────────────────────────────── */
 const ImageViewer = ({ imageUrl, onClose }) => {
   const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === '+' || e.key === '=') setZoom(z => Math.min(z + 0.25, 3));
-      if (e.key === '-') setZoom(z => Math.max(z - 0.25, 0.5));
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const handleDownload = async () => {
+  const download = async () => {
     try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `image-${Date.now()}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download failed', err);
-    }
+    } catch {}
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Top toolbar */}
-      <div 
-        className="absolute top-0 left-0 right-0 p-3 sm:p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent z-10"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="absolute top-4 left-4 right-4 flex justify-between z-10" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20">
+          <FaTimes size={18} />
+        </button>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onClose}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all"
-            title="Close (Esc)"
-          >
-            <X size={20} />
+          <button onClick={() => setZoom((z) => Math.max(z - 0.25, 0.5))}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20">
+            <FaCompress size={16} />
           </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setZoom(z => Math.max(z - 0.25, 0.5))}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all"
-            title="Zoom out (-)"
-          >
-            <ZoomOut size={18} />
-          </button>
-          <span className="px-3 py-1.5 rounded-full bg-white/10 text-white text-xs font-medium backdrop-blur-md min-w-[60px] text-center">
+          <span className="px-3 py-1.5 rounded-full bg-white/10 text-white font-ticket-body text-xs font-bold border border-white/20">
             {Math.round(zoom * 100)}%
           </span>
-          <button
-            onClick={() => setZoom(z => Math.min(z + 0.25, 3))}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all"
-            title="Zoom in (+)"
-          >
-            <ZoomIn size={18} />
+          <button onClick={() => setZoom((z) => Math.min(z + 0.25, 3))}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20">
+            <FaExpand size={16} />
           </button>
-          <button
-            onClick={handleDownload}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all"
-            title="Download"
-          >
-            <DownloadIcon size={18} />
+          <button onClick={download}
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20">
+            <FaDownload size={16} />
           </button>
         </div>
       </div>
-
-      {/* Image */}
       <motion.img
-        src={imageUrl}
-        alt="Full view"
-        className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg select-none"
-        style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: 'transform 0.2s ease' }}
+        src={imageUrl} alt=""
+        className="max-w-[95vw] max-h-[85vh] object-contain rounded-2xl"
+        style={{ transform: `scale(${zoom})` }}
         onClick={(e) => e.stopPropagation()}
         draggable={false}
       />
+    </motion.div>
+  );
+};
 
-      {/* Bottom hint */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white text-xs opacity-70">
-        Tap outside or press Esc to close
+/* ────────────────────────────────────────────────────────────
+   STICKER PICKER
+   ──────────────────────────────────────────────────────────── */
+const StickerPicker = ({ onSelect, onClose }) => {
+  const [activeCategory, setActiveCategory] = useState("Smileys");
+  const categories = Object.keys(STICKER_CATEGORIES);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.98 }}
+      transition={{ duration: 0.18 }}
+      className="absolute bottom-full mb-3 left-0 w-[340px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl overflow-hidden z-50"
+      style={{ background: "var(--ch-panel)", border: "1px solid var(--ch-line-str)" }}
+    >
+      {/* Category tabs */}
+      <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto ch-scroll"
+        style={{ borderBottom: "1px solid var(--ch-line)" }}>
+        {categories.map((cat) => {
+          const catData = STICKER_CATEGORIES[cat];
+          const Icon = catData.icon;
+          const isActive = activeCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className="flex-shrink-0 p-2 rounded-lg transition-colors"
+              style={{
+                background: isActive ? "var(--ch-primary-soft)" : "transparent",
+                color: isActive ? "var(--ch-primary)" : "var(--ch-txt-soft)",
+              }}
+              title={cat}
+            >
+              <Icon size={14} />
+            </button>
+          );
+        })}
+        <button
+          onClick={onClose}
+          className="ml-auto flex-shrink-0 p-2 rounded-lg"
+          style={{ color: "var(--ch-txt-soft)" }}
+        >
+          <FaTimes size={12} />
+        </button>
+      </div>
+
+      {/* Category label */}
+      <div className="px-3 pt-2.5 pb-1">
+        <span className="font-ticket-body text-[10px] font-extrabold uppercase tracking-widest"
+          style={{ color: "var(--ch-txt-faint)" }}>
+          {activeCategory}
+        </span>
+      </div>
+
+      {/* Stickers grid */}
+      <div className="grid grid-cols-8 gap-1 px-3 py-3 max-h-[280px] overflow-y-auto ch-scroll">
+        {STICKER_CATEGORIES[activeCategory].stickers.map((sticker, i) => (
+          <button
+            key={`${activeCategory}-${i}`}
+            onClick={() => onSelect(sticker)}
+            className="ch-sticker-btn"
+            type="button"
+          >
+            {sticker}
+          </button>
+        ))}
       </div>
     </motion.div>
   );
 };
 
-// Voice Call Modal
-const VoiceCallModal = ({ isOpen, onClose, callerName, callerAvatar, onAccept, onReject, onEndCall, callStatus }) => {
-  const [isMuted, setIsMuted] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
+/* ────────────────────────────────────────────────────────────
+   CHAT THEME CUSTOMIZER MODAL
+   ──────────────────────────────────────────────────────────── */
+const ChatThemeModal = ({ isOpen, onClose, currentTheme, onApply }) => {
+  const [selectedTheme, setSelectedTheme] = useState(currentTheme?.id || "default");
+  const [customBg, setCustomBg] = useState(currentTheme?.customBg || null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    let interval;
-    if (callStatus === 'active') interval = setInterval(() => setCallDuration(p => p + 1), 1000);
-    else setCallDuration(0);
-    return () => clearInterval(interval);
-  }, [callStatus]);
-
-  const fmt = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+    if (isOpen) {
+      setSelectedTheme(currentTheme?.id || "default");
+      setCustomBg(currentTheme?.customBg || null);
+    }
+  }, [isOpen, currentTheme]);
 
   if (!isOpen) return null;
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCustomBg(ev.target?.result || null);
+      setSelectedTheme("custom");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApply = () => {
+    if (selectedTheme === "custom" && customBg) {
+      onApply({ id: "custom", name: "Custom", bg: customBg, customBg, bubbleMe: null, bubbleThem: null });
+    } else {
+      const theme = CHAT_THEMES.find((t) => t.id === selectedTheme);
+      if (theme) onApply({ ...theme, customBg: null });
+    }
+    onClose();
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-gradient-to-b from-stone-800 to-stone-950 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-        <div className="relative inline-block mb-6">
-          {callerAvatar ? (
-            <img src={callerAvatar} alt={callerName} className="h-24 w-24 rounded-full object-cover ring-4 ring-amber-500/30 mx-auto" />
-          ) : (
-            <div className="h-24 w-24 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white text-3xl font-bold mx-auto">
-              {callerName?.charAt(0).toUpperCase() || 'U'}
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background: "var(--ch-panel)", border: "1px solid var(--ch-line-str)" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--ch-line)" }}>
+          <div className="flex items-center gap-2.5">
+            <span className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "var(--ch-primary-soft)", color: "var(--ch-primary)" }}>
+              <FaPaletteIcon size={13} />
+            </span>
+            <h3 className="font-ticket-display text-lg font-bold" style={{ color: "var(--ch-txt)" }}>
+              Chat Theme
+            </h3>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full" style={{ color: "var(--ch-txt-soft)" }}>
+            <FaTimes size={14} />
+          </button>
+        </div>
+
+        {/* Themes grid */}
+        <div className="p-5 max-h-[60vh] overflow-y-auto ch-scroll">
+          <p className="font-ticket-body text-[10px] font-extrabold uppercase tracking-widest mb-3"
+            style={{ color: "var(--ch-txt-faint)" }}>
+            Preset Themes
+          </p>
+          <div className="grid grid-cols-4 gap-3 mb-5">
+            {CHAT_THEMES.map((theme) => {
+              const isActive = selectedTheme === theme.id;
+              return (
+                <button
+                  key={theme.id}
+                  onClick={() => setSelectedTheme(theme.id)}
+                  className={`ch-theme-card ${isActive ? "ch-theme-card--active" : ""}`}
+                  style={{
+                    aspectRatio: "1",
+                    background: theme.bg || "linear-gradient(135deg, var(--ch-panel-2), var(--ch-panel))",
+                  }}
+                >
+                  <div className="absolute inset-0 flex flex-col justify-end p-1.5 gap-0.5">
+                    <div
+                      className="h-1.5 w-3/4 rounded-full self-start"
+                      style={{ background: theme.bubbleMe || "var(--ch-bubble-me)" }}
+                    />
+                    <div
+                      className="h-1.5 w-2/3 rounded-full self-end"
+                      style={{ background: theme.bubbleThem || "var(--ch-bubble-them)" }}
+                    />
+                  </div>
+                  {isActive && (
+                    <span className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full flex items-center justify-center text-white"
+                      style={{ background: "var(--ch-primary)" }}>
+                      <FaCheck size={9} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom image */}
+          <p className="font-ticket-body text-[10px] font-extrabold uppercase tracking-widest mb-3"
+            style={{ color: "var(--ch-txt-faint)" }}>
+            Custom Background
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl font-ticket-body text-[12px] font-bold"
+              style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt)", border: "1px solid var(--ch-line)" }}
+            >
+              <FaImage size={12} /> Upload Image
+            </button>
+            {customBg && (
+              <button
+                onClick={() => {
+                  setCustomBg(null);
+                  if (selectedTheme === "custom") setSelectedTheme("default");
+                }}
+                className="px-4 py-3 rounded-xl font-ticket-body text-[12px] font-bold"
+                style={{ background: "var(--ch-danger-soft)", color: "var(--ch-danger)" }}
+              >
+                <FaTrashAlt size={12} />
+              </button>
+            )}
+          </div>
+          {customBg && (
+            <div
+              className={`ch-theme-card mt-3 ${selectedTheme === "custom" ? "ch-theme-card--active" : ""}`}
+              onClick={() => setSelectedTheme("custom")}
+              style={{ aspectRatio: "16/9", backgroundImage: `url(${customBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            >
+              {selectedTheme === "custom" && (
+                <span className="absolute top-2 right-2 h-6 w-6 rounded-full flex items-center justify-center text-white"
+                  style={{ background: "var(--ch-primary)" }}>
+                  <FaCheck size={11} />
+                </span>
+              )}
             </div>
           )}
-          {callStatus === 'active' && (
-            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
-              className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-stone-950" />
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4" style={{ borderTop: "1px solid var(--ch-line)" }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl font-ticket-body text-[12px] font-bold"
+            style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt)", border: "1px solid var(--ch-line)" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleApply}
+            className="flex-1 py-3 rounded-xl font-ticket-body text-[12px] font-bold text-white"
+            style={{ background: "var(--ch-primary)" }}
+          >
+            Apply Theme
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────
+   VOICE CALL MODAL
+   ──────────────────────────────────────────────────────────── */
+const VoiceCallModal = ({ isOpen, onClose, callerName, callerAvatar, onAccept, onReject, onEndCall, callStatus }) => {
+  const [isMuted, setIsMuted] = useState(false);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let i;
+    if (callStatus === "active") i = setInterval(() => setDuration((p) => p + 1), 1000);
+    else setDuration(0);
+    return () => clearInterval(i);
+  }, [callStatus]);
+
+  if (!isOpen) return null;
+
+  const fmt = (s) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+        className="ch-panel rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
+      >
+        <div className="relative inline-block mb-6">
+          {callerAvatar ? (
+            <img src={callerAvatar} alt={callerName} className="h-24 w-24 rounded-full object-cover"
+              style={{ border: "2px solid var(--ch-primary)" }} />
+          ) : (
+            <div className="h-24 w-24 rounded-full flex items-center justify-center text-white font-ticket-display text-3xl font-bold"
+              style={{ background: "linear-gradient(135deg, var(--ch-mint), var(--ch-primary-2))" }}>
+              {callerName?.charAt(0).toUpperCase() || "U"}
+            </div>
           )}
         </div>
-        <h3 className="text-xl font-bold text-white mb-1">{callerName || 'Unknown'}</h3>
-        <p className="text-sm text-stone-400 mb-6">
-          {callStatus === 'incoming' && 'Incoming call...'}
-          {callStatus === 'outgoing' && 'Calling...'}
-          {callStatus === 'active' && `In progress • ${fmt(callDuration)}`}
-          {callStatus === 'ended' && 'Call ended'}
+        <h3 className="font-ticket-display text-xl font-bold mb-1" style={{ color: "var(--ch-txt)" }}>
+          {callerName}
+        </h3>
+        <p className="font-ticket-body text-sm mb-6" style={{ color: "var(--ch-txt-soft)" }}>
+          {callStatus === "incoming" && "Incoming call..."}
+          {callStatus === "outgoing" && "Calling..."}
+          {callStatus === "active" && fmt(duration)}
+          {callStatus === "ended" && "Call ended"}
         </p>
         <div className="flex items-center justify-center gap-4">
-          {callStatus === 'incoming' && (
+          {callStatus === "incoming" && (
             <>
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={onReject}
-                className="p-4 rounded-full bg-red-500 text-white">
+              <motion.button whileTap={{ scale: 0.9 }} onClick={onReject}
+                className="p-4 rounded-full text-white" style={{ background: "var(--ch-danger)" }}>
                 <FaPhoneSlash className="text-xl" />
               </motion.button>
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={onAccept}
-                className="p-4 rounded-full bg-emerald-500 text-white">
-                <FaPhoneIcon className="text-xl" />
+              <motion.button whileTap={{ scale: 0.9 }} onClick={onAccept}
+                className="p-4 rounded-full text-white" style={{ background: "var(--ch-primary)" }}>
+                <FaPhone className="text-xl" />
               </motion.button>
             </>
           )}
-          {(callStatus === 'outgoing' || callStatus === 'active') && (
+          {(callStatus === "outgoing" || callStatus === "active") && (
             <>
-              {callStatus === 'active' && (
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsMuted(!isMuted)}
-                  className={`p-4 rounded-full ${isMuted ? 'bg-amber-500' : 'bg-stone-700'} text-white`}>
+              {callStatus === "active" && (
+                <motion.button whileTap={{ scale: 0.9 }} onClick={() => setIsMuted(!isMuted)}
+                  className="p-4 rounded-full"
+                  style={{
+                    background: isMuted ? "var(--ch-primary)" : "var(--ch-panel-2)",
+                    color: isMuted ? "#fff" : "var(--ch-txt)",
+                    border: "1px solid var(--ch-line)",
+                  }}>
                   {isMuted ? <FaMicrophoneSlash className="text-xl" /> : <FaMicrophone className="text-xl" />}
                 </motion.button>
               )}
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={onEndCall}
-                className="p-4 rounded-full bg-red-500 text-white">
+              <motion.button whileTap={{ scale: 0.9 }} onClick={onEndCall}
+                className="p-4 rounded-full text-white" style={{ background: "var(--ch-danger)" }}>
                 <FaPhoneSlash className="text-xl" />
               </motion.button>
             </>
           )}
         </div>
-        {callStatus === 'ended' && (
-          <button onClick={onClose} className="mt-6 px-6 py-2 rounded-xl bg-stone-700 text-white text-sm">Close</button>
-        )}
       </motion.div>
     </motion.div>
   );
 };
 
-// Reply Preview
-const ReplyPreview = ({ replyTo, onCancelReply }) => {
-  if (!replyTo) return null;
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-      className="flex items-center justify-between px-3 py-2 bg-amber-500/10 border-l-4 border-amber-500 rounded-lg mb-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-          Replying to {replyTo.sender === 'user' ? 'yourself' : replyTo.senderName || 'User'}
-        </p>
-        <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-          {replyTo.text && replyTo.text.length > 50 ? replyTo.text.substring(0, 50) + '...' : replyTo.text}
-        </p>
-      </div>
-      <button onClick={onCancelReply} className="p-1 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700">
-        <X size={14} className="text-stone-400" />
-      </button>
-    </motion.div>
-  );
-};
-
-// Message Actions
-const MessageActions = ({ message, onClose, onDelete, onReply }) => {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}>
-      <motion.div initial={{ y: 20, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.95 }}
-        className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="text-center">
-          <div className="h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center mx-auto mb-4">
-            <MessageCircle className="text-amber-500 text-2xl" />
-          </div>
-          <h3 className="text-lg font-bold text-stone-900 dark:text-white mb-2">Message Options</h3>
-          <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">What would you like to do?</p>
-          <div className="space-y-2">
-            <button onClick={() => { onReply(); onClose(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors">
-              <FaReply className="text-sm" />
-              <span className="font-medium">Reply</span>
-            </button>
-            <button onClick={() => { onDelete(); onClose(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 transition-colors">
-              <FaTrash className="text-sm" />
-              <span className="font-medium">Delete</span>
-            </button>
-            <button onClick={onClose}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 transition-colors">
-              <span className="font-medium">Cancel</span>
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
+/* ═══════════════════════════════════════════════════════════════
+   MAIN CHAT PAGE
+   ═══════════════════════════════════════════════════════════════ */
 const ChatPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [chatRequests, setChatRequests] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [showRequests, setShowRequests] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [channel, setChannel] = useState(null);
-  const [messagesChannel, setMessagesChannel] = useState(null);
-  const [notification, setNotification] = useState(null);
-  const [showMessageMenu, setShowMessageMenu] = useState(null);
+  const [toast, setToast] = useState(null);
   const [blockedUsers, setBlockedUsers] = useState([]);
-  const [deletingMessage, setDeletingMessage] = useState(null);
-  const [showUnapproveConfirm, setShowUnapproveConfirm] = useState(false);
-  const [showClearChatConfirm, setShowClearChatConfirm] = useState(false);
-  const [userToUnapprove, setUserToUnapprove] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [showStickerPicker, setShowStickerPicker] = useState(false);
-  const [selectedStickerCategory, setSelectedStickerCategory] = useState(0);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [showMessageActions, setShowMessageActions] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [isMuted, setIsMuted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserList, setShowUserList] = useState(true);
-
-  // ✅ NEW: Image viewer state
   const [viewingImage, setViewingImage] = useState(null);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
+  /* Call states */
+  const [socket, setSocket] = useState(null);
+  const [peer, setPeer] = useState(null);
+  const [callModalOpen, setCallModalOpen] = useState(false);
+  const [callStatus, setCallStatus] = useState("idle");
+  const [callerInfo, setCallerInfo] = useState(null);
+
+  /* Voice recording */
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [audioUrl, setAudioUrl] = useState(null);
   const [playingMessageId, setPlayingMessageId] = useState(null);
-
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const hideTimerRef = useRef(null);
-  const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const audioPlayerRef = useRef(null);
 
-  const [socket, setSocket] = useState(null);
-  const [peer, setPeer] = useState(null);
-  const [callModalOpen, setCallModalOpen] = useState(false);
-  const [callStatus, setCallStatus] = useState('idle');
-  const [callerInfo, setCallerInfo] = useState(null);
-  const [isInCall, setIsInCall] = useState(false);
+  /* ⭐ NEW: Chat theme */
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [chatTheme, setChatTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chat-theme");
+      return saved ? JSON.parse(saved) : { id: "default", name: "Default", bg: null, bubbleMe: null, bubbleThem: null, customBg: null };
+    } catch {
+      return { id: "default", name: "Default", bg: null, bubbleMe: null, bubbleThem: null, customBg: null };
+    }
+  });
+
+  /* Persist theme */
+  useEffect(() => {
+    try {
+      localStorage.setItem("chat-theme", JSON.stringify(chatTheme));
+    } catch {}
+  }, [chatTheme]);
+
+  const deepLinkHandledRef = useRef(false);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const localAudioRef = useRef(null);
   const remoteAudioRef = useRef(null);
   const streamRef = useRef(null);
 
-  const updateUserStatus = async (status) => {
-    if (!user) return;
-    try {
-      await supabase.from('user_status').upsert(
-        { user_id: user.id, status, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      );
-    } catch (e) {}
+  const userProfile = useMemo(
+    () => ({
+      full_name: profile?.fullName,
+      avatar_url: profile?.avatar,
+      avatar: profile?.avatar,
+      email: profile?.email,
+    }),
+    [profile]
+  );
+
+  const pushToast = (type, title, message) => {
+    const id = Date.now() + Math.random();
+    setToast({ id, type, title, message });
+    setTimeout(() => setToast(null), 2600);
+  };
+  const showNotification = (message, variant = "info") => {
+    pushToast(variant === "error" ? "error" : "success", message);
   };
 
-  useEffect(() => {
-    if (user) updateUserStatus('online');
-    return () => { if (user) updateUserStatus('offline'); };
-  }, [user]);
-
-  useEffect(() => {
-    if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
-  }, []);
-
-  useEffect(() => {
-    if (chatRequests.length > 0) {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      setShowRequests(true);
-      if (!isMuted) {
-        const name = chatRequests[chatRequests.length - 1]?.sender_name || 'Someone';
-        speakNotification(`New chat request from ${name}`);
-      }
-      hideTimerRef.current = setTimeout(() => { setShowRequests(false); hideTimerRef.current = null; }, 3000);
-    }
-    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
-  }, [chatRequests.length]);
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (!isMuted) window.speechSynthesis.cancel();
-    showNotification(isMuted ? 'Sound enabled' : 'Sound muted', 'info');
-  };
-
-  const toggleRequestsPanel = () => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    const newState = !showRequests;
-    setShowRequests(newState);
-    if (newState && chatRequests.length > 0) {
-      hideTimerRef.current = setTimeout(() => { setShowRequests(false); hideTimerRef.current = null; }, 3000);
-    }
-  };
-
-  // Socket
-  useEffect(() => {
-    if (!user) return;
-    let isMounted = true;
-    let newSocket = null;
-    if (socket) return;
-
-    const connectSocket = () => {
-      if (newSocket) return;
-      newSocket = io(SOCKET_URL, { transports: ['websocket'], reconnectionAttempts: 5 });
-
-      newSocket.on('connect', () => {
-        if (!isMounted) return;
-        if (user) newSocket.emit('register-user', user.id);
-      });
-
-      newSocket.on('online-users', (onlineUsers) => {
-        if (!isMounted) return;
-        setAllUsers(prev => prev.map(u => ({ ...u, online: onlineUsers.includes(u.id) })));
-      });
-
-      newSocket.on('user-online', (userId) => {
-        if (!isMounted) return;
-        setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, online: true } : u));
-      });
-
-      newSocket.on('user-offline', (userId) => {
-        if (!isMounted) return;
-        setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, online: false } : u));
-      });
-
-      newSocket.on('incoming-call', ({ from, signal }) => {
-        if (!isMounted) return;
-        const callerUser = allUsers.find(u => u.id === from);
-        if (callerUser) {
-          setCallerInfo({ id: from, name: getUserDisplayName(callerUser), avatar: getUserAvatar(callerUser) });
-          setCallStatus('incoming');
-          setCallModalOpen(true);
-          window._incomingSignal = signal;
-          window._callerId = from;
-          playNotificationSound();
-          if (!isMuted) speakNotification(`Incoming call from ${getUserDisplayName(callerUser)}`);
-          showNotification(`Incoming call from ${getUserDisplayName(callerUser)}`, 'request');
-        }
-      });
-
-      newSocket.on('call-accepted', ({ signal }) => {
-        if (!isMounted) return;
-        if (peer) { peer.signal(signal); setCallStatus('active'); setIsInCall(true); playNotificationSound(); showNotification('Call connected!', 'success'); }
-      });
-
-      newSocket.on('call-rejected', () => {
-        if (!isMounted) return;
-        setCallStatus('ended'); setIsInCall(false);
-        if (peer) { peer.destroy(); setPeer(null); }
-        showNotification('Call rejected', 'info');
-      });
-
-      newSocket.on('call-ended', () => {
-        if (!isMounted) return;
-        setCallStatus('ended'); setIsInCall(false);
-        if (peer) { peer.destroy(); setPeer(null); }
-        showNotification('Call ended', 'info');
-      });
-
-      setSocket(newSocket);
-    };
-
-    connectSocket();
-    return () => {
-      isMounted = false;
-      if (newSocket) {
-        if (user) newSocket.emit('unregister-user', user.id);
-        newSocket.disconnect();
-        setSocket(null);
-      }
-    };
-  }, [user]);
-
-  const initPeer = (isInitiator, stream) => {
-    const newPeer = new Peer({ initiator: isInitiator, stream, trickle: false });
-    newPeer.on('signal', (data) => {
-      if (socket && selectedUser) {
-        if (isInitiator) socket.emit('call-user', { from: user.id, to: selectedUser.id, signalData: data });
-        else socket.emit('accept-call', { to: window._callerId || selectedUser.id, signalData: data });
-      }
-    });
-    newPeer.on('stream', (remoteStream) => {
-      if (remoteAudioRef.current) { remoteAudioRef.current.srcObject = remoteStream; remoteAudioRef.current.play(); }
-    });
-    newPeer.on('connect', () => { setCallStatus('active'); setIsInCall(true); });
-    newPeer.on('close', () => { setCallStatus('ended'); setIsInCall(false); });
-    newPeer.on('error', () => { setCallStatus('ended'); setIsInCall(false); });
-    return newPeer;
-  };
-
-  const startCall = async (receiverId) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      streamRef.current = stream;
-      if (localAudioRef.current) { localAudioRef.current.srcObject = stream; localAudioRef.current.play(); }
-      const newPeer = initPeer(true, stream);
-      setPeer(newPeer);
-      setCallStatus('outgoing');
-      setCallModalOpen(true);
-      const targetUser = allUsers.find(u => u.id === receiverId);
-      if (targetUser) setCallerInfo({ id: targetUser.id, name: getUserDisplayName(targetUser), avatar: getUserAvatar(targetUser) });
-    } catch (e) { showNotification('Failed to start call', 'error'); }
-  };
-
-  const acceptCall = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      streamRef.current = stream;
-      if (localAudioRef.current) { localAudioRef.current.srcObject = stream; localAudioRef.current.play(); }
-      const newPeer = initPeer(false, stream);
-      setPeer(newPeer);
-      if (window._incomingSignal) newPeer.signal(window._incomingSignal);
-      setCallStatus('active'); setIsInCall(true); playNotificationSound();
-    } catch (e) { showNotification('Failed to accept call', 'error'); }
-  };
-
-  const rejectCall = () => {
-    if (socket && window._callerId) socket.emit('reject-call', { to: window._callerId });
-    setCallStatus('ended'); setCallModalOpen(false); setIsInCall(false);
-    showNotification('Call rejected', 'info');
-  };
-
-  const endCall = () => {
-    if (socket && selectedUser) socket.emit('end-call', { to: selectedUser.id });
-    if (peer) { peer.destroy(); setPeer(null); }
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
-    setCallStatus('ended'); setIsInCall(false); setCallModalOpen(false);
-    showNotification('Call ended', 'info');
-  };
-
-  useEffect(() => {
-    return () => {
-      if (peer) peer.destroy();
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  // Voice recording
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioUrl(URL.createObjectURL(blob));
-        sendVoiceMessage(blob);
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingDuration(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(prev => { if (prev >= 60) { stopRecording(); return prev; } return prev + 1; });
-      }, 1000);
-    } catch (e) { showNotification('Failed to access microphone', 'error'); }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
-    }
-  };
-
-  const sendVoiceMessage = async (blob) => {
-    if (!selectedUser) return;
-    if (blockedUsers.includes(selectedUser.id)) { showNotification('User blocked', 'info'); return; }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64Audio = e.target?.result;
-      if (!base64Audio) return;
-      const tempId = Date.now();
-      const newMessage = {
-        id: tempId, sender: "user", text: base64Audio,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: true, delivered: true, type: "voice", duration: recordingDuration,
-        replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null
-      };
-      setMessages(prev => [...prev, newMessage]);
-      playMessageSound();
-      try {
-        const { data, error } = await supabase.from('messages').insert([{
-          sender_id: user.id, receiver_id: selectedUser.id, content: base64Audio,
-          created_at: new Date().toISOString(), read: false, message_type: 'voice',
-          reply_to: replyingTo ? replyingTo.id : null, duration: recordingDuration
-        }]).select();
-        if (error) throw error;
-        if (data?.length > 0) setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data[0].id } : m));
-        setReplyingTo(null);
-      } catch (err) { showNotification('Failed to send voice', 'error'); setMessages(prev => prev.filter(m => m.id !== tempId)); }
-    };
-    reader.readAsDataURL(blob);
-  };
-
-  const playVoiceMessage = (message) => {
-    if (playingMessageId === message.id) {
-      if (audioPlayerRef.current) { audioPlayerRef.current.pause(); setPlayingMessageId(null); }
-      return;
-    }
-    if (audioPlayerRef.current) { audioPlayerRef.current.pause(); audioPlayerRef.current = null; }
-    const audio = new Audio(message.text);
-    audioPlayerRef.current = audio;
-    audio.onended = () => { setPlayingMessageId(null); audioPlayerRef.current = null; };
-    audio.onplay = () => setPlayingMessageId(message.id);
-    audio.onpause = () => setPlayingMessageId(null);
-    audio.play().catch(() => showNotification('Failed to play', 'error'));
-  };
-
-  const formatDuration = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-
-  // ✅ Load profile including avatar
-  const loadUserProfile = async () => {
-    setLoadingProfile(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      if (error) throw error;
-      setUserProfile(data);
-    } catch (e) {
-      console.log('Error loading profile:', e);
-    } finally { 
-      setLoadingProfile(false); 
-    }
-  };
-
-  const getUserDisplayName = (u) => u?.full_name || u?.name || u?.email || 'User';
+  const getUserDisplayName = (u) => u?.full_name || u?.name || u?.email || "User";
   const getUserAvatar = (u) => u?.avatar_url || u?.avatar || null;
 
+  /* ═══════════════════════════════════════════════════════════
+     DATA FETCHING
+     ═══════════════════════════════════════════════════════════ */
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url, phone, city")
+        .neq("id", user.id);
+
+      const profileIds = (profilesData || []).map((p) => p.id);
+      if (profileIds.length === 0) { setAllUsers([]); setLoading(false); return; }
+
+      const [usersRes, settingsRes, statusRes, approvedRes, blockedRes] = await Promise.all([
+        supabase.from("users").select("id, name, full_name, username, email, avatar_url").in("id", profileIds),
+        supabase.from("user_settings").select("user_id, full_name, avatar, avatar_url, bio, status_message, location, occupation").in("user_id", profileIds),
+        supabase.from("user_status").select("*"),
+        supabase.from("chat_requests").select("*").eq("status", "accepted").or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+        supabase.from("blocked_users").select("blocked_user_id").eq("user_id", user.id),
+      ]);
+
+      const usersById = {};
+      (usersRes.data || []).forEach((u) => { usersById[u.id] = u; });
+      const settingsByUserId = {};
+      (settingsRes.data || []).forEach((s) => { settingsByUserId[s.user_id] = s; });
+      const statusByUserId = {};
+      (statusRes.data || []).forEach((s) => { statusByUserId[s.user_id] = s; });
+      const blockedIds = new Set((blockedRes.data || []).map((b) => b.blocked_user_id));
+      setBlockedUsers([...blockedIds]);
+
+      const users = (profilesData || []).map((p) => {
+        const u = usersById[p.id] || {};
+        const s = settingsByUserId[p.id] || {};
+        const status = statusByUserId[p.id];
+        const isApproved = (approvedRes.data || []).some((c) => c.sender_id === p.id || c.receiver_id === p.id);
+
+        const displayName =
+          s.full_name || u.full_name || u.name || u.username || p.full_name ||
+          (p.email ? p.email.split("@")[0] : null) || "User";
+
+        const avatarUrl = s.avatar || s.avatar_url || u.avatar_url || p.avatar_url || null;
+
+        return {
+          id: p.id,
+          email: p.email || u.email,
+          full_name: displayName,
+          avatar_url: avatarUrl,
+          bio: s.bio || "",
+          status_message: s.status_message || "",
+          location: s.location || p.city || "",
+          occupation: s.occupation || "",
+          online: status?.status === "online" || false,
+          lastSeen: status?.updated_at || null,
+          isApproved: isApproved || false,
+          isBlocked: blockedIds.has(p.id),
+        };
+      });
+
+      setAllUsers(users);
+    } catch (e) {
+      console.error("loadUsers failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadChatRequests = async () => {
+    try {
+      const { data } = await supabase
+        .from("chat_requests").select("*")
+        .eq("receiver_id", user.id).eq("status", "pending");
+      setChatRequests(data || []);
+    } catch {}
+  };
+
+  const loadPendingRequests = async () => {
+    try {
+      const { data } = await supabase
+        .from("chat_requests").select("*")
+        .eq("sender_id", user.id).eq("status", "pending");
+      setPendingRequests(data || []);
+    } catch {}
+  };
+
+  const loadBlockedUsers = async () => {
+    try {
+      const { data } = await supabase.from("blocked_users").select("blocked_user_id").eq("user_id", user.id);
+      setBlockedUsers((data || []).map((b) => b.blocked_user_id));
+    } catch {}
+  };
+
+  const loadMessages = async (otherUserId, scrollToMsgId = null) => {
+    try {
+      setLoading(true);
+      const { data } = await supabase
+        .from("messages").select("*")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
+        .order("created_at", { ascending: true });
+
+      const formatted = (data || []).map((msg) => ({
+        id: msg.id,
+        sender: msg.sender_id === user.id ? "user" : "other",
+        text: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        read: msg.read || false,
+        type: msg.message_type || "text",
+        replyTo: msg.reply_to || null,
+        duration: msg.duration || 0,
+      }));
+      setMessages(formatted);
+
+      if (scrollToMsgId) {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-msg-id="${scrollToMsgId}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.style.background = "var(--ch-primary-soft)";
+            setTimeout(() => { el.style.background = ""; }, 1600);
+          }
+        }, 400);
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  /* ═══════════════════════════════════════════════════════════
+     INITIAL LOAD
+     ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
     if (user) {
-      loadUserProfile();
       loadUsers();
       loadChatRequests();
       loadPendingRequests();
@@ -746,372 +989,488 @@ const ChatPage = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    const reqChannel = supabase.channel('chat_requests_channel')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_requests', filter: `receiver_id=eq.${user.id}` },
-        (payload) => {
-          setChatRequests(prev => [...prev, payload.new]);
-          playNotificationSound();
-          if (!isMuted) speakNotification(`New chat request from ${payload.new.sender_name || 'a user'}`);
-          showNotification(`New chat request from ${payload.new.sender_name || 'a user'}`, 'request');
-        })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_requests' },
-        () => { loadChatRequests(); loadPendingRequests(); loadUsers(); })
-      .subscribe();
-    setChannel(reqChannel);
+    if (deepLinkHandledRef.current) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    const msgChannel = supabase.channel('messages_channel')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        (payload) => {
-          if (selectedUser && selectedUser.id === payload.new.sender_id) {
-            const newMsg = {
-              id: payload.new.id, sender: 'other', text: payload.new.content,
-              timestamp: new Date(payload.new.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              read: false, delivered: true, type: payload.new.message_type || 'text', duration: payload.new.duration || 0
-            };
-            setMessages(prev => [...prev, newMsg]);
-            playNotificationSound();
-          } else {
-            playNotificationSound();
-            if (!isMuted) speakNotification(`New message from ${payload.new.sender_name || 'a user'}`);
-            showNotification(`New message from ${payload.new.sender_name || 'a user'}`, 'message');
-            loadUsers();
-          }
-        })
+  /* Deep link: ?user=<id> */
+  useEffect(() => {
+    if (deepLinkHandledRef.current || allUsers.length === 0) return;
+    const targetUserId = searchParams.get("user");
+    const targetMsgId = searchParams.get("msg");
+    if (!targetUserId) return;
+    const target = allUsers.find((u) => u.id === targetUserId);
+    if (!target) return;
+    setSelectedUser(target);
+    loadMessages(target.id, targetMsgId);
+    setShowUserList(false);
+    deepLinkHandledRef.current = true;
+    const np = new URLSearchParams(searchParams);
+    np.delete("user"); np.delete("msg");
+    setSearchParams(np, { replace: true });
+  },
+  
+  [allUsers, searchParams, setSearchParams]);
+
+  /* Realtime */
+  useEffect(() => {
+    if (!user) return;
+    const reqChannel = supabase
+      .channel("chat_requests_channel")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_requests", filter: `receiver_id=eq.${user.id}` }, (payload) => {
+        setChatRequests((prev) => [...prev, payload.new]);
+        showNotification(`New chat request from ${payload.new.sender_name || "a user"}`);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_requests" }, () => {
+        loadChatRequests(); loadPendingRequests(); loadUsers();
+      })
       .subscribe();
-    setMessagesChannel(msgChannel);
+
+    const msgChannel = supabase
+      .channel("messages_channel")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=eq.${user.id}` }, (payload) => {
+        if (selectedUser && selectedUser.id === payload.new.sender_id) {
+          setMessages((prev) => [...prev, {
+            id: payload.new.id,
+            sender: "other",
+            text: payload.new.content,
+            timestamp: new Date(payload.new.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            read: false,
+            type: payload.new.message_type || "text",
+            duration: payload.new.duration || 0,
+          }]);
+        } else {
+          loadUsers();
+        }
+      })
+      .subscribe();
 
     return () => {
-      if (reqChannel) reqChannel.unsubscribe();
-      if (msgChannel) msgChannel.unsubscribe();
-      window.speechSynthesis.cancel();
+      reqChannel.unsubscribe();
+      msgChannel.unsubscribe();
     };
-  }, [user, selectedUser, isMuted]);
+  }, [user, selectedUser]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  /* Socket for calls */
+  useEffect(() => {
+    if (!user || socket) return;
+    const newSocket = io(SOCKET_URL, { transports: ["websocket"], reconnectionAttempts: 5 });
 
-  const showNotification = (message, type) => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    newSocket.on("connect", () => { newSocket.emit("register-user", user.id); });
+    newSocket.on("online-users", (onlineUsers) => {
+      setAllUsers((prev) => prev.map((u) => ({ ...u, online: onlineUsers.includes(u.id) })));
+    });
+    newSocket.on("user-online", (uid) => {
+      setAllUsers((prev) => prev.map((u) => (u.id === uid ? { ...u, online: true } : u)));
+    });
+    newSocket.on("user-offline", (uid) => {
+      setAllUsers((prev) => prev.map((u) => (u.id === uid ? { ...u, online: false } : u)));
+    });
+
+    newSocket.on("incoming-call", ({ from, signal }) => {
+      const callerUser = allUsers.find((u) => u.id === from);
+      if (callerUser) {
+        setCallerInfo({ id: from, name: getUserDisplayName(callerUser), avatar: getUserAvatar(callerUser) });
+        setCallStatus("incoming");
+        setCallModalOpen(true);
+        window._incomingSignal = signal;
+        window._callerId = from;
+      }
+    });
+
+    newSocket.on("call-accepted", ({ signal }) => {
+      if (peer) { peer.signal(signal); setCallStatus("active"); }
+    });
+    newSocket.on("call-rejected", () => {
+      setCallStatus("ended");
+      if (peer) { peer.destroy(); setPeer(null); }
+      showNotification("Call rejected", "info");
+    });
+    newSocket.on("call-ended", () => {
+      setCallStatus("ended");
+      if (peer) { peer.destroy(); setPeer(null); }
+      showNotification("Call ended", "info");
+    });
+
+    setSocket(newSocket);
+    return () => {
+      newSocket.emit("unregister-user", user.id);
+      newSocket.disconnect();
+      setSocket(null);
+    };
+  }, [user]);
+
+  /* ═══════════════════════════════════════════════════════════
+     ACTIONS
+     ═══════════════════════════════════════════════════════════ */
+  const sendChatRequest = async (receiverId, receiverName) => {
+    try {
+      if (blockedUsers.includes(receiverId)) { showNotification("User blocked", "info"); return; }
+      if (pendingRequests.find((r) => r.receiver_id === receiverId)) { showNotification("Already sent", "info"); return; }
+      await supabase.from("chat_requests").insert([{
+        sender_id: user.id,
+        sender_name: userProfile?.full_name || user?.email || "User",
+        receiver_id: receiverId,
+        receiver_name: receiverName || "User",
+        status: "pending",
+        created_at: new Date().toISOString(),
+      }]);
+      showNotification("Request sent!");
+      loadPendingRequests(); loadUsers();
+    } catch { showNotification("Failed to send", "error"); }
   };
 
-  const loadBlockedUsers = async () => {
+  const acceptRequest = async (requestId) => {
     try {
-      const { data } = await supabase.from('blocked_users').select('blocked_user_id').eq('user_id', user.id);
-      setBlockedUsers(data?.map(b => b.blocked_user_id) || []);
-    } catch (e) {}
+      await supabase.from("chat_requests").update({ status: "accepted" }).eq("id", requestId);
+      showNotification("Accepted!");
+      loadChatRequests(); loadUsers();
+    } catch {}
+  };
+
+  const rejectRequest = async (requestId) => {
+    try {
+      await supabase.from("chat_requests").update({ status: "rejected" }).eq("id", requestId);
+      showNotification("Rejected", "info");
+      loadChatRequests();
+    } catch {}
   };
 
   const blockUser = async (userId) => {
     try {
-      await supabase.from('blocked_users').insert([{ user_id: user.id, blocked_user_id: userId }]);
-      setBlockedUsers(prev => [...prev, userId]);
-      showNotification('User blocked', 'success');
+      await supabase.from("blocked_users").insert([{ user_id: user.id, blocked_user_id: userId }]);
+      setBlockedUsers((p) => [...p, userId]);
+      showNotification("User blocked");
       if (selectedUser?.id === userId) { setSelectedUser(null); setMessages([]); setShowUserList(true); }
       loadUsers();
-    } catch (e) { showNotification('Failed to block', 'error'); }
+    } catch { showNotification("Failed to block", "error"); }
   };
 
   const unblockUser = async (userId) => {
     try {
-      await supabase.from('blocked_users').delete().eq('user_id', user.id).eq('blocked_user_id', userId);
-      setBlockedUsers(prev => prev.filter(id => id !== userId));
-      showNotification('User unblocked', 'success');
+      await supabase.from("blocked_users").delete().eq("user_id", user.id).eq("blocked_user_id", userId);
+      setBlockedUsers((p) => p.filter((id) => id !== userId));
+      showNotification("User unblocked");
       loadUsers();
-    } catch (e) { showNotification('Failed to unblock', 'error'); }
-  };
-
-  const unapproveUser = async (userId) => {
-    try {
-      const { data: requests } = await supabase.from('chat_requests').select('*').eq('status', 'accepted')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-      if (!requests || requests.length === 0) { showNotification('No approved chat found', 'info'); return; }
-      await supabase.from('chat_requests').update({ status: 'pending' }).eq('id', requests[0].id);
-      showNotification('Partner removed', 'success');
-      if (selectedUser?.id === userId) { setSelectedUser(null); setMessages([]); setShowUserList(true); }
-      loadUsers();
-      setUserToUnapprove(null); setShowUnapproveConfirm(false);
-    } catch (e) { showNotification('Failed', 'error'); }
+    } catch {}
   };
 
   const deleteMessage = async (messageId) => {
-    if (!window.confirm('Delete this message?')) return;
-    setDeletingMessage(messageId);
+    if (!window.confirm("Delete this message?")) return;
     try {
-      await supabase.from('messages').delete().eq('id', messageId);
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-      showNotification('Message deleted', 'success');
-      if (replyingTo?.id === messageId) setReplyingTo(null);
-    } catch (e) { showNotification('Failed to delete', 'error'); }
-    finally { setDeletingMessage(null); }
+      await supabase.from("messages").delete().eq("id", messageId);
+      setMessages((p) => p.filter((m) => m.id !== messageId));
+      showNotification("Message deleted");
+    } catch { showNotification("Failed to delete", "error"); }
   };
 
-  const clearChat = async () => {
-    if (!selectedUser) return;
-    try {
-      await supabase.from('messages').delete().or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${selectedUser.id}),` +
-        `and(sender_id.eq.${selectedUser.id},receiver_id.eq.${user.id})`
-      );
-      setMessages([]);
-      showNotification('Chat cleared', 'success');
-      setShowClearChatConfirm(false);
-    } catch (e) { showNotification('Failed to clear', 'error'); }
-  };
+  const sendMessage = async () => {
+    if (!inputText.trim() || !selectedUser) return;
+    if (blockedUsers.includes(selectedUser.id)) { showNotification("User blocked", "info"); return; }
 
-  const handleCallClick = (type) => {
-    if (!selectedUser || !selectedUser.isApproved) { showNotification('Select approved partner', 'info'); return; }
-    if (type === 'voice') startCall(selectedUser.id);
-    else showNotification('Video calls coming soon!', 'info');
+    const userMessage = inputText.trim();
+    const tempId = Date.now();
+    const newMessage = {
+      id: tempId, sender: "user", text: userMessage,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      read: true, type: "text",
+      replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null,
+    };
+    setMessages((p) => [...p, newMessage]);
+    setInputText("");
+
+    try {
+      const { data, error } = await supabase.from("messages").insert([{
+        sender_id: user.id, receiver_id: selectedUser.id,
+        content: userMessage, created_at: new Date().toISOString(),
+        read: false, message_type: "text",
+        reply_to: replyingTo ? replyingTo.id : null,
+      }]).select();
+      if (error) throw error;
+      if (data?.length > 0)
+        setMessages((p) => p.map((m) => (m.id === tempId ? { ...m, id: data[0].id } : m)));
+      setReplyingTo(null);
+    } catch {
+      showNotification("Failed to send", "error");
+      setMessages((p) => p.filter((m) => m.id !== tempId));
+    }
   };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showNotification('Image < 5MB', 'error'); return; }
-    if (!file.type.startsWith('image/')) { showNotification('Upload an image', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showNotification("Image < 5MB", "error"); return; }
+    if (!file.type.startsWith("image/")) { showNotification("Upload an image", "error"); return; }
+
     setUploadingImage(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const base64Image = ev.target?.result;
       if (!base64Image) { setUploadingImage(false); return; }
-      await sendMessageWithImage(base64Image);
+      if (!selectedUser || blockedUsers.includes(selectedUser.id)) { setUploadingImage(false); return; }
+
+      const tempId = Date.now();
+      setMessages((p) => [...p, {
+        id: tempId, sender: "user", text: base64Image,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        read: true, type: "image",
+      }]);
+
+      try {
+        const { data, error } = await supabase.from("messages").insert([{
+          sender_id: user.id, receiver_id: selectedUser.id,
+          content: base64Image, created_at: new Date().toISOString(),
+          read: false, message_type: "image",
+        }]).select();
+        if (error) throw error;
+        if (data?.length > 0)
+          setMessages((p) => p.map((m) => (m.id === tempId ? { ...m, id: data[0].id } : m)));
+      } catch { showNotification("Failed to send image", "error"); }
       setUploadingImage(false);
     };
     reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    e.target.value = "";
   };
 
-  const sendMessageWithImage = async (imageData) => {
-    if (!selectedUser || blockedUsers.includes(selectedUser.id)) return;
-    const tempId = Date.now();
-    const newMessage = {
-      id: tempId, sender: "user", text: imageData,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: true, delivered: true, type: "image",
-      replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null
-    };
-    setMessages(prev => [...prev, newMessage]);
-    playMessageSound();
+  const startRecording = async () => {
     try {
-      const { data, error } = await supabase.from('messages').insert([{
-        sender_id: user.id, receiver_id: selectedUser.id, content: imageData,
-        created_at: new Date().toISOString(), read: false, message_type: 'image',
-        reply_to: replyingTo ? replyingTo.id : null
-      }]).select();
-      if (error) throw error;
-      if (data?.length > 0) setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data[0].id } : m));
-      setReplyingTo(null);
-    } catch (e) { showNotification('Failed to send image', 'error'); setMessages(prev => prev.filter(m => m.id !== tempId)); }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        sendVoiceMessage(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      recorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((p) => {
+          if (p >= 60) { stopRecording(); return p; }
+          return p + 1;
+        });
+      }, 1000);
+    } catch { showNotification("Failed to access mic", "error"); }
   };
 
-  const sendSticker = async (sticker) => {
-    if (!selectedUser || blockedUsers.includes(selectedUser.id)) return;
-    const tempId = Date.now();
-    const newMessage = {
-      id: tempId, sender: "user", text: sticker,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: true, delivered: true, type: "sticker",
-      replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null
-    };
-    setMessages(prev => [...prev, newMessage]);
-    setShowStickerPicker(false);
-    playMessageSound();
-    try {
-      const { data, error } = await supabase.from('messages').insert([{
-        sender_id: user.id, receiver_id: selectedUser.id, content: sticker,
-        created_at: new Date().toISOString(), read: false, message_type: 'sticker',
-        reply_to: replyingTo ? replyingTo.id : null
-      }]).select();
-      if (error) throw error;
-      if (data?.length > 0) setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data[0].id } : m));
-      setReplyingTo(null);
-    } catch (e) { showNotification('Failed to send', 'error'); setMessages(prev => prev.filter(m => m.id !== tempId)); }
-  };
-
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const { data: usersData } = await supabase.from('users').select('*').neq('id', user.id);
-      const { data: userSettings } = await supabase.from('user_settings').select('*');
-      const { data: approvedChats } = await supabase.from('chat_requests').select('*').eq('status', 'accepted')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
-      const { data: statusData } = await supabase.from('user_status').select('*');
-
-      const usersWithStatus = (usersData || []).map(u => {
-        const status = statusData?.find(s => s.user_id === u.id);
-        const settings = userSettings?.find(s => s.user_id === u.id);
-        const isApproved = approvedChats?.some(c => c.sender_id === u.id || c.receiver_id === u.id);
-        return {
-          ...u,
-          full_name: settings?.full_name || u.name,
-          avatar_url: settings?.avatar_url || settings?.avatar || null,
-          online: status?.status === 'online' || false,
-          isApproved: isApproved || false,
-          isBlocked: blockedUsers.includes(u.id)
-        };
-      });
-      setAllUsers(usersWithStatus);
-    } catch (e) {} finally { setLoading(false); }
-  };
-
-  const loadChatRequests = async () => {
-    try {
-      const { data } = await supabase.from('chat_requests').select('*').eq('receiver_id', user.id).eq('status', 'pending');
-      setChatRequests(data || []);
-    } catch (e) {}
-  };
-
-  const loadPendingRequests = async () => {
-    try {
-      const { data } = await supabase.from('chat_requests').select('*').eq('sender_id', user.id).eq('status', 'pending');
-      setPendingRequests(data || []);
-    } catch (e) {}
-  };
-
-  const sendChatRequest = async (receiverId, receiverName) => {
-    try {
-      if (blockedUsers.includes(receiverId)) { showNotification('User blocked', 'info'); return; }
-      if (pendingRequests.find(r => r.receiver_id === receiverId)) { showNotification('Already sent', 'info'); return; }
-      const senderName = userProfile?.full_name || user.name || user.email || 'User';
-      await supabase.from('chat_requests').insert([{
-        sender_id: user.id, sender_name: senderName, receiver_id: receiverId,
-        receiver_name: receiverName || 'User', status: 'pending', created_at: new Date().toISOString()
-      }]);
-      playNotificationSound();
-      showNotification('Request sent!', 'success');
-      loadPendingRequests(); loadUsers();
-    } catch (e) { showNotification('Failed to send', 'error'); }
-  };
-
-  const acceptRequest = async (requestId) => {
-    try {
-      await supabase.from('chat_requests').update({ status: 'accepted' }).eq('id', requestId);
-      playNotificationSound();
-      showNotification('Accepted!', 'success');
-      loadChatRequests(); loadUsers();
-      const request = chatRequests.find(r => r.id === requestId);
-      if (request) {
-        const sender = allUsers.find(u => u.id === request.sender_id);
-        if (sender) { setSelectedUser(sender); loadMessages(sender.id); setShowUserList(false); }
-      }
-      setTimeout(() => setShowRequests(false), 500);
-    } catch (e) {}
-  };
-
-  const rejectRequest = async (requestId) => {
-    try {
-      await supabase.from('chat_requests').update({ status: 'rejected' }).eq('id', requestId);
-      showNotification('Rejected', 'info');
-      loadChatRequests();
-      setTimeout(() => setShowRequests(false), 500);
-    } catch (e) {}
-  };
-
-  const loadMessages = async (otherUserId) => {
-    try {
-      setLoading(true);
-      const { data } = await supabase.from('messages').select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
-        .order('created_at', { ascending: true });
-
-      const formatted = (data || []).map(msg => ({
-        id: msg.id, sender: msg.sender_id === user.id ? 'user' : 'other',
-        text: msg.content,
-        timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: msg.read || false, delivered: true, type: msg.message_type || 'text',
-        replyTo: msg.reply_to || null, duration: msg.duration || 0
-      }));
-      setMessages(formatted);
-    } catch (e) {} finally { setLoading(false); }
-  };
-
-  const sendMessage = async () => {
-    if (!inputText.trim() || !selectedUser) return;
-    if (blockedUsers.includes(selectedUser.id)) { showNotification('User blocked', 'info'); return; }
-    const userMessage = inputText.trim();
-    const tempId = Date.now();
-    const newMessage = {
-      id: tempId, sender: "user", text: userMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: true, delivered: true, type: "text",
-      replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null
-    };
-    setMessages(prev => [...prev, newMessage]);
-    setInputText("");
-    playMessageSound();
-    try {
-      const { data, error } = await supabase.from('messages').insert([{
-        sender_id: user.id, receiver_id: selectedUser.id, content: userMessage,
-        created_at: new Date().toISOString(), read: false, message_type: 'text',
-        reply_to: replyingTo ? replyingTo.id : null
-      }]).select();
-      if (error) throw error;
-      if (data?.length > 0) setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data[0].id } : m));
-      setReplyingTo(null);
-    } catch (e) { showNotification('Failed to send', 'error'); setMessages(prev => prev.filter(m => m.id !== tempId)); }
-  };
-
-  const handleReplyToMessage = (message) => {
-    setReplyingTo({ id: message.id, text: message.text, sender: message.sender });
-    inputRef.current?.focus();
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  };
-
-  const isUserApproved = (userId) => allUsers.find(u => u.id === userId)?.isApproved || false;
-  const isUserBlocked = (userId) => blockedUsers.includes(userId);
-
-  const filteredUsers = allUsers.filter(u => 
-    !u.isBlocked && getUserDisplayName(u).toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleSelectUser = (u) => {
-    if (isUserApproved(u.id)) {
-      setSelectedUser(u);
-      loadMessages(u.id);
-      setShowUserList(false);
-    } else if (pendingRequests.some(r => r.receiver_id === u.id)) {
-      showNotification('Request pending...', 'info');
-    } else if (chatRequests.some(r => r.sender_id === u.id)) {
-      showNotification('You have a request from this user', 'info');
-    } else {
-      showNotification('Send a request to chat', 'info');
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     }
   };
 
-  if (authLoading || loadingProfile) {
+  const sendVoiceMessage = async (blob) => {
+    if (!selectedUser) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Audio = e.target?.result;
+      if (!base64Audio) return;
+      const tempId = Date.now();
+      setMessages((p) => [...p, {
+        id: tempId, sender: "user", text: base64Audio,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        read: true, type: "voice", duration: recordingDuration,
+      }]);
+      try {
+        const { data, error } = await supabase.from("messages").insert([{
+          sender_id: user.id, receiver_id: selectedUser.id,
+          content: base64Audio, created_at: new Date().toISOString(),
+          read: false, message_type: "voice", duration: recordingDuration,
+        }]).select();
+        if (error) throw error;
+        if (data?.length > 0)
+          setMessages((p) => p.map((m) => (m.id === tempId ? { ...m, id: data[0].id } : m)));
+      } catch {}
+    };
+    reader.readAsDataURL(blob);
+  };
+
+  const playVoiceMessage = (message) => {
+    if (playingMessageId === message.id) {
+      audioPlayerRef.current?.pause();
+      setPlayingMessageId(null);
+      return;
+    }
+    if (audioPlayerRef.current) { audioPlayerRef.current.pause(); audioPlayerRef.current = null; }
+    const audio = new Audio(message.text);
+    audioPlayerRef.current = audio;
+    audio.onended = () => { setPlayingMessageId(null); audioPlayerRef.current = null; };
+    audio.onplay = () => setPlayingMessageId(message.id);
+    audio.play().catch(() => showNotification("Failed to play", "error"));
+  };
+
+  const sendSticker = async (sticker) => {
+    if (!selectedUser) return;
+    const tempId = Date.now();
+    setMessages((p) => [...p, {
+      id: tempId, sender: "user", text: sticker,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      read: true, type: "sticker",
+    }]);
+    setShowStickerPicker(false);
+    try {
+      const { data } = await supabase.from("messages").insert([{
+        sender_id: user.id, receiver_id: selectedUser.id,
+        content: sticker, created_at: new Date().toISOString(),
+        read: false, message_type: "sticker",
+      }]).select();
+      if (data?.length > 0)
+        setMessages((p) => p.map((m) => (m.id === tempId ? { ...m, id: data[0].id } : m)));
+    } catch {}
+  };
+
+  const startCall = async (receiverId) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const newPeer = new Peer({ initiator: true, stream, trickle: false });
+      newPeer.on("signal", (data) => {
+        if (socket && selectedUser) socket.emit("call-user", { from: user.id, to: receiverId, signalData: data });
+      });
+      newPeer.on("stream", (remote) => {
+        if (remoteAudioRef.current) { remoteAudioRef.current.srcObject = remote; remoteAudioRef.current.play(); }
+      });
+      newPeer.on("connect", () => setCallStatus("active"));
+      setPeer(newPeer);
+      setCallStatus("outgoing");
+      setCallModalOpen(true);
+    } catch { showNotification("Failed to start call", "error"); }
+  };
+
+  const acceptCall = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const newPeer = new Peer({ initiator: false, stream, trickle: false });
+      newPeer.on("signal", (data) => {
+        if (socket && window._callerId) socket.emit("accept-call", { to: window._callerId, signalData: data });
+      });
+      newPeer.on("stream", (remote) => {
+        if (remoteAudioRef.current) { remoteAudioRef.current.srcObject = remote; remoteAudioRef.current.play(); }
+      });
+      if (window._incomingSignal) newPeer.signal(window._incomingSignal);
+      setPeer(newPeer);
+      setCallStatus("active");
+    } catch {}
+  };
+
+  const rejectCall = () => {
+    if (socket && window._callerId) socket.emit("reject-call", { to: window._callerId });
+    setCallStatus("ended");
+    setCallModalOpen(false);
+  };
+
+  const endCall = () => {
+    if (socket && selectedUser) socket.emit("end-call", { to: selectedUser.id });
+    if (peer) { peer.destroy(); setPeer(null); }
+    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+    setCallStatus("ended");
+    setCallModalOpen(false);
+  };
+
+  /* ⭐ NEW: Apply chat theme */
+  const applyChatTheme = (theme) => {
+    setChatTheme(theme);
+    showNotification(`Theme applied: ${theme.name}`);
+  };
+
+  /* Computed: background style for messages area */
+  const messagesBgStyle = useMemo(() => {
+    if (!chatTheme || chatTheme.id === "default") {
+      return { background: "var(--ch-middle)" };
+    }
+    if (chatTheme.id === "custom" && chatTheme.customBg) {
+      return {
+        backgroundImage: `url(${chatTheme.customBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "local",
+      };
+    }
+    if (chatTheme.bg) {
+      return { background: chatTheme.bg };
+    }
+    return { background: "var(--ch-middle)" };
+  }, [chatTheme]);
+
+  /* Computed: bubble overrides for custom themes */
+  const bubbleStyles = useMemo(() => {
+    const isDefault = !chatTheme || chatTheme.id === "default";
+    if (isDefault) return { me: undefined, them: undefined };
+    return {
+      me: chatTheme.bubbleMe ? { background: chatTheme.bubbleMe, color: "#fff" } : undefined,
+      them: chatTheme.bubbleThem ? { background: chatTheme.bubbleThem, color: "var(--ch-txt)", backdropFilter: "blur(8px)" } : undefined,
+    };
+  }, [chatTheme]);
+
+  /* ═══════════════════════════════════════════════════════════
+     FILTERS
+     ═══════════════════════════════════════════════════════════ */
+  const filteredUsers = allUsers.filter(
+    (u) => !u.isBlocked && getUserDisplayName(u).toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelectUser = (u) => {
+    if (u.isApproved) {
+      setSelectedUser(u);
+      loadMessages(u.id);
+      setShowUserList(false);
+    } else if (pendingRequests.some((r) => r.receiver_id === u.id)) {
+      showNotification("Request pending...", "info");
+    } else {
+      setSelectedUser(u);
+      setShowUserList(false);
+    }
+    setShowStickerPicker(false);
+  };
+
+  const formatDuration = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
+  if (authLoading || profileLoading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-stone-50 to-amber-50/30 dark:from-stone-950 dark:to-stone-900">
-        <div className="text-center">
-          <FaSpinner className="text-4xl text-amber-500 animate-spin mx-auto mb-4" />
-          <p className="text-stone-500 dark:text-stone-400">Loading...</p>
-        </div>
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center ch-app">
+        <ChatStyles />
+        <FaSpinner className="text-3xl animate-spin" style={{ color: "var(--ch-primary)" }} />
       </div>
     );
   }
 
   if (!user) return <Navigate to="/signin" replace />;
 
+  const isUserBlocked = (id) => blockedUsers.includes(id);
+
   return (
-    <div className="h-[calc(100vh-4rem)] w-full overflow-hidden flex flex-col bg-gradient-to-br from-stone-50 via-white to-amber-50/20 dark:from-stone-950 dark:via-stone-900 dark:to-stone-950">
+    <div className="h-[calc(100vh-4rem)] w-full overflow-hidden ch-app flex flex-col">
+      <ChatStyles />
       <audio ref={localAudioRef} autoPlay muted />
       <audio ref={remoteAudioRef} autoPlay />
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
-      {/* ✅ Full-screen Image Viewer */}
       <AnimatePresence>
-        {viewingImage && (
-          <ImageViewer imageUrl={viewingImage} onClose={() => setViewingImage(null)} />
+        {viewingImage && <ImageViewer imageUrl={viewingImage} onClose={() => setViewingImage(null)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showThemeModal && (
+          <ChatThemeModal
+            isOpen={showThemeModal}
+            onClose={() => setShowThemeModal(false)}
+            currentTheme={chatTheme}
+            onApply={applyChatTheme}
+          />
         )}
       </AnimatePresence>
 
       <VoiceCallModal
         isOpen={callModalOpen}
-        onClose={() => { if (callStatus === 'active') endCall(); else { setCallModalOpen(false); setCallStatus('idle'); } }}
-        callerName={callerInfo?.name || 'Unknown'}
+        onClose={() => { setCallModalOpen(false); setCallStatus("idle"); }}
+        callerName={callerInfo?.name || "Unknown"}
         callerAvatar={callerInfo?.avatar}
         onAccept={acceptCall}
         onReject={rejectCall}
@@ -1119,676 +1478,546 @@ const ChatPage = () => {
         callStatus={callStatus}
       />
 
-      {showMessageActions && selectedMessage && (
-        <MessageActions
-          message={selectedMessage}
-          onClose={() => { setShowMessageActions(false); setSelectedMessage(null); }}
-          onDelete={() => deleteMessage(selectedMessage.id)}
-          onReply={() => handleReplyToMessage(selectedMessage)}
-        />
-      )}
+      {/* ═══════ 3-PANEL LAYOUT ═══════ */}
+      <div className="flex-1 min-h-0 flex">
 
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 0.9 }}
-            className="fixed top-4 right-4 z-50 max-w-sm w-full"
-          >
-            <div className={`p-4 rounded-2xl shadow-2xl backdrop-blur-lg border ${
-              notification.type === 'success' ? 'bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700' :
-              notification.type === 'request' ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:border-amber-700' :
-              'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700'
-            }`}>
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-full flex-shrink-0 ${
-                  notification.type === 'success' ? 'bg-green-100 dark:bg-green-800' :
-                  notification.type === 'request' ? 'bg-amber-100 dark:bg-amber-800' :
-                  'bg-blue-100 dark:bg-blue-800'
-                }`}>
-                  {notification.type === 'success' ? <Check className="text-green-600 dark:text-green-300 text-sm" /> :
-                   notification.type === 'request' ? <UserPlus className="text-amber-600 dark:text-amber-300 text-sm" /> :
-                   <MessageCircle className="text-blue-600 dark:text-blue-300 text-sm" />}
-                </div>
-                <p className="flex-1 text-sm font-medium text-stone-900 dark:text-white">{notification.message}</p>
-                <button onClick={() => setNotification(null)} className="p-1 rounded-full hover:bg-stone-100 dark:hover:bg-stone-700">
-                  <X size={14} className="text-stone-400" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex-1 overflow-hidden min-h-0">
-        <div className="h-full w-full max-w-7xl mx-auto overflow-hidden flex">
-
-          {/* USER LIST PANEL */}
-          <div className={`${showUserList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 xl:w-96 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl border-r border-stone-200/60 dark:border-stone-800/60 flex-shrink-0`}>
-            <div className="p-4 border-b border-stone-200/60 dark:border-stone-800/60 bg-gradient-to-r from-amber-50/50 to-white dark:from-stone-900/50 dark:to-stone-900/80">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <AvatarWithFallback 
-                      seed={user?.id || 'user'} 
-                      name={userProfile?.full_name || user?.email || 'User'}
-                      avatarUrl={userProfile?.avatar_url || userProfile?.avatar}
-                      size="h-11 w-11" 
-                      textSize="text-base font-semibold" 
-                      className="rounded-2xl ring-2 ring-amber-500/20"
-                    />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-stone-900 bg-emerald-500">
-                      <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-stone-900 dark:text-white text-sm truncate">{userProfile?.full_name || user?.email || 'User'}</h3>
-                    <p className="text-[11px] text-stone-400">{allUsers.filter(u => !u.isBlocked).length} contacts</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={toggleMute}
-                    className={`p-2 rounded-xl transition-all ${isMuted ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                    {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                  </button>
-                  <button onClick={toggleRequestsPanel}
-                    className="relative p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-all">
-                    <Bell size={16} className="text-stone-500 dark:text-stone-400" />
-                    {chatRequests.length > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-gradient-to-br from-amber-500 to-orange-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                        {chatRequests.length > 9 ? '9+' : chatRequests.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search contacts..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl border-0 bg-stone-100/80 dark:bg-stone-800/80 text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition-all" />
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {showRequests && chatRequests.length > 0 && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  className="border-b border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 overflow-hidden">
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                        <Bell size={12} /> Requests ({chatRequests.length})
-                      </h4>
-                      <button onClick={() => setShowRequests(false)} className="p-0.5 rounded-full hover:bg-amber-100">
-                        <X size={12} className="text-amber-500" />
-                      </button>
-                    </div>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {chatRequests.map((request) => (
-                        <div key={request.id} className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-stone-900/50 border border-amber-200/50">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <AvatarWithFallback 
-                              seed={request.sender_id} 
-                              name={request.sender_name} 
-                              size="h-8 w-8" 
-                              textSize="text-[10px]" 
-                              className="rounded-xl" 
-                            />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium text-stone-900 dark:text-white truncate max-w-[100px]">{request.sender_name || 'User'}</p>
-                              <p className="text-[9px] text-stone-400">Wants to connect</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            <button onClick={() => acceptRequest(request.id)} className="p-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">
-                              <Check size={12} />
-                            </button>
-                            <button onClick={() => rejectRequest(request.id)} className="p-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">
-                              <X size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-              {loading ? (
-                <div className="text-center py-12">
-                  <Loader2 size={32} className="text-stone-300 dark:text-stone-700 animate-spin mx-auto mb-3" />
-                  <p className="text-xs text-stone-400">Loading contacts...</p>
-                </div>
-              ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-stone-100 dark:bg-stone-800 mb-3">
-                    <Users size={28} className="text-stone-300 dark:text-stone-600" />
-                  </div>
-                  <p className="text-sm font-medium text-stone-500 dark:text-stone-400">No contacts</p>
-                  <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">Start connecting</p>
-                </div>
-              ) : (
-                filteredUsers.map((u, index) => {
-                  const hasPendingRequest = pendingRequests.some(r => r.receiver_id === u.id);
-                  const hasIncomingRequest = chatRequests.some(r => r.sender_id === u.id);
-                  const displayName = getUserDisplayName(u);
-                  const isSelected = selectedUser?.id === u.id;
-
-                  return (
-                    <motion.button
-                      key={u.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.02 }}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => handleSelectUser(u)}
-                      className={`relative w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-2 border-amber-500/30 shadow-lg shadow-amber-500/5'
-                          : 'hover:bg-stone-50 dark:hover:bg-stone-800/50 border-2 border-transparent'
-                      }`}
-                    >
-                      <div className="relative shrink-0">
-                        <AvatarWithFallback 
-                          seed={u.id} 
-                          name={displayName} 
-                          avatarUrl={u.avatar_url}
-                          size="h-12 w-12" 
-                          textSize="text-sm font-semibold" 
-                          className="rounded-2xl"
-                        />
-                        <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-stone-900 ${
-                          u.online ? 'bg-emerald-500' : 'bg-stone-300 dark:bg-stone-700'
-                        }`}>
-                          {u.online && <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-50" />}
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-stone-900 dark:text-white truncate">{displayName}</p>
-                          {u.isApproved && (
-                            <span className="shrink-0 text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">✓</span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-                          {u.online ? '🟢 Online' : '⚫ Offline'}
-                        </p>
-                      </div>
-
-                      <div className="flex-shrink-0">
-                        {hasPendingRequest ? (
-                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-full">Pending</span>
-                        ) : hasIncomingRequest ? (
-                          <span className="flex items-center gap-1 text-[9px] font-bold text-amber-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Request
-                          </span>
-                        ) : u.isApproved ? (
-                          <button onClick={(e) => { e.stopPropagation(); setUserToUnapprove(u); setShowUnapproveConfirm(true); }}
-                            className="p-2 rounded-xl text-stone-300 dark:text-stone-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-all"
-                            title="Remove partner">
-                            <UserMinus size={14} />
-                          </button>
-                        ) : (
-                          <button onClick={(e) => { e.stopPropagation(); sendChatRequest(u.id, displayName); }}
-                            className="p-2 rounded-xl text-stone-300 dark:text-stone-600 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all">
-                            <UserPlus size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </motion.button>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="border-t border-stone-200/60 dark:border-stone-800/60 p-3 bg-gradient-to-r from-amber-50/30 to-white dark:from-stone-900/50 dark:to-stone-900/80">
-              <div className="flex items-center gap-3">
-                <AvatarWithFallback 
-                  seed={user?.id} 
-                  name={userProfile?.full_name || user?.email} 
-                  avatarUrl={userProfile?.avatar_url || userProfile?.avatar}
-                  size="h-9 w-9" 
-                  textSize="text-xs font-semibold" 
-                  className="rounded-xl"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-900 dark:text-white truncate">{userProfile?.full_name || user?.email || 'User'}</p>
-                  <div className="flex items-center gap-1.5">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <p className="text-[10px] text-stone-400">Online</p>
-                  </div>
-                </div>
-                <button onClick={() => navigate('/settings')} className="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800">
-                  <Settings size={16} className="text-stone-400" />
-                </button>
-              </div>
+        {/* ═══════════════════════════════════════
+            LEFT: CHATS SIDEBAR
+            ═══════════════════════════════════════ */}
+        <aside
+          className={`${showUserList ? "flex" : "hidden"} lg:flex flex-col w-full lg:w-[360px] xl:w-[380px] flex-shrink-0 ch-sidebar`}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <button className="inline-flex items-center gap-1.5 font-ticket-body text-[11px] font-bold uppercase tracking-wider mb-2"
+              style={{ color: "var(--ch-txt-faint)" }}>
+              All Chats
+              <FaChevronDown className="text-[8px]" />
+            </button>
+            <div className="flex items-baseline gap-2">
+              <h1 className="font-ticket-display text-[34px] font-black leading-none" style={{ color: "var(--ch-txt)" }}>
+                Messages
+              </h1>
+              <span className="font-ticket-display text-[22px] font-bold"
+                style={{ color: "var(--ch-sage-fg)" }}>
+                ({filteredUsers.length})
+              </span>
             </div>
           </div>
 
-          {/* CHAT AREA */}
-          <div className={`${showUserList ? 'hidden' : 'flex'} lg:flex flex-1 flex-col overflow-hidden`}>
-            {selectedUser ? (
-              <>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200/60 dark:border-stone-800/60 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl flex-shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button onClick={() => setShowUserList(true)} className="lg:hidden p-2 -ml-1 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800">
-                      <ArrowLeft size={18} className="text-stone-600 dark:text-stone-300" />
-                    </button>
+          <div className="px-5 pb-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search"
+                className="font-ticket-body w-full px-4 py-3 pr-11 rounded-2xl text-sm outline-none ch-input"
+                style={{ background: "var(--ch-panel-2)", borderColor: "var(--ch-line)" }}
+              />
+              <FaSearch className="absolute right-4 top-1/2 -translate-y-1/2 text-[14px]"
+                style={{ color: "var(--ch-txt-faint)" }} />
+            </div>
+          </div>
 
-                    <div className="relative shrink-0">
-                      <AvatarWithFallback 
-                        seed={selectedUser.id} 
-                        name={getUserDisplayName(selectedUser)} 
-                        avatarUrl={selectedUser.avatar_url}
-                        size="h-10 w-10" 
-                        textSize="text-sm font-semibold" 
-                        className="rounded-2xl"
+          <div className="px-5 pb-2">
+            <span className="font-ticket-body text-[10px] font-extrabold uppercase tracking-widest"
+              style={{ color: "var(--ch-txt-faint)" }}>
+              Messages
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto ch-scroll px-3 pb-4">
+            {loading ? (
+              <div className="text-center py-12">
+                <FaSpinner className="text-2xl animate-spin mx-auto mb-3" style={{ color: "var(--ch-primary)" }} />
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full ch-panel-2 mb-3">
+                  <FaUsers size={26} style={{ color: "var(--ch-txt-faint)" }} />
+                </div>
+                <p className="font-ticket-body text-sm font-bold" style={{ color: "var(--ch-txt-soft)" }}>
+                  No contacts
+                </p>
+              </div>
+            ) : (
+              filteredUsers.map((u) => {
+                const isSelected = selectedUser?.id === u.id;
+                const displayName = getUserDisplayName(u);
+                const preview = u.status_message || u.bio || (u.online ? "Online now" : u.occupation || u.location || "");
+
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => handleSelectUser(u)}
+                    className={`w-full flex items-center gap-3 p-3 mb-1 text-left ch-conv-row ${
+                      isSelected ? "ch-conv-row--active" : ""
+                    }`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <AvatarWithFallback
+                        seed={u.id}
+                        name={displayName}
+                        avatarUrl={u.avatar_url}
+                        size="h-12 w-12"
+                        textSize="text-sm font-bold"
+                        className="rounded-full"
                       />
-                      <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-stone-900 ${
-                        selectedUser.online ? 'bg-emerald-500' : 'bg-stone-400'
-                      }`} />
+                      {u.online && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full"
+                          style={{ background: "var(--ch-mint)", border: "2px solid var(--ch-sidebar)" }} />
+                      )}
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="text-sm font-bold text-stone-900 dark:text-white truncate">{getUserDisplayName(selectedUser)}</h2>
-                      <p className="text-[11px] text-stone-400 dark:text-stone-500">
-                        {selectedUser.online ? '🟢 Online' : '⚫ Offline'}{selectedUser.isApproved && ' • ✓ Approved'}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-ticket-body text-[14px] font-bold truncate" style={{ color: "var(--ch-txt)" }}>
+                          {displayName}
+                        </p>
+                      </div>
+                      <p className="font-ticket-body text-[11.5px] mt-0.5 truncate" style={{ color: "var(--ch-txt-soft)" }}>
+                        {preview}
                       </p>
                     </div>
-                  </div>
+                  </button>
+                );
+              })
+            )}
 
-                  <div className="flex items-center gap-1">
-                    {selectedUser.isApproved && (
-                      <>
-                        <div className="relative group">
-                          <button onClick={() => handleCallClick('voice')} className="p-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-500 transition-colors">
-                            <PhoneIcon size={18} />
-                          </button>
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            Voice Call
-                          </span>
-                        </div>
-
-                        <div className="relative group hidden sm:block">
-                          <button onClick={() => handleCallClick('video')} className="p-2.5 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 transition-colors">
-                            <Video size={18} />
-                          </button>
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            Video Call
-                          </span>
-                        </div>
-
-                        <div className="relative group">
-                          <button onClick={() => setShowClearChatConfirm(true)} className="p-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-500 transition-colors">
-                            <FaTrash size={16} />
-                          </button>
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            Clear Chat
-                          </span>
-                        </div>
-
-                        <div className="relative group">
-                          <button onClick={() => { setUserToUnapprove(selectedUser); setShowUnapproveConfirm(true); }} className="p-2.5 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/30 text-orange-500 transition-colors">
-                            <FaUndo size={16} />
-                          </button>
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            Remove Partner
-                          </span>
-                        </div>
-
-                        <div className="relative group">
-                          <button onClick={() => blockUser(selectedUser.id)} className="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 transition-colors">
-                            <FaBan size={16} />
-                          </button>
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            Block User
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-stone-50/50 to-white dark:from-stone-950 dark:to-stone-900">
-                  {!selectedUser.isApproved ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center mb-4">
-                        <UserPlus size={32} className="text-amber-500" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-stone-700 dark:text-stone-300 mb-1">Waiting for Approval</h3>
-                      <p className="text-sm text-stone-400 mb-4">Send a request to start chatting</p>
-                      <button onClick={() => sendChatRequest(selectedUser.id, getUserDisplayName(selectedUser))}
-                        className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium shadow-lg shadow-amber-500/30">
-                        Send Request
-                      </button>
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-20 h-20 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-4">
-                        <MessageCircle size={32} className="text-stone-300 dark:text-stone-600" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-stone-700 dark:text-stone-300 mb-1">No messages yet</h3>
-                      <p className="text-sm text-stone-400">Say hello to start the conversation</p>
-                    </div>
-                  ) : (
-                    messages.map((message, index) => {
-                      const isUser = message.sender === "user";
-                      const isDeleting = deletingMessage === message.id;
-                      const isImage = message.type === 'image';
-                      const isSticker = message.type === 'sticker';
-                      const isVoice = message.type === 'voice';
-                      const hasReply = message.replyTo;
-                      const isPlayingAudio = playingMessageId === message.id;
-
-                      return (
-                        <motion.div
-                          key={message.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
-                          onMouseEnter={() => !isDeleting && setShowMessageMenu(message.id)}
-                          onMouseLeave={() => setShowMessageMenu(null)}
-                        >
-                          <div className={`flex items-end gap-2 max-w-[85%] sm:max-w-[70%] ${isUser ? 'flex-row-reverse' : ''}`}>
-                            <div className="flex-shrink-0 mb-1">
-                              {isUser ? (
-                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg overflow-hidden">
-                                  {userProfile?.avatar_url || userProfile?.avatar ? (
-                                    <img src={userProfile.avatar_url || userProfile.avatar} alt="You" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <User size={14} />
-                                  )}
-                                </div>
-                              ) : (
-                                <AvatarWithFallback 
-                                  seed={selectedUser.id} 
-                                  name={getUserDisplayName(selectedUser)} 
-                                  avatarUrl={selectedUser.avatar_url}
-                                  size="h-8 w-8" 
-                                  textSize="text-[10px] font-bold" 
-                                />
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              {hasReply && (
-                                <div className={`text-[10px] mb-1 px-3 py-1 rounded-xl max-w-full truncate ${
-                                  isUser ? 'bg-amber-400/20 text-amber-100' : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
-                                }`}>
-                                  <span className="font-medium">Replying to {hasReply.sender === 'user' ? 'yourself' : getUserDisplayName(selectedUser)}:</span>
-                                  <span className="ml-1 opacity-80">{hasReply.text?.substring(0, 30)}...</span>
-                                </div>
-                              )}
-
-                              <div className={`rounded-2xl px-4 py-2.5 relative ${
-                                isUser
-                                  ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 rounded-br-md'
-                                  : 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-lg border border-stone-200/60 dark:border-stone-700/60 rounded-bl-md'
-                              }`}>
-                                {isDeleting ? (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <FaSpinner className="animate-spin" />
-                                    <span>Deleting...</span>
-                                  </div>
-                                ) : isImage ? (
-                                  /* ✅ Clickable image opens full-screen viewer */
-                                  <div 
-                                    className="relative group/img cursor-pointer overflow-hidden rounded-xl"
-                                    onClick={() => setViewingImage(message.text)}
-                                  >
-                                    <img 
-                                      src={message.text} 
-                                      alt="Shared" 
-                                      className="max-w-[200px] sm:max-w-[280px] rounded-xl transition-transform duration-300 group-hover/img:scale-105" 
-                                      loading="lazy" 
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-all duration-300 rounded-xl flex items-center justify-center opacity-0 group-hover/img:opacity-100">
-                                      <div className="p-2 rounded-full bg-white/90 backdrop-blur-sm">
-                                        <FaExpand className="text-stone-900" size={14} />
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : isSticker ? (
-                                  <span className="text-5xl block text-center">{message.text}</span>
-                                ) : isVoice ? (
-                                  <div className="flex items-center gap-3 min-w-[180px]">
-                                    <button onClick={() => playVoiceMessage(message)}
-                                      className={`p-2 rounded-full transition-all ${isPlayingAudio ? 'bg-red-500 text-white' : 'bg-white/20 text-white'}`}>
-                                      {isPlayingAudio ? <FaPause size={14} /> : <FaPlay size={14} />}
-                                    </button>
-                                    <div className="flex-1">
-                                      <div className="h-1 bg-white/30 rounded-full overflow-hidden">
-                                        <motion.div initial={{ width: '0%' }} animate={{ width: isPlayingAudio ? '100%' : '0%' }}
-                                          transition={{ duration: isPlayingAudio ? message.duration || 3 : 0 }}
-                                          className="h-full bg-white rounded-full" />
-                                      </div>
-                                      <div className="flex justify-between mt-1">
-                                        <span className="text-[9px] opacity-70">{formatDuration(message.duration || 0)}</span>
-                                        <span className="text-[9px] opacity-70">Voice</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
-                                )}
-
-                                {isUser && showMessageMenu === message.id && !isDeleting && !isImage && (
-                                  <div className="absolute -top-2 -right-2 flex gap-1">
-                                    <button onClick={() => handleReplyToMessage(message)} className="p-1.5 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600">
-                                      <FaReply size={10} />
-                                    </button>
-                                    <button onClick={() => { setSelectedMessage(message); setShowMessageActions(true); }} className="p-1.5 rounded-full bg-red-500 text-white shadow-lg hover:bg-red-600">
-                                      <FaTrash size={10} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className={`flex items-center gap-1 mt-1 ${isUser ? 'justify-end' : ''}`}>
-                                <span className="text-[10px] text-stone-400">{message.timestamp}</span>
-                                {isUser && <CheckCheck size={12} className="text-amber-500" />}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {selectedUser.isApproved && !isUserBlocked(selectedUser.id) && (
-                  <div className="border-t border-stone-200/60 dark:border-stone-800/60 p-3 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl flex-shrink-0 relative">
-                    {replyingTo && (
-                      <ReplyPreview
-                        replyTo={{ ...replyingTo, senderName: replyingTo.sender === 'user' ? 'you' : getUserDisplayName(selectedUser) }}
-                        onCancelReply={() => setReplyingTo(null)}
-                      />
-                    )}
-
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1 relative">
-                        <textarea
-                          ref={inputRef}
-                          value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          placeholder={replyingTo ? 'Reply...' : `Message ${getUserDisplayName(selectedUser)}...`}
-                          rows="1"
-                          className="w-full px-4 py-3 pr-28 rounded-3xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 resize-none text-sm min-h-[48px] max-h-[120px]"
-                          style={{ height: 'auto' }}
-                        />
-                        <div className="absolute right-2 bottom-3 flex items-center gap-0.5">
-                          <button onClick={() => setShowStickerPicker(!showStickerPicker)}
-                            className="p-1.5 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
-                            <Smile size={18} className="text-stone-400" />
-                          </button>
-                          <button onClick={() => fileInputRef.current?.click()}
-                            className="p-1.5 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors" disabled={uploadingImage}>
-                            {uploadingImage ? <FaSpinner className="text-stone-400 animate-spin" size={16} /> : <ImageIcon size={18} className="text-stone-400" />}
-                          </button>
-                          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                          <button onClick={isRecording ? stopRecording : startRecording}
-                            className={`p-1.5 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'hover:bg-stone-200 dark:hover:bg-stone-700'}`}>
-                            {isRecording ? <FaStop size={16} /> : <Mic size={18} className="text-stone-400" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {isRecording && (
-                        <div className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 rounded-full">
-                          <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-xs font-medium text-red-500">{formatDuration(recordingDuration)}</span>
-                        </div>
-                      )}
-
-                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={sendMessage}
-                        disabled={!inputText.trim()}
-                        className="p-3.5 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
-                        <Send size={20} />
-                      </motion.button>
-                    </div>
-
-                    <AnimatePresence>
-                      {showStickerPicker && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                          className="absolute bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl p-4 max-h-[400px] overflow-y-auto z-50"
-                        >
-                          <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-                            {STICKER_CATEGORIES.map((category, idx) => (
-                              <button key={idx} onClick={() => setSelectedStickerCategory(idx)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                                  selectedStickerCategory === idx
-                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
-                                }`}>
-                                {category.name}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                            {STICKER_CATEGORIES[selectedStickerCategory].emojis.map((emoji, idx) => (
-                              <motion.button key={idx} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                                onClick={() => sendSticker(emoji)}
-                                className="text-3xl p-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors">
-                                {emoji}
-                              </motion.button>
-                            ))}
-                          </div>
-                          <button onClick={() => setShowStickerPicker(false)}
-                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800">
-                            <X size={14} className="text-stone-400" />
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {isUserBlocked(selectedUser.id) && (
-                  <div className="border-t border-stone-200/60 dark:border-stone-800/60 p-4 bg-red-50 dark:bg-red-950/20 text-center">
-                    <p className="text-sm text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
-                      <FaBan /> You have blocked this user
-                      <button onClick={() => unblockUser(selectedUser.id)}
-                        className="text-xs bg-emerald-500 text-white px-3 py-1 rounded-full hover:bg-emerald-600">
-                        Unblock
-                      </button>
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 flex items-center justify-center mb-6">
-                  <MessageCircle size={48} className="text-amber-500" />
-                </div>
-                <h2 className="text-xl font-bold text-stone-900 dark:text-white mb-2">Welcome to Chat</h2>
-                <p className="text-sm text-stone-400 dark:text-stone-500 max-w-xs">
-                  Select a contact from the list to start a conversation
+            {chatRequests.length > 0 && (
+              <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--ch-line)" }}>
+                <p className="font-ticket-body text-[10px] font-extrabold uppercase tracking-widest mb-2 px-2"
+                  style={{ color: "var(--ch-txt-faint)" }}>
+                  Requests ({chatRequests.length})
                 </p>
+                {chatRequests.map((r) => (
+                  <div key={r.id} className="flex items-center gap-3 p-2.5 rounded-2xl mb-1.5"
+                    style={{ background: "var(--ch-primary-soft)" }}>
+                    <AvatarWithFallback seed={r.sender_id} name={r.sender_name} size="h-10 w-10" textSize="text-xs" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-ticket-body text-[12px] font-bold truncate" style={{ color: "var(--ch-txt)" }}>
+                        {r.sender_name}
+                      </p>
+                      <p className="font-ticket-body text-[10px]" style={{ color: "var(--ch-txt-soft)" }}>
+                        Wants to connect
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => acceptRequest(r.id)}
+                        className="p-1.5 rounded-lg text-white"
+                        style={{ background: "var(--ch-primary)" }}>
+                        <FaCheck size={10} />
+                      </button>
+                      <button onClick={() => rejectRequest(r.id)}
+                        className="p-1.5 rounded-lg text-white"
+                        style={{ background: "var(--ch-danger)" }}>
+                        <FaTimes size={10} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </div>
+        </aside>
+
+        {/* ═══════════════════════════════════════
+            MIDDLE: MESSAGES
+            ═══════════════════════════════════════ */}
+        <main className={`${showUserList ? "hidden" : "flex"} lg:flex flex-1 flex-col min-w-0 ch-middle`}>
+          {selectedUser ? (
+            <>
+              <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+                style={{ borderBottom: "1px solid var(--ch-line)", background: "var(--ch-middle)" }}>
+                <button onClick={() => setShowUserList(true)} className="lg:hidden p-2 -ml-2 rounded-xl">
+                  <FaBack size={16} style={{ color: "var(--ch-txt)" }} />
+                </button>
+
+                <AvatarWithFallback
+                  seed={selectedUser.id}
+                  name={getUserDisplayName(selectedUser)}
+                  avatarUrl={selectedUser.avatar_url}
+                  size="h-11 w-11"
+                  textSize="text-sm font-bold"
+                  className="rounded-2xl"
+                />
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-ticket-display text-[15px] font-bold truncate" style={{ color: "var(--ch-txt)" }}>
+                    {getUserDisplayName(selectedUser)}
+                  </h2>
+                  <p className="font-ticket-body text-[11.5px]" style={{ color: "var(--ch-txt-soft)" }}>
+                    {selectedUser.online ? "Online" : "Offline"}
+                  </p>
+                </div>
+
+                {/* ⭐ Theme button in header */}
+                <button
+                  onClick={() => setShowThemeModal(true)}
+                  className="p-2.5 rounded-xl"
+                  style={{ color: "var(--ch-txt-soft)" }}
+                  title="Chat theme"
+                >
+                  <FaPalette size={15} />
+                </button>
+              </div>
+
+              {/* Messages area — with dynamic background */}
+              <div
+                className="flex-1 overflow-y-auto ch-scroll px-5 py-4 space-y-4"
+                style={messagesBgStyle}
+              >
+                {!selectedUser.isApproved ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                      style={{ background: "var(--ch-primary-soft)" }}>
+                      <FaUserPlus size={28} style={{ color: "var(--ch-primary)" }} />
+                    </div>
+                    <h3 className="font-ticket-display text-lg font-bold mb-1" style={{ color: "var(--ch-txt)" }}>
+                      Send a request
+                    </h3>
+                    <p className="font-ticket-body text-sm mb-4" style={{ color: "var(--ch-txt-soft)" }}>
+                      Connect to start chatting
+                    </p>
+                    <button
+                      onClick={() => sendChatRequest(selectedUser.id, getUserDisplayName(selectedUser))}
+                      className="px-6 py-2.5 rounded-2xl font-ticket-body font-bold text-sm text-white"
+                      style={{ background: "var(--ch-primary)" }}>
+                      Send Request
+                    </button>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+                      style={{ border: "1px solid var(--ch-line-str)" }}>
+                      <FaComment size={28} style={{ color: "var(--ch-txt-faint)" }} />
+                    </div>
+                    <h3 className="font-ticket-display text-lg font-bold mb-1" style={{ color: "var(--ch-txt)" }}>
+                      No messages yet
+                    </h3>
+                    <p className="font-ticket-body text-sm" style={{ color: "var(--ch-txt-soft)" }}>
+                      Say hello to start
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((message) => {
+                    const isUser = message.sender === "user";
+                    const isVoice = message.type === "voice";
+                    const isImage = message.type === "image";
+                    const isSticker = message.type === "sticker";
+                    const hasReply = message.replyTo;
+                    const isPlaying = playingMessageId === message.id;
+
+                    return (
+                      <motion.div
+                        key={message.id}
+                        data-msg-id={message.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                      >
+                        <div className={`flex items-center gap-2 mb-1 px-3 ${isUser ? "flex-row-reverse" : ""}`}>
+                          <span className="font-ticket-body text-[11.5px] font-bold"
+                            style={{ color: "var(--ch-txt)" }}>
+                            {isUser ? "You" : getUserDisplayName(selectedUser)}
+                          </span>
+                          <span className="font-ticket-body text-[10px]" style={{ color: "var(--ch-txt-faint)" }}>
+                            {message.timestamp}
+                          </span>
+                        </div>
+
+                        <div
+                          className={`max-w-[75%] ${isUser ? "ch-bubble-me" : "ch-bubble-them"} px-4 py-3`}
+                          style={isUser ? bubbleStyles.me : bubbleStyles.them}
+                        >
+                          {hasReply && (
+                            <div className="mb-2 pb-2 text-[10px] font-ticket-body"
+                              style={{ borderBottom: "1px solid rgba(0,0,0,0.06)", color: "var(--ch-txt-soft)" }}>
+                              Replying to {hasReply.sender === "user" ? "yourself" : getUserDisplayName(selectedUser)}
+                            </div>
+                          )}
+
+                          {isImage ? (
+                            <img
+                              src={message.text}
+                              alt="Shared"
+                              className="max-w-[220px] rounded-xl cursor-pointer"
+                              onClick={() => setViewingImage(message.text)}
+                            />
+                          ) : isSticker ? (
+                            <span className="text-5xl block">{message.text}</span>
+                          ) : isVoice ? (
+                            <div className="flex items-center gap-3 min-w-[180px]">
+                              <button onClick={() => playVoiceMessage(message)}
+                                className="p-2 rounded-full"
+                                style={{
+                                  background: isUser ? "rgba(0,0,0,0.15)" : "var(--ch-primary-soft)",
+                                  color: isUser ? "#fff" : "var(--ch-primary)",
+                                }}>
+                                {isPlaying ? <FaPause size={12} /> : <FaPlay size={12} />}
+                              </button>
+                              <div className="flex-1">
+                                <div className="h-1 rounded-full overflow-hidden"
+                                  style={{ background: isUser ? "rgba(0,0,0,0.15)" : "var(--ch-line)" }}>
+                                  <motion.div
+                                    initial={{ width: "0%" }}
+                                    animate={{ width: isPlaying ? "100%" : "0%" }}
+                                    transition={{ duration: isPlaying ? message.duration || 3 : 0 }}
+                                    className="h-full rounded-full"
+                                    style={{ background: isUser ? "#fff" : "var(--ch-primary)" }}
+                                  />
+                                </div>
+                                <span className="font-ticket-body text-[10px] font-bold mt-1 block"
+                                  style={{ color: isUser ? "rgba(255,255,255,0.75)" : "var(--ch-txt-soft)" }}>
+                                  {formatDuration(message.duration || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="font-ticket-body text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">
+                              {message.text}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              {selectedUser.isApproved && !isUserBlocked(selectedUser.id) && (
+                <div className="px-4 py-3 flex-shrink-0 relative"
+                  style={{ borderTop: "1px solid var(--ch-line)", background: "var(--ch-middle)" }}>
+
+                  {/* ⭐ Sticker picker */}
+                  <AnimatePresence>
+                    {showStickerPicker && (
+                      <StickerPicker
+                        onSelect={sendSticker}
+                        onClose={() => setShowStickerPicker(false)}
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex items-center gap-2">
+                    {/* ⭐ Sticker button */}
+                    <button
+                      onClick={() => setShowStickerPicker((s) => !s)}
+                      className="p-2.5 rounded-full flex-shrink-0 transition-colors"
+                      style={{
+                        background: showStickerPicker ? "var(--ch-primary-soft)" : "var(--ch-panel-2)",
+                        color: showStickerPicker ? "var(--ch-primary)" : "var(--ch-txt-soft)",
+                      }}
+                      title="Stickers & emojis"
+                    >
+                      <FaSmile size={15} />
+                    </button>
+
+                    {/* ⭐ Image button — proper image icon */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 rounded-full flex-shrink-0"
+                      style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt-soft)" }}
+                      title="Send image"
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? <FaSpinner className="animate-spin" size={14} /> : <FaImage size={15} />}
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+
+                    <div className="flex-1 relative">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                        placeholder="Type a message..."
+                        className="font-ticket-body w-full px-5 py-3 rounded-full text-sm outline-none"
+                        style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt)", border: "1px solid transparent" }}
+                      />
+                    </div>
+
+                    <button
+                      onClick={isRecording ? stopRecording : startRecording}
+                      className="p-2.5 rounded-full flex-shrink-0"
+                      style={{
+                        background: isRecording ? "var(--ch-danger)" : "var(--ch-panel-2)",
+                        color: isRecording ? "#fff" : "var(--ch-txt-soft)",
+                      }}>
+                      {isRecording ? <FaStop size={12} /> : <FaMicrophone size={14} />}
+                    </button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.92 }}
+                      onClick={sendMessage}
+                      disabled={!inputText.trim()}
+                      className="p-3 rounded-full flex-shrink-0 text-white disabled:opacity-40"
+                      style={{ background: "var(--ch-primary)" }}>
+                      <FaPaperPlane size={14} />
+                    </motion.button>
+                  </div>
+
+                  {isRecording && (
+                    <div className="mt-2 flex items-center justify-center gap-2">
+                      <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--ch-danger)" }} />
+                      <span className="font-ticket-body text-[11px] font-bold" style={{ color: "var(--ch-danger)" }}>
+                        Recording… {formatDuration(recordingDuration)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isUserBlocked(selectedUser.id) && (
+                <div className="p-3 text-center" style={{ background: "var(--ch-danger-soft)" }}>
+                  <p className="font-ticket-body text-sm font-bold flex items-center justify-center gap-2"
+                    style={{ color: "var(--ch-danger)" }}>
+                    <FaBan /> You have blocked this user
+                    <button onClick={() => unblockUser(selectedUser.id)}
+                      className="text-xs text-white px-3 py-1 rounded-full"
+                      style={{ background: "var(--ch-primary)" }}>
+                      Unblock
+                    </button>
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+                style={{ background: "var(--ch-primary-soft)" }}>
+                <FaComment size={32} style={{ color: "var(--ch-primary)" }} />
+              </div>
+              <h2 className="font-ticket-display text-xl font-bold mb-2" style={{ color: "var(--ch-txt)" }}>
+                Select a conversation
+              </h2>
+              <p className="font-ticket-body text-sm max-w-xs" style={{ color: "var(--ch-txt-soft)" }}>
+                Choose a contact from the list to start chatting
+              </p>
+            </div>
+          )}
+        </main>
+
+        {/* ═══════════════════════════════════════
+            RIGHT: CONTACT DETAILS
+            ═══════════════════════════════════════ */}
+        <aside className="hidden xl:flex flex-col w-[300px] flex-shrink-0 ch-right overflow-y-auto ch-scroll">
+          {selectedUser ? (
+            <>
+              <div className="p-6 flex flex-col items-center text-center relative">
+                <button className="absolute top-4 right-4 p-2 rounded-full"
+                  style={{ color: "var(--ch-txt-soft)" }}>
+                  <FaEllipsisH size={14} />
+                </button>
+
+                <AvatarWithFallback
+                  seed={selectedUser.id}
+                  name={getUserDisplayName(selectedUser)}
+                  avatarUrl={selectedUser.avatar_url}
+                  size="h-24 w-24"
+                  textSize="text-3xl font-bold"
+                  className="rounded-full"
+                />
+                <h3 className="font-ticket-display text-[20px] font-bold mt-4" style={{ color: "var(--ch-txt)" }}>
+                  {getUserDisplayName(selectedUser)}
+                </h3>
+                <p className="font-ticket-body text-[12px]" style={{ color: "var(--ch-txt-soft)" }}>
+                  {selectedUser.online ? "Online" : "Offline"}
+                </p>
+
+                <div className="flex items-center gap-2 mt-5 w-full">
+                  <button
+                    onClick={() => startCall(selectedUser.id)}
+                    disabled={!selectedUser.isApproved}
+                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-2xl font-ticket-body text-[12px] font-bold disabled:opacity-40"
+                    style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt)", border: "1px solid var(--ch-line)" }}>
+                    <FaPhone size={11} /> Voice chat
+                  </button>
+                  <button
+                    disabled
+                    className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-2xl font-ticket-body text-[12px] font-bold opacity-40"
+                    style={{ background: "var(--ch-panel-2)", color: "var(--ch-txt)", border: "1px solid var(--ch-line)" }}>
+                    <FaVideoCall size={11} /> Video chat
+                  </button>
+                </div>
+              </div>
+
+              {/* Actions list */}
+              <div className="px-4 pb-4">
+                <button
+                  onClick={() => setShowThemeModal(true)}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors hover:bg-[var(--ch-primary-soft)]"
+                >
+                  <span className="font-ticket-body text-[13px] font-semibold" style={{ color: "var(--ch-txt)" }}>
+                    Change Color
+                  </span>
+                  <FaPalette size={13} style={{ color: "var(--ch-txt-faint)" }} />
+                </button>
+                {[
+                  { icon: FaSearch, label: "Search in Conversation" },
+                  { icon: FaSmile, label: "Change Emoji" },
+                  { icon: FaLink, label: "Links" },
+                ].map((row, i) => {
+                  const Icon = row.icon;
+                  return (
+                    <button key={i}
+                      className="w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors hover:bg-[var(--ch-primary-soft)]">
+                      <span className="font-ticket-body text-[13px] font-semibold" style={{ color: "var(--ch-txt)" }}>
+                        {row.label}
+                      </span>
+                      <Icon size={13} style={{ color: "var(--ch-txt-faint)" }} />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Shared media */}
+              <div className="px-4 pb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FaImage size={11} style={{ color: "var(--ch-txt-soft)" }} />
+                  <span className="font-ticket-body text-[11px] font-bold uppercase tracking-wider"
+                    style={{ color: "var(--ch-txt-soft)" }}>
+                    Shared photo
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {messages.filter((m) => m.type === "image").slice(-12).map((m, i) => (
+                    <button
+                      key={m.id || i}
+                      onClick={() => setViewingImage(m.text)}
+                      className="aspect-square rounded-lg overflow-hidden"
+                      style={{ background: "var(--ch-panel-2)" }}
+                    >
+                      <img src={m.text} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                  {messages.filter((m) => m.type === "image").length === 0 && (
+                    Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="aspect-square rounded-lg"
+                        style={{ background: "var(--ch-panel-2)" }} />
+                    ))
+                  )}
+                </div>
+                {messages.filter((m) => m.type === "image").length > 0 && (
+                  <button className="w-full text-center mt-3 font-ticket-body text-[12px] font-bold"
+                    style={{ color: "var(--ch-mint)" }}>
+                    View More
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-center p-6">
+              <p className="font-ticket-body text-[12px]" style={{ color: "var(--ch-txt-faint)" }}>
+                Select a chat to see details
+              </p>
+            </div>
+          )}
+        </aside>
       </div>
-
-      {/* Remove Partner Confirmation Modal */}
-      <AnimatePresence>
-        {showUnapproveConfirm && userToUnapprove && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
-            onClick={() => { setShowUnapproveConfirm(false); setUserToUnapprove(null); }}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}>
-              <div className="text-center">
-                <div className="h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-                  <FaUndo className="text-3xl text-red-500" />
-                </div>
-                <h3 className="text-xl font-bold text-stone-900 dark:text-white mb-2">Remove Chat Partner</h3>
-                <p className="text-stone-500 dark:text-stone-400 text-sm mb-6">
-                  Remove <span className="font-semibold text-stone-900 dark:text-white">{getUserDisplayName(userToUnapprove)}</span> from your approved chat partners?
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => { setShowUnapproveConfirm(false); setUserToUnapprove(null); }}
-                    className="flex-1 px-4 py-2.5 rounded-2xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors font-medium">
-                    Cancel
-                  </button>
-                  <button onClick={() => unapproveUser(userToUnapprove.id)}
-                    className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-red-500 to-rose-500 text-white font-medium hover:shadow-lg hover:shadow-red-500/30 transition-all">
-                    Remove
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Clear Chat Confirmation Modal */}
-      <AnimatePresence>
-        {showClearChatConfirm && selectedUser && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
-            onClick={() => setShowClearChatConfirm(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}>
-              <div className="text-center">
-                <div className="h-16 w-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-4">
-                  <FaTrash className="text-3xl text-amber-500" />
-                </div>
-                <h3 className="text-xl font-bold text-stone-900 dark:text-white mb-2">Clear Chat</h3>
-                <p className="text-stone-500 dark:text-stone-400 text-sm mb-6">
-                  Delete all messages between you and <span className="font-semibold text-stone-900 dark:text-white">{getUserDisplayName(selectedUser)}</span>? This cannot be undone.
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setShowClearChatConfirm(false)}
-                    className="flex-1 px-4 py-2.5 rounded-2xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors font-medium">
-                    Cancel
-                  </button>
-                  <button onClick={clearChat}
-                    className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:shadow-lg hover:shadow-amber-500/30 transition-all">
-                    Clear Chat
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.jsx
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -13,6 +13,10 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [passkeys, setPasskeys] = useState([]);
 
+  // Heartbeat refs
+  const heartbeatRef = useRef(null);
+  const visibilityHandlerRef = useRef(null);
+
   // ─── Check if Passkey is Supported ─────────────────────────────────
   const isPasskeySupported = () => {
     return window.PublicKeyCredential !== undefined;
@@ -23,12 +27,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase.auth.passkey.list();
       if (error) {
-        console.error('Error loading passkeys:', error);
         return;
       }
       setPasskeys(data || []);
     } catch (error) {
-      console.error('Error loading passkeys:', error);
+      // silent
     }
   };
 
@@ -41,7 +44,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const { data, error } = await supabase.auth.registerPasskey();
-      
+
       if (error) {
         if (error.message.includes('already registered')) {
           return { data: null, error: 'A passkey is already registered for this device.' };
@@ -51,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         }
         return { data: null, error: error.message };
       }
-      
+
       await loadPasskeys();
       return { data, error: null };
     } catch (error) {
@@ -63,7 +66,7 @@ export const AuthProvider = ({ children }) => {
   const signInWithPasskey = async () => {
     try {
       const { data, error } = await supabase.auth.signInWithPasskey();
-      
+
       if (error) {
         if (error.message.includes('not supported')) {
           return { data: null, error: 'Passkeys are not supported on this device or browser.' };
@@ -73,11 +76,11 @@ export const AuthProvider = ({ children }) => {
         }
         return { data: null, error: error.message };
       }
-      
+
       if (data?.user) {
         await ensureUserExists(data.user);
       }
-      
+
       return { data, error: null };
     } catch (error) {
       return { data: null, error: 'Failed to sign in with passkey. Please try again.' };
@@ -88,11 +91,11 @@ export const AuthProvider = ({ children }) => {
   const deletePasskey = async (passkeyId) => {
     try {
       const { error } = await supabase.auth.passkey.delete({ passkeyId });
-      
+
       if (error) {
         return { error: error.message };
       }
-      
+
       await loadPasskeys();
       return { error: null };
     } catch (error) {
@@ -103,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   // ─── Fetch User from Database ──────────────────────────────────────
   const fetchUserFromDB = async (userId) => {
     if (!userId) return null;
-    
+
     try {
       const { data, error } = await supabase
         .from('users')
@@ -112,13 +115,11 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('❌ Error fetching user from DB:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('❌ Error in fetchUserFromDB:', error);
       return null;
     }
   };
@@ -128,8 +129,6 @@ export const AuthProvider = ({ children }) => {
     if (!authUser) return null;
 
     try {
-      console.log('🔍 Checking if user exists in public.users:', authUser.id);
-
       const { data: existingUser, error: fetchError } = await supabase
         .from('users')
         .select('*')
@@ -137,21 +136,17 @@ export const AuthProvider = ({ children }) => {
         .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('❌ Error fetching user:', fetchError);
         return null;
       }
 
       if (existingUser) {
-        console.log('✅ User found in public.users:', existingUser.id);
         setUser(existingUser);
         return existingUser;
       }
 
-      console.log('🔄 Creating user in public.users...');
-
-      const userName = authUser.user_metadata?.full_name || 
-                       authUser.user_metadata?.name || 
-                       authUser.email?.split('@')[0] || 
+      const userName = authUser.user_metadata?.full_name ||
+                       authUser.user_metadata?.name ||
+                       authUser.email?.split('@')[0] ||
                        'User';
 
       const { data: newUser, error: insertError } = await supabase
@@ -169,11 +164,8 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (insertError) {
-        console.error('❌ Error creating user:', insertError);
         return null;
       }
-
-      console.log('✅ User created in public.users:', newUser.id);
 
       // Create user_settings
       await supabase
@@ -201,7 +193,6 @@ export const AuthProvider = ({ children }) => {
       return newUser;
 
     } catch (error) {
-      console.error('❌ Unexpected error in ensureUserExists:', error);
       return null;
     }
   };
@@ -229,7 +220,6 @@ export const AuthProvider = ({ children }) => {
           setPasskeys([]);
         }
       } catch (error) {
-        console.error('❌ Error initializing auth:', error);
         setAuthError(error.message);
         setUser(null);
       } finally {
@@ -241,7 +231,6 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Auth state changed:', event);
         setSession(session);
 
         if (session?.user) {
@@ -264,6 +253,110 @@ export const AuthProvider = ({ children }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  HEARTBEAT — keep user marked "online" in user_status
+  //  Runs whenever `user` is set. Pings every 60 seconds and on
+  //  tab visibility change. Also marks offline on tab close.
+  // ═══════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!user?.id) {
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
+      if (visibilityHandlerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+        visibilityHandlerRef.current = null;
+      }
+      return;
+    }
+
+    const userId = user.id;
+
+    // ─── Write "online" to user_status ───
+    const markOnline = async () => {
+      try {
+        await supabase
+          .from('user_status')
+          .upsert(
+            {
+              user_id: userId,
+              status: 'online',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          );
+      } catch (e) {
+        // Silent — heartbeat should never break the app
+      }
+    };
+
+    // ─── Write "offline" to user_status ───
+    const markOffline = async () => {
+      try {
+        await supabase
+          .from('user_status')
+          .upsert(
+            {
+              user_id: userId,
+              status: 'offline',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          );
+      } catch (e) {
+        // Silent
+      }
+    };
+
+    // Ping immediately on login
+    markOnline();
+
+    // Ping every 60 seconds
+    heartbeatRef.current = setInterval(markOnline, 60 * 1000);
+
+    // Handle tab visibility — pause when hidden, resume when visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        markOnline();
+      }
+    };
+    visibilityHandlerRef.current = handleVisibility;
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Mark offline on tab close (best-effort)
+    const handleBeforeUnload = () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_status?user_id=eq.${userId}`;
+        const payload = JSON.stringify({
+          status: 'offline',
+          updated_at: new Date().toISOString(),
+        });
+        const blob = new Blob([payload], { type: 'application/json' });
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, blob);
+        }
+      } catch {
+        // Silent
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // ─── Cleanup on unmount or user change ───
+    return () => {
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
+      if (visibilityHandlerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+        visibilityHandlerRef.current = null;
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user?.id]);
 
   // ─── Sign In ──────────────────────────────────────────────────────────
   const signIn = async (email, password) => {
@@ -366,6 +459,23 @@ export const AuthProvider = ({ children }) => {
   // ─── Sign Out ──────────────────────────────────────────────────────────
   const signOut = async () => {
     try {
+      if (user?.id) {
+        try {
+          await supabase
+            .from('user_status')
+            .upsert(
+              {
+                user_id: user.id,
+                status: 'offline',
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id' }
+            );
+        } catch {
+          // Silent
+        }
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         return { error: error.message };
@@ -428,19 +538,20 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Check if User is Premium ──────────────────────────────────────
   const isPremium = () => {
-    return user?.is_premium === true;
+    if (!user) return false;
+    return (
+      user?.is_premium === true ||
+      user?.user_metadata?.is_premium === true
+    );
   };
 
-  // ─── UPGRADE TO PREMIUM ─────────────────────────────────────────────
+  // ─── Upgrade to Premium ────────────────────────────────────────────
   const upgradeToPremium = async () => {
     if (!user) {
       return { success: false, error: 'User not authenticated' };
     }
 
     try {
-      console.log('🔄 Upgrading user to premium:', user.id);
-
-      // Update in database
       const { data, error } = await supabase
         .from('users')
         .update({
@@ -452,35 +563,34 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('❌ Error upgrading to premium:', error);
         return { success: false, error: error.message };
       }
 
-      console.log('✅ Premium activated in database:', data);
+      // ⭐ ALSO update user_metadata so isPremium() sees it instantly
+      try {
+        await supabase.auth.updateUser({
+          data: { is_premium: true },
+        });
+      } catch (metaErr) {
+        // silent
+      }
 
-      // ✅ IMPORTANT: Update local user state with fresh data from database
       setUser(data);
 
-      // Also update settings if needed
       await supabase
         .from('user_settings')
-        .update({
-          is_premium: true,
-        })
+        .update({ is_premium: true })
         .eq('user_id', user.id);
 
-      console.log('✅ Premium activated for user:', user.id);
       return { success: true, data };
 
     } catch (error) {
-      console.error('❌ Error in upgradeToPremium:', error);
       return { success: false, error: error.message };
     }
   };
 
   // ─── UPGRADE WITH CODE ──────────────────────────────────────────────
   const upgradeWithCode = async (code) => {
-    // Check if code is valid
     if (code === '12345') {
       return await upgradeToPremium();
     } else {
@@ -491,9 +601,8 @@ export const AuthProvider = ({ children }) => {
   // ─── REFRESH USER DATA ──────────────────────────────────────────────
   const refreshUser = async () => {
     if (!user) return null;
-    
+
     try {
-      console.log('🔄 Refreshing user data...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -501,15 +610,12 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('❌ Error refreshing user:', error);
         return null;
       }
 
-      console.log('✅ User data refreshed:', data);
       setUser(data);
       return data;
     } catch (error) {
-      console.error('❌ Error in refreshUser:', error);
       return null;
     }
   };
@@ -526,13 +632,11 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('Error fetching user settings:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getUserSettings:', error);
       return null;
     }
   };
@@ -564,7 +668,7 @@ export const AuthProvider = ({ children }) => {
     isPremium,
     upgradeToPremium,
     upgradeWithCode,
-    refreshUser, // ✅ NEW: Refresh user data
+    refreshUser,
   };
 
   return (
