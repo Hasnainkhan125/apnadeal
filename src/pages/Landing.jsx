@@ -1039,17 +1039,10 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
       whileHover={{ scale: 1.06, rotate: -3 }}
       whileTap={{ scale: 0.95 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      className="h-10 sm:h-10 md:h-12 w-auto object-contain flex-shrink-0"
+      className="h-10 sm:h-10 md:h-12 rounded-full w-auto object-contain flex-shrink-0"
     />
   </div>
 
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
 </Link>
 
   {/* Audience pill toggle */}
@@ -1240,17 +1233,10 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
     <img
       src="/logo.png"
       alt="Dealora"
-      className="h-12 w-auto object-contain flex-shrink-0"
+      className="h-12 w-auto rounded-full object-contain flex-shrink-0"
     />
   </div>
 
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
 </div>
                 <div
                   className="inline-flex items-center rounded-full p-0.5 flex-shrink-0"
@@ -1968,7 +1954,7 @@ const Landing = () => {
       priceMonthly: 0, priceYearly: 0,
       cta: "Start Free", popular: false, isFree: true,
       features: [
-        { title: "1 Active Listing", desc: "Post one item at a time." },
+        { title: "5 Active Listing", desc: "Post one item at a time." },
         { title: "3 AI Images / month", desc: "Try NanoBanana image generation." },
         { title: "Live Seller Chat", desc: "Message buyers and sellers in real time." },
         { title: "Social Feed", desc: "Post, like, comment and share." },
@@ -3803,17 +3789,10 @@ const Landing = () => {
     <img
       src="/logo.png"
       alt="Dealora"
-      className="h-8 sm:h-8 w-auto object-contain"
+      className="h-10 sm:h-10 w-auto rounded-full object-contain"
     />
   </div>
 
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
 </Link>
 
         <p

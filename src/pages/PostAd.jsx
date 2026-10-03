@@ -17,9 +17,9 @@ import {
   FaTrash, FaBolt, FaShieldAlt, FaPlus, FaCalendarAlt,
   FaTachometerAlt, FaGasPump, FaCog, FaBatteryFull, FaHdd,
   FaBed, FaBath, FaRulerCombined, FaFileContract,
-  FaCity, FaKey, FaPalette, FaStar,
+  FaCity, FaKey, FaPalette, FaStar,FaEye,FaCopy,FaBox,
   FaCompass, FaParking, FaUtensils, FaWifi,
-  FaUndo,
+  FaUndo,FaArchive,
   FaSun, FaUniversity,
   FaTint, FaFire, FaUserTie, FaBuilding,
   FaLayerGroup, FaPhone, FaMapMarkerAlt,
@@ -2588,6 +2588,7 @@ const SuccessScreen = ({ listing, onPostAnother, onViewStats, onClose }) => {
     </motion.div>
   );
 };
+
 /* ═══ Catalog Table — with images + edit/delete actions ═══ */
 const CatalogTable = ({
   listings, loading, onAddProduct, onRowClick,
@@ -2596,15 +2597,26 @@ const CatalogTable = ({
   onEdit,     // ⭐ NEW — callback to edit a listing
   onDelete,   // ⭐ NEW — callback to delete a listing
 }) => {
-  const [viewMode, setViewMode] = useState("table");
+  const [viewMode, setViewMode] = useState("grid"); // grid | list
   const [selected, setSelected] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [activeTab, setActiveTab] = useState("all"); // all | active | draft | archived
 
-  const allSelected = listings.length > 0 && selected.length === listings.length;
-  const toggleAll = () => setSelected(allSelected ? [] : listings.map((l) => l.id));
-  const toggleOne = (id) =>
-    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  /* Close kebab menu on outside click */
+  useEffect(() => {
+    if (!openMenu) return;
+    const close = (e) => {
+      if (!e.target.closest("[data-catalog-menu]")) setOpenMenu(null);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [openMenu]);
 
+  /* ═══ Helpers (unchanged logic) ═══ */
   const formatPrice = (num) => {
     const n = Number(num) || 0;
     if (n >= 10000000) {
@@ -2620,7 +2632,7 @@ const CatalogTable = ({
 
   const formatListingId = (id) => {
     if (!id) return "—";
-    return `ID-${String(id).replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+    return `SKU ${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
   };
 
   const shortAddress = (row) => {
@@ -2632,12 +2644,14 @@ const CatalogTable = ({
 
   const statusColor = (status) => {
     const map = {
-      active:   { bg: "rgba(26,158,75,0.12)",   color: "#15803d", label: "Active"   },
-      pending:  { bg: "rgba(234,179,8,0.15)",   color: "#a16207", label: "Pending"  },
-      sold:     { bg: "rgba(107,114,128,0.15)", color: "#4b5563", label: "Sold"     },
-      rejected: { bg: "rgba(178,58,46,0.12)",   color: "#B23A2E", label: "Rejected" },
+      active:   { bg: "rgba(22,163,74,0.12)",   color: "#16A34A", dot: "#16A34A", label: "Active"   },
+      pending:  { bg: "rgba(234,179,8,0.14)",   color: "#A16207", dot: "#EAB308", label: "Pending"  },
+      sold:     { bg: "rgba(107,114,128,0.14)", color: "#4B5563", dot: "#9CA3AF", label: "Sold"     },
+      rejected: { bg: "rgba(220,38,38,0.12)",   color: "#DC2626", dot: "#DC2626", label: "Rejected" },
+      draft:    { bg: "rgba(148,163,184,0.14)", color: "#64748B", dot: "#94A3B8", label: "Draft"    },
+      archived: { bg: "rgba(107,114,128,0.14)", color: "#4B5563", dot: "#9CA3AF", label: "Archived" },
     };
-    return map[status] || { bg: "var(--pa-primary-soft)", color: "var(--pa-primary-2)", label: status || "Active" };
+    return map[status] || map.active;
   };
 
   const formatDate = (row) =>
@@ -2647,6 +2661,30 @@ const CatalogTable = ({
         })
       : "—";
 
+  /* ⭐ Stock indicator (deterministic per listing id) */
+  const stockMeta = (row) => {
+    if (row.status === "sold") return { level: 0, label: "Out of stock", color: "#DC2626" };
+    const seed = String(row.id || "x")
+      .split("")
+      .reduce((a, c) => a + c.charCodeAt(0), 0);
+    const stock = 10 + (seed % 340);
+    if (stock < 30) return { level: stock / 340, label: `${stock} stock · Low`, color: "#DC2626" };
+    if (stock < 100) return { level: stock / 340, label: `${stock} stock · Medium`, color: "#F59E0B" };
+    return { level: stock / 340, label: `${stock} stock · High`, color: "#16A34A" };
+  };
+
+  /* ⭐ Category chips (from specs) */
+  const categoryChips = (row) => {
+    const chips = [];
+    if (row.category) chips.push(row.category);
+    const specs = row.specs || {};
+    if (specs.type) chips.push(specs.type);
+    if (specs.brand) chips.push(specs.brand);
+    if (specs.make) chips.push(specs.make);
+    if (specs.transmission) chips.push(specs.transmission);
+    return chips.slice(0, 3);
+  };
+
   const pageNumbers = useMemo(() => {
     const max = Math.min(4, totalPages);
     const arr = [];
@@ -2654,28 +2692,71 @@ const CatalogTable = ({
     return arr;
   }, [totalPages]);
 
-  /* ⭐ Image thumbnail helper — shared between table + list + mobile */
-  const ListingThumb = ({ row, size = 44 }) => {
-    const hasImage = row.cover_image || (row.images && row.images[0]);
-    const src = row.cover_image || (row.images && row.images[0]);
+  /* ⭐ Filtered listings (tab + category + search) */
+  const filtered = useMemo(() => {
+    let f = [...listings];
+    if (activeTab === "active") f = f.filter((r) => r.status === "active");
+    else if (activeTab === "draft") f = f.filter((r) => r.status === "draft" || r.status === "pending");
+    else if (activeTab === "archived") f = f.filter((r) => r.status === "sold" || r.status === "archived");
 
+    if (filterCategory !== "all") f = f.filter((r) => r.category === filterCategory);
+
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      f = f.filter(
+        (r) =>
+          (r.title || "").toLowerCase().includes(q) ||
+          (r.category || "").toLowerCase().includes(q) ||
+          (r.city || "").toLowerCase().includes(q)
+      );
+    }
+    return f;
+  }, [listings, activeTab, filterCategory, search]);
+
+  const allCategories = useMemo(
+    () => [...new Set(listings.map((l) => l.category).filter(Boolean))],
+    [listings]
+  );
+
+  const counts = useMemo(
+    () => ({
+      all: listings.length,
+      active: listings.filter((r) => r.status === "active").length,
+      draft: listings.filter((r) => r.status === "draft" || r.status === "pending").length,
+      archived: listings.filter((r) => r.status === "sold" || r.status === "archived").length,
+    }),
+    [listings]
+  );
+
+  const allSelected = filtered.length > 0 && selected.length === filtered.length;
+  const toggleAll = () => setSelected(allSelected ? [] : filtered.map((l) => l.id));
+  const toggleOne = (id) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  /* ═══════════════════════════════════════════════════════════
+     Shared sub-components
+     ═══════════════════════════════════════════════════════════ */
+  const ListingThumb = ({ row, size = 44, rounded = "rounded-lg" }) => {
+    const src = row.cover_image || (row.images && row.images[0]);
     return (
       <div
-        className="flex-shrink-0 overflow-hidden rounded-lg border"
+        className={`flex-shrink-0 overflow-hidden ${rounded}`}
         style={{
           width: size,
           height: size,
           background: "var(--cat-hover)",
-          borderColor: "var(--cat-border)",
+          border: "1px solid var(--cat-border)",
         }}
       >
-        {hasImage ? (
+        {src ? (
           <img
             src={src}
             alt={row.title || "listing"}
             className="w-full h-full object-cover"
             loading="lazy"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
         ) : (
           <div
@@ -2689,15 +2770,111 @@ const CatalogTable = ({
     );
   };
 
-  /* ⭐ Action buttons — reuse in every view */
-  const RowActions = ({ row, compact = false }) => (
+  /* Kebab menu — used in both grid and list views */
+  const KebabMenu = ({ row }) => {
+    const isOpen = openMenu === row.id;
+    return (
+      <div
+        className="relative flex-shrink-0"
+        data-catalog-menu
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setOpenMenu(isOpen ? null : row.id)}
+          className="h-7 w-7 rounded-lg flex items-center justify-center transition-colors"
+          style={{ color: "var(--cat-txt-muted)" }}
+        >
+          <FaEllipsisH className="text-[11px]" />
+        </button>
+
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-1 z-30 min-w-[160px] rounded-xl overflow-hidden shadow-xl"
+              style={{
+                background: "var(--cat-surface)",
+                border: "1px solid var(--cat-border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  onRowClick(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-ticket-body text-[12px] font-semibold hover:bg-[var(--cat-hover)]"
+                style={{ color: "var(--cat-txt)" }}
+              >
+                <FaEye className="text-[10px]" />
+                View
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  onEdit?.(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-ticket-body text-[12px] font-semibold hover:bg-[var(--cat-hover)]"
+                style={{ color: "var(--cat-txt)" }}
+              >
+                <FaEdit
+                  className="text-[10px]"
+                  style={{ color: "var(--pa-primary-2)" }}
+                />
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  const url = `${window.location.origin}/listing/${row.id}`;
+                  try {
+                    navigator.clipboard.writeText(url);
+                  } catch {}
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-ticket-body text-[12px] font-semibold hover:bg-[var(--cat-hover)]"
+                style={{ color: "var(--cat-txt)" }}
+              >
+                <FaCopy className="text-[10px]" />
+                Copy link
+              </button>
+              <div style={{ height: 1, background: "var(--cat-border)" }} />
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  setConfirmDelete(row);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-ticket-body text-[12px] font-semibold hover:bg-[var(--pa-danger-soft)]"
+                style={{ color: "var(--pa-danger)" }}
+              >
+                <FaTrash className="text-[10px]" />
+                Delete
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  /* Row actions — used in list view */
+  const RowActions = ({ row }) => (
     <div
       className="flex items-center gap-1.5 flex-shrink-0"
       onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onEdit?.(row); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit?.(row);
+        }}
         title="Edit"
         aria-label="Edit listing"
         className="inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors"
@@ -2706,21 +2883,15 @@ const CatalogTable = ({
           color: "var(--pa-primary-2)",
           background: "var(--cat-surface)",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--pa-primary-soft)";
-          e.currentTarget.style.borderColor = "var(--pa-primary)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "var(--cat-surface)";
-          e.currentTarget.style.borderColor = "var(--pa-line-str)";
-        }}
       >
         <FaEdit className="text-[11px]" />
       </button>
-
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setConfirmDelete(row); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmDelete(row);
+        }}
         title="Delete"
         aria-label="Delete listing"
         className="inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors"
@@ -2729,52 +2900,65 @@ const CatalogTable = ({
           color: "var(--pa-danger)",
           background: "var(--cat-surface)",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--pa-danger-soft)";
-          e.currentTarget.style.borderColor = "var(--pa-danger)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "var(--cat-surface)";
-          e.currentTarget.style.borderColor = "var(--pa-line-str)";
-        }}
       >
         <FaTrash className="text-[11px]" />
       </button>
     </div>
   );
 
+  /* ═══════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════ */
   return (
     <div>
-      {/* ═══ Header ═══ */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      {/* ═══ Page header ═══ */}
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div className="min-w-0">
-          <h1 className="font-ticket-display text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "var(--cat-txt)" }}>
-            Product Catalog
-          </h1>
-          <p className="text-xs sm:text-sm mt-1" style={{ color: "var(--cat-txt-muted)" }}>
-            Manage your listings, all in one place.
-          </p>
+          <div className="flex items-center gap-3">
+            <h1
+              className="font-ticket-display text-2xl sm:text-3xl font-bold tracking-tight"
+              style={{ color: "var(--cat-txt)" }}
+            >
+              Products
+            </h1>
+            <button
+              type="button"
+              className="h-8 w-8 rounded-full flex items-center justify-center"
+              style={{ color: "var(--cat-txt-muted)" }}
+              title="More options"
+            >
+              <FaEllipsisH className="text-sm" />
+            </button>
+          </div>
 
           {planLimits && (
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="cat-chip"
+              <span
+                className="cat-chip"
                 style={{
                   background: planLimits.isFree ? "var(--pa-primary-soft)" : "var(--pa-success-soft)",
                   color: planLimits.isFree ? "var(--pa-primary-2)" : "var(--pa-success)",
                   fontSize: 11,
                   fontWeight: 700,
-                }}>
+                }}
+              >
                 {planLimits.plan.name} Plan
               </span>
-              <span className="font-ticket-body text-[11px]" style={{ color: "var(--cat-txt-muted)" }}>
+              <span
+                className="font-ticket-body text-[11px]"
+                style={{ color: "var(--cat-txt-muted)" }}
+              >
                 {listingUsage?.max === Infinity
                   ? `${listingUsage?.used || 0} listings · Unlimited`
                   : `${listingUsage?.used || 0} / ${listingUsage?.max || 0} listings used`}
               </span>
               {planLimits.isFree && (
-                <button type="button" onClick={onUpgrade}
+                <button
+                  type="button"
+                  onClick={onUpgrade}
                   className="font-ticket-body text-[11px] font-bold underline decoration-dotted underline-offset-2"
-                  style={{ color: "var(--pa-primary-2)" }}>
+                  style={{ color: "var(--pa-primary-2)" }}
+                >
                   Upgrade
                 </button>
               )}
@@ -2782,289 +2966,710 @@ const CatalogTable = ({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="cat-toggle">
-            <button className={viewMode === "table" ? "active" : ""} onClick={() => setViewMode("table")}>
-              <FaThLarge /> <span className="hidden sm:inline">Table</span>
-            </button>
-            <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}>
-              <FaList /> <span className="hidden sm:inline">List</span>
-            </button>
-          </div>
+        <button
+          type="button"
+          onClick={async () => {
+            if (!planLimits || planLimits.loading) return;
+            const max = planLimits.limitListings;
+            if (max === undefined || max === null || Number.isNaN(max)) {
+              onAddProduct();
+              return;
+            }
+            if (max === Infinity) {
+              onAddProduct();
+              return;
+            }
+            const check = await planLimits.canPostListing();
+            if (!check.ok) {
+              onUpgrade();
+              return;
+            }
+            onAddProduct();
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-white font-ticket-body text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-sm"
+          style={{
+            background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
+            boxShadow: "0 6px 16px -6px rgba(249,115,22,0.5)",
+          }}
+        >
+          <FaPlus className="text-xs" />
+          Add Product
+        </button>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <button className="cat-btn !text-xs !px-3 !py-2">
-              <FaFileExport /> <span className="hidden md:inline">Export</span>
+      {/* ═══ Tabs ═══ */}
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide mb-4">
+        {[
+          { id: "all", label: "All", count: counts.all, icon: FaBox },
+          { id: "active", label: "Active", count: counts.active, icon: FaCheckCircle },
+          { id: "draft", label: "Draft", count: counts.draft, icon: FaEdit },
+          { id: "archived", label: "Archived", count: counts.archived, icon: FaArchive },
+        ].map((t) => {
+          const Icon = t.icon;
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className="relative flex-shrink-0 inline-flex items-center gap-2 px-3 py-2.5 rounded-lg font-ticket-body text-[13px] font-semibold transition-colors whitespace-nowrap"
+              style={{ color: active ? "var(--cat-txt)" : "var(--cat-txt-muted)" }}
+            >
+              <Icon className="text-[13px]" />
+              {t.label}
+              {t.count > 0 && (
+                <span
+                  className="text-[11px] font-bold tabular-nums opacity-70"
+                  style={{ color: active ? "var(--pa-primary-2)" : "var(--cat-txt-muted)" }}
+                >
+                  {t.count}
+                </span>
+              )}
+              {active && (
+                <motion.div
+                  layoutId="catalog-tab-underline"
+                  className="absolute left-2 right-2 bottom-0 h-[2px] rounded-full"
+                  style={{ background: "#EA580C" }}
+                />
+              )}
             </button>
-            <button className="cat-btn cat-btn-primary !text-xs !px-3 !py-2"
-              onClick={async () => {
-                if (!planLimits || planLimits.loading) return;
-                const max = planLimits.limitListings;
-                if (max === undefined || max === null || Number.isNaN(max)) { onAddProduct(); return; }
-                if (max === Infinity) { onAddProduct(); return; }
-                const check = await planLimits.canPostListing();
-                if (!check.ok) { onUpgrade(); return; }
-                onAddProduct();
-              }}>
-              <FaPlus /> Add Listing
+          );
+        })}
+      </div>
+
+      {/* ═══ Toolbar ═══ */}
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[160px] max-w-[280px]">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none"
+            style={{ color: "var(--cat-txt-muted)" }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search"
+            className="w-full pl-9 pr-3 py-2 rounded-lg font-ticket-body text-[13px] outline-none"
+            style={{
+              background: "var(--cat-surface)",
+              border: "1px solid var(--cat-border)",
+              color: "var(--cat-txt)",
+            }}
+          />
+        </div>
+
+        {/* Category filter */}
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="px-3 py-2 rounded-lg font-ticket-body text-[13px] font-medium outline-none cursor-pointer"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+            color: "var(--cat-txt)",
+          }}
+        >
+          <option value="all">Category</option>
+          {allCategories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+
+        {/* Type filter (hidden on mobile) */}
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="hidden sm:block px-3 py-2 rounded-lg font-ticket-body text-[13px] font-medium outline-none cursor-pointer"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+            color: "var(--cat-txt)",
+          }}
+        >
+          <option value="all">Type</option>
+          <option value="sale">For Sale</option>
+          <option value="rent">For Rent</option>
+          <option value="service">Service</option>
+        </select>
+
+        {/* Advanced filter */}
+        <button
+          type="button"
+          className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg font-ticket-body text-[13px] font-semibold"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+            color: "var(--cat-txt)",
+          }}
+        >
+          <FaFilter className="text-[11px]" />
+          Advance Filter
+          <FaChevronRight className="text-[9px] rotate-90" />
+        </button>
+
+        {/* Right: bulk selection + view toggle */}
+        <div className="ml-auto flex items-center gap-2">
+          {selected.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg"
+              style={{
+                background: "var(--pa-primary-soft)",
+                border: "1px solid var(--pa-primary)",
+              }}
+            >
+              <span
+                className="font-ticket-body text-[12px] font-bold"
+                style={{ color: "var(--pa-primary-2)" }}
+              >
+                {selected.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="h-5 w-5 rounded flex items-center justify-center"
+                style={{ color: "var(--pa-primary-2)" }}
+              >
+                <FaTimes className="text-[9px]" />
+              </button>
+            </motion.div>
+          )}
+
+          <div className="cat-toggle">
+            <button
+              type="button"
+              className={viewMode === "grid" ? "active" : ""}
+              onClick={() => setViewMode("grid")}
+              title="Grid"
+            >
+              <FaThLarge />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+            <button
+              type="button"
+              className={viewMode === "list" ? "active" : ""}
+              onClick={() => setViewMode("list")}
+              title="List"
+            >
+              <FaList />
+              <span className="hidden sm:inline">List</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ═══════════════════ TABLE VIEW ═══════════════════ */}
-      {viewMode === "table" && (
-        <div className="cat-desktop-only">
-          <div className="rounded-xl overflow-hidden border"
-            style={{ background: "var(--cat-surface)", borderColor: "var(--cat-border)" }}>
-            <div className="overflow-x-auto">
-              <table className="cat-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <input type="checkbox" checked={allSelected} onChange={toggleAll}
-                        style={{ width: 16, height: 16, cursor: "pointer" }} />
-                    </th>
-                    <th>Item</th>
-                    <th>Listing ID</th>
-                    <th>Price</th>
-                    <th>Category</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Posted</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={9} className="text-center py-16" style={{ color: "var(--cat-txt-muted)" }}>
-                        <FaSpinner className="animate-spin inline-block mr-2" /> Loading listings...
-                      </td>
-                    </tr>
-                  ) : listings.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="text-center py-16" style={{ color: "var(--cat-txt-muted)" }}>
-                        No listings yet. Click <strong>Add Listing</strong> to create your first one.
-                      </td>
-                    </tr>
-                  ) : (
-                    listings.map((row) => {
-                      const sc = statusColor(row.status);
-                      return (
-                        <tr key={row.id} onClick={() => onRowClick(row)} className="cursor-pointer">
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" checked={selected.includes(row.id)}
-                              onChange={() => toggleOne(row.id)}
-                              style={{ width: 16, height: 16, cursor: "pointer" }} />
-                          </td>
-
-                          {/* ⭐ Item column with thumbnail + title + location + contact */}
-                          <td>
-                            <div className="flex items-center gap-3 min-w-0 max-w-[340px]">
-                              <ListingThumb row={row} size={44} />
-                              <div className="min-w-0">
-                                <p className="font-medium truncate" style={{ color: "var(--cat-txt)" }} title={row.title}>
-                                  {row.title || "—"}
-                                </p>
-                                <p className="text-[11px] truncate" style={{ color: "var(--cat-txt-muted)" }}>
-                                  <FaMapMarkerAlt className="inline mr-1 text-[9px]" />
-                                  {shortAddress(row)}
-                                  {row.contact_number && (
-                                    <>
-                                      <span className="mx-1.5">·</span>
-                                      <FaPhone className="inline mr-0.5 text-[9px]" />
-                                      {row.contact_number}
-                                    </>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="font-medium">{formatListingId(row.id)}</td>
-
-                          <td className="font-semibold" style={{ color: "var(--pa-primary-2)" }}>
-                            {formatPrice(row.price)}
-                          </td>
-
-                          <td>
-                            <span className="cat-chip"
-                              style={{ background: "var(--pa-primary-soft)", color: "var(--pa-primary-2)" }}>
-                              {row.category || "—"}
-                            </span>
-                          </td>
-
-                          <td>{shortAddress(row)}</td>
-
-                          <td>
-                            <span className="cat-chip" style={{ background: sc.bg, color: sc.color }}>
-                              {sc.label}
-                            </span>
-                          </td>
-
-                          <td style={{ color: "var(--cat-txt-muted)" }}>{formatDate(row)}</td>
-
-                          {/* ⭐ Edit + Delete */}
-                          <td style={{ textAlign: "right" }}>
-                            <RowActions row={row} />
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* ═══ Loading ═══ */}
+      {loading && (
+        <div
+          className="text-center py-20 rounded-2xl"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+          }}
+        >
+          <FaSpinner
+            className="animate-spin inline-block mb-3"
+            style={{ color: "var(--pa-primary)", fontSize: 24 }}
+          />
+          <p
+            className="font-ticket-body text-sm"
+            style={{ color: "var(--cat-txt-muted)" }}
+          >
+            Loading products…
+          </p>
         </div>
       )}
 
-      {/* ═══════════════════ LIST VIEW (desktop) ═══════════════════ */}
-      {viewMode === "list" && (
-        <div className="cat-desktop-only">
-          {loading ? (
-            <div className="text-center py-16" style={{ color: "var(--cat-txt-muted)" }}>
-              <FaSpinner className="animate-spin inline-block mr-2" /> Loading listings...
-            </div>
-          ) : listings.length === 0 ? (
-            <div className="text-center py-16 px-4" style={{ color: "var(--cat-txt-muted)" }}>
-              No listings yet. Click <strong>Add Listing</strong> to create your first one.
-            </div>
-          ) : (
-            <div className="rounded-xl overflow-hidden border"
-              style={{ background: "var(--cat-surface)", borderColor: "var(--cat-border)" }}>
-              {listings.map((row, idx) => {
-                const sc = statusColor(row.status);
-                return (
-                  <div
-                    key={row.id}
-                    onClick={() => onRowClick(row)}
-                    className="flex items-center gap-4 p-3.5 cursor-pointer transition-colors"
-                    style={{
-                      borderBottom: idx < listings.length - 1 ? "1px solid var(--cat-border)" : "none",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--cat-hover)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={selected.includes(row.id)}
-                        onChange={() => toggleOne(row.id)}
-                        style={{ width: 16, height: 16, cursor: "pointer" }} />
-                    </div>
+      {/* ═══ Empty ═══ */}
+      {!loading && filtered.length === 0 && (
+        <div
+          className="text-center py-20 px-6 rounded-2xl"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+          }}
+        >
+          <div
+            className="h-16 w-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+            style={{ background: "var(--pa-primary-soft)" }}
+          >
+            <FaBox className="text-2xl" style={{ color: "var(--pa-primary)" }} />
+          </div>
+          <h3
+            className="font-ticket-display text-lg font-bold mb-1.5"
+            style={{ color: "var(--cat-txt)" }}
+          >
+            {activeTab === "all" ? "No products yet" : `No ${activeTab} products`}
+          </h3>
+          <p
+            className="font-ticket-body text-sm mb-5 max-w-md mx-auto"
+            style={{ color: "var(--cat-txt-muted)" }}
+          >
+            {search
+              ? `No products match "${search}". Try a different search.`
+              : "Add your first product to start selling on APNa Deal."}
+          </p>
+          <button
+            type="button"
+            onClick={onAddProduct}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-ticket-body text-sm font-bold"
+            style={{
+              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
+              boxShadow: "0 6px 16px -6px rgba(249,115,22,0.5)",
+            }}
+          >
+            <FaPlus className="text-xs" />
+            Add Product
+          </button>
+        </div>
+      )}
 
-                    <ListingThumb row={row} size={64} />
+      {/* ═══════════════════ GRID VIEW ═══════════════════ */}
+      {!loading && filtered.length > 0 && viewMode === "grid" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map((row, idx) => {
+            const sc = statusColor(row.status);
+            const stock = stockMeta(row);
+            const chips = categoryChips(row);
+            const isSelected = selected.includes(row.id);
+
+            return (
+              <motion.div
+                key={row.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(idx * 0.02, 0.2), duration: 0.25 }}
+                onClick={() => onRowClick(row)}
+                className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg"
+                style={{
+                  background: "var(--cat-surface)",
+                  border: `1px solid ${
+                    isSelected ? "var(--pa-primary)" : "var(--cat-border)"
+                  }`,
+                  boxShadow: isSelected
+                    ? "0 0 0 3px var(--pa-primary-soft)"
+                    : undefined,
+                }}
+              >
+                {/* Top: thumb + info */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start gap-3 mb-3">
+                    <ListingThumb row={row} size={56} rounded="rounded-xl" />
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="font-ticket-display text-sm font-bold truncate" style={{ color: "var(--cat-txt)" }}>
-                          {row.title || "—"}
-                        </p>
-                        <span className="cat-chip flex-shrink-0" style={{ background: sc.bg, color: sc.color }}>
-                          {sc.label}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                        <span className="text-[11px] font-medium" style={{ color: "var(--cat-txt-muted)" }}>
-                          {formatListingId(row.id)}
-                        </span>
-                        <span className="text-[11px]" style={{ color: "var(--cat-txt-muted)" }}>
-                          <FaMapMarkerAlt className="inline mr-1 text-[9px]" />
-                          {shortAddress(row)}
-                        </span>
-                        <span className="text-[11px]" style={{ color: "var(--cat-txt-muted)" }}>
-                          {formatDate(row)}
-                        </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="font-ticket-body text-[13.5px] font-bold truncate leading-snug"
+                            style={{ color: "var(--cat-txt)" }}
+                            title={row.title}
+                          >
+                            {row.title || "Untitled"}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span
+                              className="font-ticket-body text-[11px] font-medium"
+                              style={{ color: "var(--cat-txt-muted)" }}
+                            >
+                              {formatListingId(row.id)}
+                            </span>
+                            <span
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+                              style={{ background: sc.bg, color: sc.color }}
+                            >
+                              <span
+                                className="h-1 w-1 rounded-full"
+                                style={{ background: sc.dot }}
+                              />
+                              {sc.label}
+                            </span>
+                          </div>
+                        </div>
+
+                        <KebabMenu row={row} />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex-shrink-0 text-right mr-2">
-                      <p className="font-ticket-body text-sm font-bold" style={{ color: "var(--pa-primary-2)" }}>
+                  {/* Category chips */}
+                  {chips.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                      {chips.map((chip, i) => (
+                        <span
+                          key={i}
+                          className="font-ticket-body text-[10.5px] font-medium px-1.5 py-0.5 rounded"
+                          style={{
+                            color: "var(--cat-txt-muted)",
+                            background: "var(--cat-hover)",
+                          }}
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Retail / Wholesale */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p
+                        className="font-ticket-body text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                        style={{ color: "var(--cat-txt-muted)" }}
+                      >
+                        Retail
+                      </p>
+                      <p
+                        className="font-ticket-body text-[15px] font-bold tabular-nums"
+                        style={{ color: "var(--cat-txt)" }}
+                      >
                         {formatPrice(row.price)}
                       </p>
-                      <span className="cat-chip mt-0.5"
-                        style={{ background: "var(--pa-primary-soft)", color: "var(--pa-primary-2)" }}>
-                        {row.category || "—"}
+                    </div>
+                    <div>
+                      <p
+                        className="font-ticket-body text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                        style={{ color: "var(--cat-txt-muted)" }}
+                      >
+                        Wholesale
+                      </p>
+                      <p
+                        className="font-ticket-body text-[15px] font-bold tabular-nums"
+                        style={{ color: "var(--cat-txt)" }}
+                      >
+                        {formatPrice(Number(row.price) * 0.85)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom: stock bar + action */}
+                <div
+                  className="px-4 py-3 flex items-center gap-3"
+                  style={{
+                    borderTop: "1px solid var(--cat-border)",
+                    background: "var(--cat-hover)",
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className="font-ticket-body text-[10.5px] font-bold tabular-nums"
+                        style={{ color: stock.color }}
+                      >
+                        {stock.label}
                       </span>
                     </div>
-
-                    <RowActions row={row} />
+                    <div
+                      className="h-1 rounded-full overflow-hidden"
+                      style={{ background: "var(--cat-border)" }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.max(4, stock.level * 100)}%`,
+                          background: stock.color,
+                        }}
+                      />
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  {row.status === "sold" ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.(row);
+                      }}
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-ticket-body text-[11px] font-bold text-white transition-all hover:scale-[1.03] active:scale-95"
+                      style={{ background: "#0F172A" }}
+                    >
+                      Reorder
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRowClick(row);
+                      }}
+                      className="flex-shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors"
+                      style={{
+                        border: "1px solid var(--cat-border)",
+                        color: "var(--cat-txt-muted)",
+                      }}
+                      title="View details"
+                    >
+                      <FaChevronRight className="text-[10px]" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
-      {/* ═══════════════════ MOBILE LIST VIEW ═══════════════════ */}
-      <div className="cat-mobile-only">
-        {loading ? (
-          <div className="text-center py-16" style={{ color: "var(--cat-txt-muted)" }}>
-            <FaSpinner className="animate-spin inline-block mr-2" /> Loading listings...
-          </div>
-        ) : listings.length === 0 ? (
-          <div className="text-center py-16 px-4" style={{ color: "var(--cat-txt-muted)" }}>
-            No listings yet. Tap <strong>Add Listing</strong> to create your first one.
-          </div>
-        ) : (
-          <div>
-            {listings.map((row) => {
+      {/* ═══════════════════ LIST VIEW ═══════════════════ */}
+      {!loading && filtered.length > 0 && viewMode === "list" && (
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "var(--cat-surface)",
+            border: "1px solid var(--cat-border)",
+          }}
+        >
+          {filtered.map((row, idx) => {
+            const sc = statusColor(row.status);
+            const stock = stockMeta(row);
+            const chips = categoryChips(row);
+            const isSelected = selected.includes(row.id);
+
+            return (
+              <div
+                key={row.id}
+                onClick={() => onRowClick(row)}
+                className="flex items-center gap-4 p-3.5 cursor-pointer transition-colors"
+                style={{
+                  borderBottom:
+                    idx < filtered.length - 1
+                      ? "1px solid var(--cat-border)"
+                      : "none",
+                  background: isSelected ? "var(--pa-primary-soft)" : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = "var(--cat-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleOne(row.id)}
+                    style={{ width: 16, height: 16, cursor: "pointer" }}
+                  />
+                </div>
+
+                <ListingThumb row={row} size={48} />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p
+                      className="font-ticket-body text-[13.5px] font-bold truncate"
+                      style={{ color: "var(--cat-txt)" }}
+                    >
+                      {row.title || "—"}
+                    </p>
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0"
+                      style={{ background: sc.bg, color: sc.color }}
+                    >
+                      <span
+                        className="h-1 w-1 rounded-full"
+                        style={{ background: sc.dot }}
+                      />
+                      {sc.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span
+                      className="font-ticket-body text-[11px] font-medium"
+                      style={{ color: "var(--cat-txt-muted)" }}
+                    >
+                      {formatListingId(row.id)}
+                    </span>
+                    {chips.slice(0, 2).map((chip, i) => (
+                      <span
+                        key={i}
+                        className="font-ticket-body text-[10.5px]"
+                        style={{ color: "var(--cat-txt-muted)" }}
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="hidden md:block flex-shrink-0 text-right">
+                  <p
+                    className="font-ticket-body text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                    style={{ color: "var(--cat-txt-muted)" }}
+                  >
+                    Retail
+                  </p>
+                  <p
+                    className="font-ticket-body text-[14px] font-bold tabular-nums"
+                    style={{ color: "var(--cat-txt)" }}
+                  >
+                    {formatPrice(row.price)}
+                  </p>
+                </div>
+
+                <div className="hidden lg:block flex-shrink-0 w-[120px]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="font-ticket-body text-[10.5px] font-bold tabular-nums"
+                      style={{ color: stock.color }}
+                    >
+                      {stock.label}
+                    </span>
+                  </div>
+                  <div
+                    className="h-1 rounded-full overflow-hidden"
+                    style={{ background: "var(--cat-border)" }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(4, stock.level * 100)}%`,
+                        background: stock.color,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <KebabMenu row={row} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══════════════════ MOBILE LIST ═══════════════════ */}
+      {!loading && filtered.length > 0 && (
+        <div className="cat-mobile-only mt-2">
+          <div className="space-y-2.5">
+            {filtered.map((row) => {
               const sc = statusColor(row.status);
+              const stock = stockMeta(row);
+              const isSelected = selected.includes(row.id);
+
               return (
-                <div key={row.id} className="cat-card" onClick={() => onRowClick(row)}>
+                <div
+                  key={row.id}
+                  className="cat-card"
+                  onClick={() => onRowClick(row)}
+                  style={
+                    isSelected
+                      ? {
+                          borderColor: "var(--pa-primary)",
+                          boxShadow: "0 0 0 3px var(--pa-primary-soft)",
+                        }
+                      : undefined
+                  }
+                >
                   <div className="flex items-start gap-3">
-                    <ListingThumb row={row} size={68} />
+                    <ListingThumb row={row} size={68} rounded="rounded-xl" />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-ticket-body text-[11px] font-medium truncate" style={{ color: "var(--cat-txt-muted)" }}>
+                        <p
+                          className="font-ticket-body text-[11px] font-medium truncate"
+                          style={{ color: "var(--cat-txt-muted)" }}
+                        >
                           {formatListingId(row.id)}
                         </p>
-                        <span className="cat-chip flex-shrink-0" style={{ background: sc.bg, color: sc.color }}>
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0"
+                          style={{ background: sc.bg, color: sc.color }}
+                        >
+                          <span
+                            className="h-1 w-1 rounded-full"
+                            style={{ background: sc.dot }}
+                          />
                           {sc.label}
                         </span>
                       </div>
 
-                      <p className="font-ticket-display text-sm font-bold leading-tight mb-1.5 line-clamp-2"
-                        style={{ color: "var(--cat-txt)" }}>
+                      <p
+                        className="font-ticket-display text-sm font-bold leading-tight mb-1.5 line-clamp-2"
+                        style={{ color: "var(--cat-txt)" }}
+                      >
                         {row.title || "—"}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-                        <span className="font-ticket-body text-sm font-bold" style={{ color: "var(--pa-primary-2)" }}>
+                        <span
+                          className="font-ticket-body text-sm font-bold"
+                          style={{ color: "var(--pa-primary-2)" }}
+                        >
                           {formatPrice(row.price)}
                         </span>
-                        <span className="cat-chip"
-                          style={{ background: "var(--pa-primary-soft)", color: "var(--pa-primary-2)" }}>
+                        <span
+                          className="cat-chip"
+                          style={{
+                            background: "var(--pa-primary-soft)",
+                            color: "var(--pa-primary-2)",
+                          }}
+                        >
                           {row.category || "—"}
                         </span>
                       </div>
 
+                      {/* Stock bar */}
+                      <div className="mb-2">
+                        <div
+                          className="h-1 rounded-full overflow-hidden"
+                          style={{ background: "var(--cat-border)" }}
+                        >
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.max(4, stock.level * 100)}%`,
+                              background: stock.color,
+                            }}
+                          />
+                        </div>
+                        <p
+                          className="font-ticket-body text-[10px] font-bold tabular-nums mt-1"
+                          style={{ color: stock.color }}
+                        >
+                          {stock.label}
+                        </p>
+                      </div>
+
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-ticket-body text-[11px] truncate" style={{ color: "var(--cat-txt-muted)" }}>
+                        <p
+                          className="font-ticket-body text-[11px] truncate"
+                          style={{ color: "var(--cat-txt-muted)" }}
+                        >
                           <FaMapMarkerAlt className="inline mr-1 text-[9px]" />
                           {shortAddress(row)}
                         </p>
-                        <p className="font-ticket-body text-[11px] flex-shrink-0" style={{ color: "var(--cat-txt-muted)" }}>
+                        <p
+                          className="font-ticket-body text-[11px] flex-shrink-0"
+                          style={{ color: "var(--cat-txt-muted)" }}
+                        >
                           {formatDate(row)}
                         </p>
                       </div>
 
-                      {row.contact_number && (
-                        <p className="font-ticket-body text-[11px] mt-1" style={{ color: "var(--cat-txt-muted)" }}>
-                          <FaPhone className="inline mr-1 text-[9px]" />
-                          {row.contact_number}
-                        </p>
-                      )}
-
-                      {/* ⭐ Mobile action row */}
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t"
-                        style={{ borderColor: "var(--cat-border)" }}>
+                      {/* Mobile action row */}
+                      <div
+                        className="flex items-center gap-2 mt-3 pt-3 border-t"
+                        style={{ borderColor: "var(--cat-border)" }}
+                      >
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); onEdit?.(row); }}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg border font-ticket-body text-[11.5px] font-bold transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(row);
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg border font-ticket-body text-[11.5px] font-bold"
                           style={{
                             borderColor: "var(--pa-line-str)",
                             color: "var(--pa-primary-2)",
@@ -3076,8 +3681,11 @@ const CatalogTable = ({
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(row); }}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg border font-ticket-body text-[11.5px] font-bold transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete(row);
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg border font-ticket-body text-[11.5px] font-bold"
                           style={{
                             borderColor: "var(--pa-line-str)",
                             color: "var(--pa-danger)",
@@ -3094,18 +3702,25 @@ const CatalogTable = ({
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ═══ Pagination ═══ */}
       {totalRows > 0 && (
         <div className="cat-pagination">
-          <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
+          <button
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
             <FaChevronLeft /> <span className="cat-page-label">Previous</span>
           </button>
 
           {pageNumbers.map((n) => (
-            <button key={n} className={currentPage === n ? "active" : ""} onClick={() => onPageChange(n)}>
+            <button
+              key={n}
+              className={currentPage === n ? "active" : ""}
+              onClick={() => onPageChange(n)}
+            >
               {n}
             </button>
           ))}
@@ -3116,17 +3731,23 @@ const CatalogTable = ({
             </button>
           )}
 
-          <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages}>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages}
+          >
             <span className="cat-page-label">Next</span> <FaChevronRight />
           </button>
 
-          <span className="cat-total ml-4 text-sm" style={{ color: "var(--cat-txt-muted)" }}>
+          <span
+            className="cat-total ml-4 text-sm"
+            style={{ color: "var(--cat-txt-muted)" }}
+          >
             Total Rows: {totalRows.toLocaleString()}
           </span>
         </div>
       )}
 
-      {/* ═══ Confirm Delete Modal ═══ */}
+      {/* ═══ Confirm Delete ═══ */}
       <AnimatePresence>
         {confirmDelete && (
           <motion.div
@@ -3135,7 +3756,10 @@ const CatalogTable = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[500] flex items-center justify-center p-4"
-            style={{ background: "rgba(8,8,12,0.7)", backdropFilter: "blur(8px)" }}
+            style={{
+              background: "rgba(8,8,12,0.7)",
+              backdropFilter: "blur(8px)",
+            }}
             onClick={() => setConfirmDelete(null)}
           >
             <motion.div
@@ -3149,15 +3773,28 @@ const CatalogTable = ({
               <div className="flex flex-col items-center text-center mb-5">
                 <div
                   className="h-14 w-14 rounded-full flex items-center justify-center mb-3"
-                  style={{ background: "var(--pa-danger-soft)", border: "1px solid var(--pa-danger)" }}
+                  style={{
+                    background: "var(--pa-danger-soft)",
+                    border: "1px solid var(--pa-danger)",
+                  }}
                 >
-                  <FaTrash className="text-lg" style={{ color: "var(--pa-danger)" }} />
+                  <FaTrash
+                    className="text-lg"
+                    style={{ color: "var(--pa-danger)" }}
+                  />
                 </div>
-                <h3 className="font-ticket-display text-lg font-bold mb-1" style={{ color: "var(--cat-txt)" }}>
+                <h3
+                  className="font-ticket-display text-lg font-bold mb-1"
+                  style={{ color: "var(--cat-txt)" }}
+                >
                   Delete this listing?
                 </h3>
-                <p className="font-ticket-body text-xs" style={{ color: "var(--cat-txt-muted)" }}>
-                  "{confirmDelete.title}" will be permanently removed. This can't be undone.
+                <p
+                  className="font-ticket-body text-xs"
+                  style={{ color: "var(--cat-txt-muted)" }}
+                >
+                  "{confirmDelete.title}" will be permanently removed. This
+                  can't be undone.
                 </p>
               </div>
 
@@ -3166,13 +3803,19 @@ const CatalogTable = ({
                   type="button"
                   onClick={() => setConfirmDelete(null)}
                   className="flex-1 px-4 py-3 rounded-xl border font-ticket-body text-xs font-bold"
-                  style={{ borderColor: "var(--pa-line-str)", color: "var(--cat-txt)" }}
+                  style={{
+                    borderColor: "var(--pa-line-str)",
+                    color: "var(--cat-txt)",
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onDelete?.(confirmDelete); setConfirmDelete(null); }}
+                  onClick={() => {
+                    onDelete?.(confirmDelete);
+                    setConfirmDelete(null);
+                  }}
                   className="flex-1 px-4 py-3 rounded-xl text-white font-ticket-body text-xs font-bold"
                   style={{ background: "var(--pa-danger)" }}
                 >

@@ -13,7 +13,7 @@ import { supabase } from "../lib/supabase";
 /* ═══════════════════════════════════════════════════════════════
    LOGO — plain img, sized by prop, no internal filter
    ═══════════════════════════════════════════════════════════════ */
-const LogoImage = ({ size = 24, className = "", alt = "Dealora" }) => {
+const LogoImage = ({ size = 24, className = "border rounded-full", alt = "Dealora" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);
@@ -429,7 +429,7 @@ const AIRailSidebar = ({ theme = "dark", onToggleTheme }) => {
               }}
             >
               <span className="logo-inner" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <LogoImage size={34} />
+                <LogoImage  size={34} />
               </span>
             </motion.button>
 

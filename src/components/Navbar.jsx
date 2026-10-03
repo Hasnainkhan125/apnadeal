@@ -2,6 +2,11 @@
 // Floating glass capsule · animated gradient border · premium micro-interactions
 // ⭐ Plan-aware: reads free / seller / pro from PlanContext
 // ⭐ Mobile drawer is now a BOTTOM SHEET (menu only — cart + theme live in the navbar)
+// ⭐ Menu (hamburger) moved to LEFT — hover opens full-width mega dropdown
+// ⭐ Profile + Cart — NO background, plain icon/avatar
+// ⭐ Theme toggle lives INSIDE the profile dropdown + mobile sheet
+// ⭐ Hamburger hidden on mobile — profile opens the bottom sheet
+// ⭐ Search submit button — subtle background, no contrast
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -10,7 +15,7 @@ import {
   FaUserPlus, FaHome, FaWallet, FaStar, FaFire, FaBolt, FaSpinner,
   FaShieldAlt, FaCar, FaRegPaperPlane, FaMobileAlt, FaLaptop, FaList,
   FaChartBar, FaPlus, FaArrowRight, FaShoppingCart, FaTrash, FaHeadset,
-  FaEdit, FaImage, FaChartLine, FaMagic, FaGem,
+  FaEdit, FaImage, FaChartLine, FaMagic, FaGem, FaBars,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
@@ -36,7 +41,6 @@ const GUEST_NAV_LINKS = [
   { label: "FAQ",        id: "faq" },
   { label: "Protection", id: "protection" },
 ];
-
 /* ═══════════════════════════════════════════════════════════════
    FONTS + THEME TOKENS
    ═══════════════════════════════════════════════════════════════ */
@@ -102,9 +106,7 @@ const FontStyles = () => (
     /* ═══════ ADVANCED FLOATING GLASS NAV ═══════ */
     .nav-advanced-shell {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 50;
       transition: padding 0.5s cubic-bezier(0.16,1,0.3,1);
     }
@@ -115,6 +117,176 @@ const FontStyles = () => (
       padding: 0 12px;
       transition: padding 0.5s cubic-bezier(0.16,1,0.3,1);
     }
+
+    /* ⭐ MODERN CENTERED SEARCH */
+    .nav-search-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .nav-search-form {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      border-radius: 999px;
+      background: var(--nav-surface);
+      border: 1px solid var(--nav-line);
+      padding: 3px 3px 3px 16px;
+      transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+    }
+    .theme-dark .nav-search-form { background: rgba(255,255,255,0.05); }
+    .theme-light .nav-search-form { background: rgba(0,0,0,0.035); }
+
+    .nav-search-form:hover { border-color: var(--nav-line-str); }
+    .nav-search-form.is-focused {
+      border-color: var(--nav-primary-2);
+      box-shadow:
+        0 0 0 4px var(--nav-primary-soft),
+        0 6px 22px -10px var(--nav-primary-glow);
+      background: var(--nav-panel);
+    }
+
+    .nav-search-icon-left {
+      color: var(--nav-txt-faint);
+      flex-shrink: 0;
+      margin-right: 8px;
+      transition: color 0.2s ease;
+    }
+    .nav-search-form.is-focused .nav-search-icon-left {
+      color: var(--nav-primary-2);
+    }
+
+    .nav-search-input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--nav-txt);
+      padding: 0;
+    }
+    .nav-search-input::placeholder {
+      color: var(--nav-txt-faint);
+      font-weight: 500;
+    }
+
+    /* ⭐ Search submit — SUBTLE background, no strong contrast */
+    .nav-search-submit {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      width: 34px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      background: var(--nav-surface);
+      color: var(--nav-txt-soft);
+      border: 1px solid var(--nav-line);
+      cursor: pointer;
+      transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease;
+    }
+    .nav-search-submit:hover {
+      background: var(--nav-surface-2);
+      color: var(--nav-primary-2);
+      border-color: var(--nav-primary-2);
+    }
+    .nav-search-submit:active { transform: scale(0.94); }
+
+    /* keyboard hint chip */
+    .nav-search-kbd {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--nav-txt-faint);
+      border: 1px solid var(--nav-line);
+      background: var(--nav-surface);
+      padding: 2px 6px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      margin-right: 6px;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 1023px) {
+      .nav-search-kbd { display: none; }
+      .nav-search-wrap { max-width: none; }
+      .nav-search-form { height: 38px; padding-left: 12px; }
+      .nav-search-input { font-size: 12.5px; }
+      .nav-search-submit { height: 30px; width: 30px; }
+    }
+    @media (max-width: 640px) {
+      .nav-search-form { height: 36px; padding: 2px 2px 2px 10px; }
+      .nav-search-icon-left { font-size: 10px !important; margin-right: 6px; }
+      .nav-search-input { font-size: 12px; }
+      .nav-search-submit { height: 28px; width: 28px; }
+    }
+
+    /* ⭐ SEARCH SUGGESTIONS DROPDOWN */
+    .nav-search-suggest {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      right: 0;
+      background: var(--nav-panel);
+      border: 1px solid var(--nav-line);
+      border-radius: 18px;
+      box-shadow: 0 24px 60px -20px rgba(0,0,0,0.45);
+      padding: 12px;
+      z-index: 90;
+      overflow: hidden;
+    }
+    .nav-search-suggest-title {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--nav-primary-2);
+      margin: 6px 6px 8px;
+    }
+    .nav-search-suggest-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--nav-txt);
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+    .nav-search-suggest-item:hover {
+      background: var(--nav-surface);
+      color: var(--nav-primary-2);
+      transform: translateX(2px);
+    }
+    .nav-search-suggest-item svg {
+      color: var(--nav-txt-faint);
+      flex-shrink: 0;
+      font-size: 11px;
+    }
+    .nav-search-suggest-item:hover svg { color: var(--nav-primary-2); }
 
     .nav-advanced-glass {
       position: relative;
@@ -178,6 +350,7 @@ const FontStyles = () => (
     }
     .nav-guest-pill-link:hover { color: var(--nav-txt); background: var(--nav-surface); }
 
+    /* ═══ ICON BUTTONS ═══ */
     .nav-icon-btn {
       position: relative;
       display: inline-flex;
@@ -205,6 +378,22 @@ const FontStyles = () => (
     .nav-icon-btn:hover { border-color: var(--nav-line-str); transform: translateY(-1px); }
     .nav-icon-btn:hover::before { opacity: 1; }
     .nav-icon-btn:hover svg { color: var(--nav-primary-2); }
+
+    /* ⭐ NO-BACKGROUND icon button */
+    .nav-plain-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--nav-txt);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 999px;
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+    }
+    .nav-plain-btn:hover svg { color: var(--nav-primary-2); }
 
     @keyframes navEditShimmer {
       0%   { background-position: -200% 0; }
@@ -266,17 +455,213 @@ const FontStyles = () => (
       0%, 100% { box-shadow: 0 8px 22px -8px var(--nav-primary-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
       50%      { box-shadow: 0 12px 32px -8px var(--nav-primary-glow), 0 0 0 8px rgba(242,138,45,0), inset 0 1px 0 rgba(255,255,255,0.35); }
     }
-    .nav-cta-pill {
-      animation: ctaPulse 3.2s ease-in-out infinite;
+    .nav-cta-pill { animation: ctaPulse 3.2s ease-in-out infinite; }
+
+    /* ═══════════════════════════════════════════════════════════
+       ⭐ FULL-WIDTH MEGA DROPDOWN — BIG image cards
+       ═══════════════════════════════════════════════════════════ */
+    .nav-mega-full {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      padding-top: 12px;
+      z-index: 70;
+      pointer-events: none;
+    }
+    .nav-mega-full-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 12px;
+      pointer-events: auto;
+    }
+    .nav-mega-card {
+      background: var(--nav-panel);
+      border: 1px solid var(--nav-line);
+      border-radius: 24px;
+      box-shadow: 0 30px 70px -24px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    .nav-mega-topbar {
+      height: 3px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, var(--nav-primary-2), transparent);
+    }
+    .nav-mega-header {
+      padding: 18px 26px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--nav-line);
+    }
+    .nav-mega-header-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--nav-txt);
+      letter-spacing: -0.01em;
+    }
+    .nav-mega-header-count {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--nav-primary-2);
     }
 
-    @keyframes logoOrbit {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    /* ⭐ BIGGER 4-COLUMN GRID */
+    .nav-mega-body {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
-    .nav-logo-orbit {
-      animation: logoOrbit 12s linear infinite;
+    @media (min-width: 768px) {
+      .nav-mega-body { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
+    @media (min-width: 1100px) {
+      .nav-mega-body { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    /* ⭐ BIGGER CARD */
+    .nav-mega-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      text-decoration: none;
+      color: var(--nav-txt);
+      transition:
+        background 0.16s ease,
+        color 0.16s ease,
+        transform 0.16s ease,
+        border-color 0.16s ease;
+      border: 1px solid transparent;
+      min-width: 0;
+      min-height: 76px;
+    }
+    .nav-mega-item:hover {
+      background: var(--nav-surface);
+      color: var(--nav-primary-2);
+      transform: translateY(-1px);
+      border-color: var(--nav-line);
+    }
+    .nav-mega-item.is-active {
+      background: var(--nav-primary-soft);
+      color: var(--nav-primary-2);
+      border-color: var(--nav-primary);
+    }
+
+    /* ⭐ BIGGER IMAGE THUMBNAIL */
+    .nav-mega-thumb {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 56px;
+      width: 56px;
+      border-radius: 14px;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: var(--nav-surface);
+      border: 1px solid var(--nav-line);
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+    }
+    .nav-mega-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .nav-mega-item:hover .nav-mega-thumb { transform: scale(1.06); }
+
+    /* Fallback icon shown if the image fails to load */
+    .nav-mega-thumb-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 56px;
+      width: 56px;
+      border-radius: 14px;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+
+    /* Legacy icon rule (still used elsewhere) */
+    .nav-mega-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      width: 34px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      font-size: 14px;
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+    }
+    .nav-mega-item:hover .nav-mega-icon { transform: scale(1.08); }
+
+    /* ⭐ BIGGER TEXT */
+    .nav-mega-text { min-width: 0; flex: 1; }
+    .nav-mega-label {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 14.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-mega-desc {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--nav-txt-faint);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-mega-badge {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 9px;
+      font-weight: 800;
+      background: var(--nav-primary-2);
+      color: #0B0B12;
+      padding: 3px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+
+    /* ⭐ RESPONSIVE — smaller on narrow desktops */
+    @media (max-width: 1279px) {
+      .nav-mega-thumb { height: 48px; width: 48px; border-radius: 12px; }
+      .nav-mega-thumb-fallback { height: 48px; width: 48px; border-radius: 12px; }
+      .nav-mega-label { font-size: 13.5px; }
+      .nav-mega-desc { font-size: 11.5px; }
+      .nav-mega-item { min-height: 68px; padding: 12px 14px; }
+    }
+
+    /* ⭐ Hamburger button — plain (DESKTOP ONLY) */
+    .nav-burger-plain {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--nav-txt);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 10px;
+      transition: color 0.2s ease, transform 0.2s ease;
+    }
+    .nav-burger-plain:hover { color: var(--nav-primary-2); }
+    .nav-burger-plain.is-open { color: var(--nav-primary-2); }
 
     /* ⭐ MOBILE BOTTOM SHEET SCROLL */
     .nav-sheet-scroll {
@@ -288,10 +673,15 @@ const FontStyles = () => (
       background: var(--nav-line-str);
       border-radius: 4px;
     }
+
+    /* ⭐ RESPONSIVE — hide hamburger on mobile */
+    @media (max-width: 1023px) {
+      .nav-burger-wrapper { display: none !important; }
+    }
   `}</style>
 );
 
-const LogoImage = ({ className = "h-full w-full object-contain p-1" }) => {
+const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);
@@ -310,7 +700,7 @@ const LogoImage = ({ className = "h-full w-full object-contain p-1" }) => {
   return (
     <img
       src={sources[idx]}
-      alt="Dealora"
+      alt="ApnaDeal"
       className={className}
       onError={() => {
         if (idx < sources.length - 1) setIdx(idx + 1);
@@ -343,6 +733,7 @@ const ICON_COLORS = {
   "/image-generator": { fg: "#F58220", bg: "rgba(242,138,45,0.18)" },
   "/ai-image":        { fg: "#F58220", bg: "rgba(242,138,45,0.18)" },
   "/marketplace-chat": { fg: "#2A8FBD", bg: "rgba(42,143,189,0.12)" },
+  "/momento":         { fg: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
 };
 
 const getIconColor = (path) =>
@@ -354,11 +745,11 @@ const panelVariants = {
 };
 const listVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.035, delayChildren: 0.06 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.04 } },
 };
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } },
 };
 const drawerItemVariants = {
   hidden: { opacity: 0, x: 30 },
@@ -368,7 +759,19 @@ const drawerItemVariants = {
 const formatRs = (num) => `Rs ${Number(num || 0).toLocaleString("en-US")}`;
 
 /* ═══════════════════════════════════════════════════════════════
-   MINI CART
+   SEARCH SUGGESTIONS
+   ═══════════════════════════════════════════════════════════════ */
+const SEARCH_SUGGESTIONS = [
+  { label: "Cars & Bikes",      path: "/vehicles",    icon: FaCar },
+  { label: "Mobiles & Tablets", path: "/mobiles",     icon: FaMobileAlt },
+  { label: "Laptops & TVs",     path: "/electronics", icon: FaLaptop },
+  { label: "Homes & Property",  path: "/property",    icon: FaHome },
+  { label: "Marketplace Feed",  path: "/feed",        icon: FaNewspaper },
+  { label: "AI Studio",         path: "/ai-image",    icon: FaMagic },
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   MINI CART  (unchanged)
    ═══════════════════════════════════════════════════════════════ */
 const MiniCart = ({ open, onClose, cart, onRemove, onOpenFull }) => {
   const ref = useRef(null);
@@ -678,11 +1081,12 @@ const AvatarWithPlan = ({
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   PROFILE DROPDOWN
+   PROFILE DROPDOWN  — includes THEME TOGGLE
    ═══════════════════════════════════════════════════════════════ */
 const ProfileDropdown = ({
   user, onClose, onLogout, navigate,
   planId = "free", planName = "Starter", isVerified,
+  theme, onToggleTheme,
 }) => {
   const ref = useRef(null);
   const isPremium = planId !== "free";
@@ -793,6 +1197,47 @@ const ProfileDropdown = ({
             </Link>
           );
         })}
+
+        {/* ⭐ THEME TOGGLE — inside profile dropdown */}
+        <div className="mt-1 pt-1" style={{ borderTop: "1px solid var(--nav-line)" }}>
+          <button
+            onClick={() => { if (onToggleTheme) onToggleTheme(); }}
+            className="group flex w-full items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition-all duration-200 hover:bg-[var(--nav-surface)]"
+          >
+            <span className="text-[15px] flex-shrink-0 transition-colors"
+              style={{ color: theme === "light" ? "var(--nav-primary-2)" : "var(--nav-txt-soft)" }}>
+              {theme === "light" ? <FaMoon /> : <FaSun />}
+            </span>
+            <span className="font-ticket-body text-[13px] font-medium text-[var(--nav-txt)] transition-colors group-hover:text-[var(--nav-primary-2)] flex-1 text-left">
+              {theme === "light" ? "Switch to Dark" : "Switch to Light"}
+            </span>
+            <span
+              className="inline-flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 34,
+                height: 18,
+                borderRadius: 999,
+                background: theme === "light" ? "var(--nav-line-str)" : "var(--nav-primary-2)",
+                transition: "background 0.25s ease",
+                position: "relative",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  left: theme === "light" ? 2 : 18,
+                  width: 14,
+                  height: 14,
+                  borderRadius: 999,
+                  background: "#FFFFFF",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                  transition: "left 0.25s cubic-bezier(0.16,1,0.3,1)",
+                }}
+              />
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="px-2 pb-3 pt-1">
@@ -856,9 +1301,10 @@ const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const cartCount = cart.reduce((s, c) => s + (c.qty || 1), 0);
 
-  const [isMegaOpen, setIsMegaOpen] = useState(false);
-  const megaRef = useRef(null);
-  const megaCloseTimer = useRef(null);
+  // ⭐ Left menu hover dropdown
+  const [isMenuDropOpen, setIsMenuDropOpen] = useState(false);
+  const menuDropRef = useRef(null);
+  const menuDropTimer = useRef(null);
 
   const [userAvatar, setUserAvatar] = useState(null);
   const [userFullName, setUserFullName] = useState("");
@@ -902,6 +1348,21 @@ const Navbar = () => {
     return () => clearTimeout(t);
   }, [location.pathname, location.hash]);
 
+/* ⭐ MEGA MENU LINKS — with web image URLs */
+const menuSimpleLinks = [
+  { path: "/vehicles",         img: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2FyfGVufDB8fDB8fHww", label: "Vehicles",    desc: "Cars, bikes, trucks" },
+  { path: "/mobiles",          img: "https://images.unsplash.com/photo-1758186477159-99418b83a42f?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDl8fHxlbnwwfHx8fHw%3D", label: "Mobiles",     desc: "Phones & tablets" },
+  { path: "/electronics",      img: "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww", label: "Electronics", desc: "Laptops, TVs, audio" },
+  { path: "/property",         img: "https://plus.unsplash.com/premium_photo-1689609950112-d66095626efb?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvcGVydHl8ZW58MHx8MHx8fDA%3D", label: "Property",    desc: "Homes, plots, commercial" },
+  { path: "/feed",             img: "https://plus.unsplash.com/premium_photo-1681488262364-8aeb1b6aac56?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8bWFya2V0cGxhY2V8ZW58MHx8MHx8fDA%3D", label: "Marketplace",        desc: "All live listings", badge: "New" },
+  { path: "/marketplace-chat", img: "https://images.unsplash.com/photo-1611606063065-ee7946f0787a?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fG1lc3NhZ2V8ZW58MHx8MHx8fDA%3D", label: "Messenger",    desc: "Buyer & seller chat" },
+  { path: "/momento",          img: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", label: "Momento",     desc: "Stories & reels", badge: "New" },
+  { path: "/ai-image",         img: "https://images.unsplash.com/photo-1770170389700-eb0f9b910ed8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGFpJTIwaW1hZ2UlMjBnZW5lcmF0aW9ufGVufDB8fDB8fHww", label: "AI Studio",   desc: "Generate & edit images", badge: "Pro" },
+  { path: "/post-ad",          img: "https://images.unsplash.com/photo-1663124178703-d2d6a333e6c2?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fHVwbG9hZCUyMGl0ZW18ZW58MHx8MHx8fDA%3D", label: "Post an Ad",  desc: "List a new item" },
+{ path: "/my-listings", img: "/mylisting.png", label: "My Listings", desc: "Manage your ads" },
+  { path: "/wallet",           img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200&h=200&fit=crop", label: "Live Sales",  desc: "Sales & wallet" },
+  { path: "/premium",          img: "https://plus.unsplash.com/premium_photo-1682309553075-c84ea8d9d49a?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8dXBncmFkZXxlbnwwfHwwfHx8MA%3D%3D", label: "Premium",     desc: "Upgrade & manage plan" },
+];
   const browseGroups = [
     {
       title: "Buy & Sell",
@@ -964,17 +1425,18 @@ const Navbar = () => {
     navigate("/cart");
   };
 
-  const openMega = () => {
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    setIsMegaOpen(true);
+  /* ⭐ Left menu hover handlers */
+  const openMenuDrop = () => {
+    if (menuDropTimer.current) clearTimeout(menuDropTimer.current);
+    setIsMenuDropOpen(true);
   };
-  const closeMega = () => {
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    megaCloseTimer.current = setTimeout(() => setIsMegaOpen(false), 260);
+  const closeMenuDrop = () => {
+    if (menuDropTimer.current) clearTimeout(menuDropTimer.current);
+    menuDropTimer.current = setTimeout(() => setIsMenuDropOpen(false), 220);
   };
-  const handleMegaLinkClick = () => {
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    setIsMegaOpen(false);
+  const handleMenuLinkClick = () => {
+    if (menuDropTimer.current) clearTimeout(menuDropTimer.current);
+    setIsMenuDropOpen(false);
   };
 
   const loadUserData = async () => {
@@ -1034,7 +1496,7 @@ const Navbar = () => {
       const currentScrollY = window.scrollY;
       setIsScrolled(currentScrollY > 20);
       if (currentScrollY > lastScrollY && currentScrollY > 80) {
-        setIsVisible(false); setIsMegaOpen(false); setIsCartOpen(false);
+        setIsVisible(false); setIsMenuDropOpen(false); setIsCartOpen(false);
       } else {
         setIsVisible(true);
       }
@@ -1049,7 +1511,7 @@ const Navbar = () => {
       if (profileRef.current && !profileRef.current.contains(event.target)) setIsProfileOpen(false);
       if (searchRef.current && !searchRef.current.contains(event.target)) setIsSearchFocused(false);
       if (notificationRef.current && !notificationRef.current.contains(event.target)) setIsNotificationOpen(false);
-      if (megaRef.current && !megaRef.current.contains(event.target)) setIsMegaOpen(false);
+      if (menuDropRef.current && !menuDropRef.current.contains(event.target)) setIsMenuDropOpen(false);
       if (cartRef.current && !cartRef.current.contains(event.target)) setIsCartOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -1058,7 +1520,7 @@ const Navbar = () => {
 
   useEffect(() => {
     setIsMenuOpen(false); setIsProfileOpen(false);
-    setIsNotificationOpen(false); setIsMegaOpen(false); setIsCartOpen(false);
+    setIsNotificationOpen(false); setIsMenuDropOpen(false); setIsCartOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -1110,13 +1572,14 @@ const Navbar = () => {
         <div className="nav-advanced-inner">
           <div className="nav-advanced-glass px-4" style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Link to="/feed" className="group flex items-center flex-shrink-0">
-              <div className="h-24 w-24 sm:h-24 sm:w-24 flex items-center justify-center overflow-hidden">
+              <div className="h-11 w-11 sm:h-12 sm:w-12 flex items-center justify-center overflow-hidden">
                 <div
                   className="logo-inner"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    borderRadius: "50%",
                     width: "100%",
                     height: "100%",
                   }}
@@ -1124,16 +1587,28 @@ const Navbar = () => {
                   <LogoImage />
                 </div>
               </div>
-
-              <div className="ml-2 sm:ml-2.5 leading-none">
+              <div className="ml-2 sm:ml-2.5 leading-none flex flex-col justify-center">
                 <span
-                  className="font-ticket-display text-base sm:text-[20px] font-bold tracking-[-0.03em]"
-                  style={{ color: "var(--nav-txt)" }}
+                  className="font-ticket-display text-[15px] sm:text-[18px] font-bold tracking-[-0.03em]"
+                  style={{
+                    color: "var(--nav-txt)",
+                    lineHeight: 1,
+                    background:
+                      "linear-gradient(135deg, var(--nav-txt) 0%, var(--nav-txt) 60%, var(--nav-primary-2) 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
                 >
-                  Dealora
+                  ApnaDeal
+                </span>
+                <span
+                  className="font-ticket-body text-[8px] sm:text-[9px] font-bold tracking-[0.28em] mt-[2px]"
+                  style={{ color: "var(--nav-primary-2)", lineHeight: 1 }}
+                >
+                  STORE
                 </span>
               </div>
-
               <style>{`
                 .theme-dark .logo-inner,
                 html.dark .logo-inner,
@@ -1163,135 +1638,177 @@ const Navbar = () => {
       >
         <div className="nav-advanced-inner">
           <div className={`nav-advanced-glass ${isScrolled ? "is-scrolled" : ""}`} style={{ padding: "0 12px" }}>
-            <div className="flex items-center justify-between h-[52px] sm:h-[56px] gap-2">
+            <div className="flex items-center justify-between h-[52px] sm:h-[56px] gap-2 sm:gap-3">
 
-              {/* ═══ LOGO ═══ */}
-              <Link to="/feed" className="group flex items-center flex-shrink-0">
-                <div className="h-14 w-14 sm:h-16 sm:w-16 flex items-center justify-center overflow-hidden">
-                  <div
-                    className="logo-inner"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "100%",
-                      height: "100%",
-                    }}
+              {/* ═══ LEFT: MENU (desktop only) + LOGO ═══ */}
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+
+                {/* ⭐ Hamburger — DESKTOP ONLY (hidden on mobile via CSS) */}
+                <div
+                  className="relative nav-burger-wrapper"
+                  ref={menuDropRef}
+                  onMouseEnter={openMenuDrop}
+                  onMouseLeave={closeMenuDrop}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuDropOpen((v) => !v)}
+                    className={`nav-burger-plain ${isMenuDropOpen ? "is-open" : ""}`}
+                    aria-label="Menu"
                   >
-                    <LogoImage />
-                  </div>
+                    <FaBars style={{ fontSize: 16 }} />
+                  </button>
                 </div>
 
-                <style>{`
-                  .theme-dark .logo-inner,
-                  html.dark .logo-inner {
-                    filter: invert(1) hue-rotate(180deg) brightness(1.1);
-                  }
-                `}</style>
-              </Link>
-
-              {/* ═══ DESKTOP CENTER ═══ */}
-              <div className="hidden lg:flex flex-1 justify-center items-center gap-3">
-                {!user && (
-                  <div className="nav-guest-pill inline-flex items-center gap-0.5 rounded-full px-1.5 py-1.5">
-                    {GUEST_NAV_LINKS.map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={(e) => handleSectionNav(e, item.id)}
-                        className="nav-guest-pill-link"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {user && (
-                  <button
-                    onMouseEnter={openMega}
-                    onMouseLeave={closeMega}
-                    className="group/explore relative inline-flex items-center gap-2.5 pl-3 pr-4 py-2 rounded-full font-ticket-body text-xs font-bold transition-all duration-500 overflow-hidden"
-                    style={
-                      isMegaOpen
-                        ? { color: "#0B0B12", boxShadow: "0 8px 24px -6px var(--nav-primary-glow)" }
-                        : { color: "var(--nav-txt)", boxShadow: "0 4px 16px -6px rgba(0,0,0,0.2)" }
-                    }
-                  >
-                    <span
-                      className="absolute inset-0 rounded-full transition-all duration-500"
+                {/* Logo — slightly larger on mobile */}
+                <Link to="/feed" className="group flex items-center flex-shrink-0">
+                  <div className="h-10 w-10 sm:h-10 sm:w-10 flex items-center justify-center overflow-hidden">
+                    <div
+                      className="logo-inner"
                       style={{
-                        background: isMegaOpen
-                          ? "linear-gradient(135deg, var(--nav-primary-2), var(--nav-primary-3))"
-                          : "var(--nav-surface)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "50%",
+                        width: "100%",
+                        height: "100%",
+                        transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1)",
                       }}
-                    />
-                    <span
-                      className="absolute inset-0 rounded-full border transition-all duration-500"
-                      style={{ borderColor: isMegaOpen ? "transparent" : "var(--nav-line)" }}
-                    />
-                    <span className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
-                      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover/explore:translate-x-full transition-transform duration-1000 ease-out" />
-                    </span>
-                    <span
-                      className="relative flex items-center justify-center h-7 w-7 rounded-full z-10 transition-all duration-500"
-                      style={{ background: isMegaOpen ? "#0B0B12" : "var(--nav-primary-2)" }}
                     >
-                      {!isMegaOpen && (
-                        <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ background: "var(--nav-primary-2)" }} />
-                      )}
-                      <span className="relative grid grid-cols-2 gap-[3px]">
-                        <span className="h-1 w-1 rounded-full transition-colors duration-500" style={{ background: isMegaOpen ? "var(--nav-primary-2)" : "#0B0B12" }} />
-                        <span className="h-1 w-1 rounded-full transition-colors duration-500" style={{ background: isMegaOpen ? "var(--nav-primary-2)" : "#0B0B12" }} />
-                        <span className="h-1 w-1 rounded-full transition-colors duration-500" style={{ background: isMegaOpen ? "var(--nav-primary-2)" : "#0B0B12" }} />
-                        <span className="h-1 w-1 rounded-full transition-colors duration-500" style={{ background: isMegaOpen ? "var(--nav-primary-2)" : "#0B0B12" }} />
-                      </span>
-                    </span>
-                    <span className="relative z-10 whitespace-nowrap">Browse All</span>
-                    <span
-                      className="relative z-10 flex items-center justify-center h-5 w-5 rounded-full transition-colors duration-500"
-                      style={{ background: "var(--nav-surface-2)" }}
-                    >
-                      <FaChevronDown className={`text-[9px] transition-transform duration-500 ${isMegaOpen ? "rotate-180" : ""}`} />
-                    </span>
-                  </button>
-                )}
+                      <LogoImage />
+                    </div>
+                  </div>
+                </Link>
               </div>
 
-              {/* ═══ RIGHT SIDE — cart + theme on ALL sizes ═══ */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {/* ═══ CENTER — SEARCH ═══ */}
+              <div className="flex-1 flex justify-center items-center min-w-0 px-1 sm:px-3 lg:px-6">
+                <div className="nav-search-wrap" ref={searchRef}>
+                  <form
+                    onSubmit={handleSearch}
+                    className={`nav-search-form ${isSearchFocused ? "is-focused" : ""}`}
+                  >
+                    <FaSearch className="nav-search-icon-left" style={{ fontSize: 12 }} />
 
-                {/* Cart */}
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      placeholder="Search items.."
+                      className="nav-search-input"
+                      aria-label="Search"
+                    />
+
+                    <span className="nav-search-kbd">⌘ K</span>
+
+                    <button type="submit" className="nav-search-submit" aria-label="Search">
+                      <FaSearch style={{ fontSize: 12 }} />
+                    </button>
+                  </form>
+
+                  {/* Suggestions dropdown */}
+                  <AnimatePresence>
+                    {isSearchFocused && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        className="nav-search-suggest"
+                      >
+                        <p className="nav-search-suggest-title">
+                          {searchQuery.trim() ? "Search for" : "Popular categories"}
+                        </p>
+
+                        {SEARCH_SUGGESTIONS.filter((s) =>
+                          searchQuery.trim()
+                            ? s.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
+                            : true
+                        ).slice(0, 6).map((s) => {
+                          const Icon = s.icon;
+                          return (
+                            <div
+                              key={s.label}
+                              className="nav-search-suggest-item"
+                              onClick={() => {
+                                setIsSearchFocused(false);
+                                setSearchQuery("");
+                                navigate(s.path);
+                              }}
+                            >
+                              <Icon />
+                              <span>{s.label}</span>
+                              <FaChevronRight style={{ marginLeft: "auto", fontSize: 9 }} />
+                            </div>
+                          );
+                        })}
+
+                        {searchQuery.trim() && (
+                          <div
+                            className="nav-search-suggest-item"
+                            style={{ marginTop: 4, borderTop: "1px solid var(--nav-line)", borderRadius: 0 }}
+                            onClick={(e) => handleSearch(e)}
+                          >
+                            <FaSearch style={{ fontSize: 10 }} />
+                            <span>Search for "<b>{searchQuery}</b>"</span>
+                            <FaArrowRight style={{ marginLeft: "auto", fontSize: 10 }} />
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* ═══ RIGHT SIDE — cart + profile ═══ */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+                {/* Cart — NO background, small on mobile */}
                 {user && (
                   <div ref={cartRef} className="relative">
                     <motion.button
                       onClick={() => setIsCartOpen((v) => !v)}
-                      whileHover={{ scale: 1.06, y: -1 }}
+                      whileHover={{ scale: 1.08 }}
                       whileTap={{ scale: 0.92 }}
                       transition={{ type: "spring", stiffness: 420, damping: 22 }}
-                      className="nav-icon-btn"
+                      className="nav-plain-btn"
                       aria-label="Cart"
                       aria-expanded={isCartOpen}
                     >
-                      {cartCount > 0 && (
-                        <motion.span
-                          aria-hidden
-                          animate={{ scale: [1, 1.25, 1], opacity: [0.35, 0.15, 0.35] }}
-                          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute inset-0 rounded-full pointer-events-none"
+                      <motion.span
+                        animate={
+                          cartCount > 0
+                            ? { rotate: [0, -10, 10, -10, 0], scale: [1, 1.06, 1] }
+                            : { rotate: 0, scale: 1 }
+                        }
+                        transition={
+                          cartCount > 0
+                            ? {
+                                duration: 1.8,
+                                repeat: Infinity,
+                                repeatDelay: 3.2,
+                                ease: [0.42, 0, 0.58, 1],
+                                times: [0, 0.15, 0.4, 0.65, 1],
+                              }
+                            : { duration: 0.2, ease: "easeOut" }
+                        }
+                        className="relative z-10 flex items-center justify-center"
+                        style={{
+                          color: cartCount > 0 ? "var(--nav-primary-2)" : "var(--nav-txt)",
+                          transition: "color 0.35s ease",
+                          filter:
+                            cartCount > 0
+                              ? "drop-shadow(0 0 6px var(--nav-primary-glow))"
+                              : "none",
+                        }}
+                      >
+                        <FaShoppingCart
+                          className="text-[13px] sm:text-[15px]"
                           style={{
-                            background: "radial-gradient(circle, var(--nav-primary-glow) 0%, transparent 70%)",
-                            filter: "blur(6px)",
+                            transition: "color 0.35s ease, filter 0.35s ease",
                           }}
                         />
-                      )}
-
-                      <motion.span
-                        animate={cartCount > 0 ? { rotate: [0, -8, 8, -8, 0] } : { rotate: 0 }}
-                        transition={cartCount > 0 ? { duration: 1.6, repeat: Infinity, repeatDelay: 3.2, ease: "easeInOut" } : { duration: 0.2 }}
-                        className="relative z-10 flex items-center justify-center"
-                      >
-                        <FaShoppingCart className="text-[13px] transition-colors duration-300" />
                       </motion.span>
 
                       {cartCount > 0 && (
@@ -1300,7 +1817,7 @@ const Navbar = () => {
                           initial={{ scale: 0.4, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ type: "spring", stiffness: 520, damping: 18 }}
-                          className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full font-ticket-body text-[8px] font-bold text-[#0B0B12] flex items-center justify-center z-20"
+                          className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] sm:min-w-[16px] sm:h-[16px] px-1 rounded-full font-ticket-body text-[7.5px] sm:text-[8px] font-bold text-[#0B0B12] flex items-center justify-center z-20"
                           style={{
                             background: "linear-gradient(135deg, var(--nav-primary-2) 0%, var(--nav-primary) 100%)",
                             border: "2px solid var(--nav-bg)",
@@ -1331,99 +1848,34 @@ const Navbar = () => {
                   </div>
                 )}
 
-                {/* Theme toggle */}
-                <motion.button
-                  onClick={toggleTheme}
-                  whileTap={{ scale: 0.94 }}
-                  whileHover={{ scale: 1.04 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  className="nav-icon-btn group"
-                  aria-label="Toggle theme"
-                  title={theme === "light" ? "Switch to dark" : "Switch to light"}
-                >
-                  <motion.span
-                    animate={{ rotate: theme === "light" ? 0 : 360 }}
-                    transition={{ type: "spring", stiffness: 220, damping: 18 }}
-                    className="relative z-10 flex items-center justify-center"
-                  >
-                    <motion.span
-                      animate={{
-                        opacity: theme === "light" ? 1 : 0,
-                        scale: theme === "light" ? 1 : 0.4,
-                        rotate: theme === "light" ? 0 : -90,
-                      }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute flex items-center justify-center"
-                    >
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-                        className="flex items-center justify-center"
-                      >
-                        <FaSun
-                          className="text-[13px]"
-                          style={{
-                            color: "var(--nav-primary-2)",
-                            filter: "drop-shadow(0 0 4px var(--nav-primary-glow))",
-                          }}
-                        />
-                      </motion.span>
-                    </motion.span>
-
-                    <motion.span
-                      animate={{
-                        opacity: theme === "light" ? 0 : 1,
-                        scale: theme === "light" ? 0.4 : 1,
-                        rotate: theme === "light" ? 90 : 0,
-                      }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute flex items-center justify-center"
-                    >
-                      <motion.span
-                        animate={{ y: [0, -1.2, 0] }}
-                        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                        className="flex items-center justify-center"
-                      >
-                        <FaMoon
-                          className="text-[13px]"
-                          style={{
-                            color: "var(--nav-txt)",
-                            filter: "drop-shadow(0 0 4px rgba(255,255,255,0.35))",
-                          }}
-                        />
-                      </motion.span>
-                    </motion.span>
-                  </motion.span>
-                </motion.button>
-
-                {/* Profile / guest */}
+                {/* Profile — NO background */}
                 {user ? (
                   <div className="relative" ref={profileRef}>
                     {/* Mobile: opens bottom sheet */}
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="lg:hidden flex items-center gap-0.5 p-0.5 rounded-full hover:bg-[var(--nav-surface)] transition-all group"
+                      className="lg:hidden flex items-center gap-0.5 p-0.5 rounded-full"
                       aria-label="Open menu"
                     >
                       <div
-                        className="h-8 w-8 rounded-full flex items-center justify-center overflow-hidden"
+                        className="h-9 w-9 rounded-full flex items-center justify-center overflow-hidden"
                         style={{ border: "1px solid var(--nav-primary-2)" }}
                       >
                         {userAvatar ? (
                           <img src={userAvatar} alt={getUserName()} className="h-full w-full object-cover" />
                         ) : (
                           <div className="h-full w-full flex items-center justify-center" style={{ background: "var(--nav-primary-2)" }}>
-                            <span className="text-[#0B0B12] font-ticket-body font-bold text-[10px]">{getUserInitial()}</span>
+                            <span className="text-[#0B0B12] font-ticket-body font-bold text-[11px]">{getUserInitial()}</span>
                           </div>
                         )}
                       </div>
                       <FaChevronDown className={`text-[var(--nav-txt)] text-[8px] transition-transform duration-200 ${isMenuOpen ? "rotate-180" : ""}`} />
                     </button>
 
-                    {/* Desktop: profile dropdown */}
+                    {/* Desktop: profile dropdown — plain, no bg */}
                     <button
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
-                      className="hidden lg:flex items-center gap-1.5 p-0.5 pl-1 rounded-full hover:bg-[var(--nav-surface)] transition-all group"
+                      className="hidden lg:flex items-center gap-1.5 p-0.5 rounded-full"
                       aria-label="Open profile"
                     >
                       <div
@@ -1451,6 +1903,8 @@ const Navbar = () => {
                           planId={planId}
                           planName={planName}
                           isVerified={isVerified}
+                          theme={theme}
+                          onToggleTheme={toggleTheme}
                         />
                       )}
                     </AnimatePresence>
@@ -1514,150 +1968,77 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* ═══ MEGA PANEL (desktop) ═══ */}
+        {/* ⭐ FULL-WIDTH MEGA DROPDOWN (desktop hover) */}
         <AnimatePresence>
-          {user && isMegaOpen && (
+          {isMenuDropOpen && (
             <motion.div
-              ref={megaRef}
               variants={panelVariants}
               initial="hidden"
               animate="visible"
               exit="hidden"
-              onMouseEnter={openMega}
-              onMouseLeave={closeMega}
-              className="hidden lg:block absolute top-full left-0 right-0 pt-3 px-3 sm:px-5 lg:px-6"
+              onMouseEnter={openMenuDrop}
+              onMouseLeave={closeMenuDrop}
+              className="nav-mega-full hidden lg:block"
             >
-              <div className="max-w-7xl mx-auto">
-                <div className="nav-panel rounded-3xl overflow-hidden">
-                  <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, transparent, var(--nav-primary-2), transparent)" }} />
-                  <div className="px-6 py-7">
-                    <div className="grid grid-cols-12 gap-8">
-                      <div className="col-span-7">
-                        {browseGroups.map((group, gi) => (
-                          <div key={group.title} className={gi > 0 ? "mt-6" : ""}>
-                            <div className="flex items-center gap-3 mb-4">
-                              <span className="font-ticket-body text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--nav-primary-2)]">{group.title}</span>
-                              <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, var(--nav-primary-2) 30%, transparent)` }} />
-                            </div>
-                            <motion.div variants={listVariants} initial="hidden" animate="visible" className="grid grid-cols-2 gap-2.5">
-                              {group.links.map((item) => {
-                                const Icon = item.icon;
-                                const active = isActive(item.path);
-
-                                if (item.isSpecial) {
-                                  return (
-                                    <motion.div key={item.label} variants={itemVariants}>
-                                      <Link to={item.path} onClick={handleMegaLinkClick} className="nav-edit-entry group flex items-start gap-3.5 p-3.5 rounded-2xl">
-                                        <span
-                                          className="relative flex items-center justify-center h-11 w-11 rounded-xl flex-shrink-0"
-                                          style={{
-                                            background: "linear-gradient(135deg, var(--nav-primary-2), var(--nav-primary-3))",
-                                            color: "#0B0B12",
-                                            boxShadow: "0 8px 22px -8px var(--nav-primary-glow), inset 0 1px 0 rgba(255,255,255,0.3)",
-                                          }}
-                                        >
-                                          <Icon className="text-lg nav-edit-icon relative z-10" />
-                                          <FaMagic className="nav-edit-sparkle absolute -top-1 -right-1 text-[9px] text-white drop-shadow" />
-                                        </span>
-                                        <div className="min-w-0 flex-1 relative z-10">
-                                          <div className="flex items-center gap-2">
-                                            <p className="font-ticket-display text-sm font-bold text-[var(--nav-txt)]">{item.label}</p>
-                                            <span className="nav-edit-badge inline-flex items-center gap-1 font-ticket-body text-[8px] font-extrabold text-[#0B0B12] px-1.5 py-[3px] rounded-md uppercase tracking-wider">
-                                              <FaGem className="text-[7px]" />
-                                              Pro
-                                            </span>
-                                          </div>
-                                          <p className="font-ticket-body text-[11px] text-[var(--nav-txt-soft)] mt-0.5">{item.description}</p>
-                                        </div>
-                                        <FaArrowRight className="relative z-10 text-[10px] self-center text-[var(--nav-primary-2)] transition-transform group-hover:translate-x-0.5" />
-                                      </Link>
-                                    </motion.div>
-                                  );
-                                }
-
-                                return (
-                                  <motion.div key={item.label} variants={itemVariants}>
-                                    <Link
-                                      to={item.path}
-                                      onClick={handleMegaLinkClick}
-                                      className="group flex items-start gap-3.5 p-3.5 rounded-2xl transition-all duration-200"
-                                      style={{
-                                        background: active ? "var(--nav-primary-soft)" : "var(--nav-surface)",
-                                        border: active ? "1px solid var(--nav-primary)" : "1px solid transparent",
-                                      }}
-                                    >
-                                      <span
-                                        className="flex items-center justify-center h-11 w-11 rounded-xl transition-all duration-300 group-hover:scale-110 flex-shrink-0"
-                                        style={{ backgroundColor: getIconColor(item.path).bg, color: getIconColor(item.path).fg }}
-                                      >
-                                        <Icon className="text-lg" />
-                                      </span>
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <p className="font-ticket-display text-sm font-bold text-[var(--nav-txt)]">{item.label}</p>
-                                          {item.badge && (
-                                            <span className="font-ticket-body text-[8px] font-bold text-[#0B0B12] px-1.5 py-0.5 rounded-md uppercase" style={{ background: "var(--nav-primary-2)" }}>
-                                              {item.badge}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <p className="font-ticket-body text-[11px] text-[var(--nav-txt-faint)] mt-0.5">{item.description}</p>
-                                      </div>
-                                      <FaArrowRight
-                                        className={`text-[10px] self-center transition-all duration-300 ${active ? "opacity-100 translate-x-0.5" : "opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0.5"}`}
-                                        style={{ color: getIconColor(item.path).fg }}
-                                      />
-                                    </Link>
-                                  </motion.div>
-                                );
-                              })}
-                            </motion.div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="col-span-5">
-                        {accountGroups.map((group, gi) => (
-                          <div key={group.title} className={gi > 0 ? "mt-6" : ""}>
-                            <div className="flex items-center gap-3 mb-4">
-                              <span className="font-ticket-body text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--nav-primary-2)]">{group.title}</span>
-                              <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, var(--nav-primary-2) 30%, transparent)` }} />
-                            </div>
-                            <motion.div variants={listVariants} initial="hidden" animate="visible" className="grid grid-cols-2 gap-2.5">
-                              {group.links.map((item) => {
-                                const Icon = item.icon;
-                                const active = isActive(item.path);
-                                return (
-                                  <motion.div key={item.label} variants={itemVariants}>
-                                    <Link
-                                      to={item.path}
-                                      onClick={handleMegaLinkClick}
-                                      className="group flex flex-col items-center text-center gap-2 p-3.5 rounded-2xl transition-all duration-200 h-full"
-                                      style={{
-                                        background: active ? "var(--nav-primary-soft)" : "var(--nav-surface)",
-                                        border: active ? "1px solid var(--nav-primary)" : "1px solid transparent",
-                                      }}
-                                    >
-                                      <span
-                                        className="flex items-center justify-center h-11 w-11 rounded-xl transition-all duration-300 group-hover:scale-110"
-                                        style={{ backgroundColor: getIconColor(item.path).bg, color: getIconColor(item.path).fg }}
-                                      >
-                                        <Icon className="text-lg" />
-                                      </span>
-                                      <div className="min-w-0">
-                                        <p className="font-ticket-display text-xs font-bold text-[var(--nav-txt)]">{item.label}</p>
-                                        <p className="font-ticket-body text-[10px] text-[var(--nav-txt-faint)] mt-0.5">{item.description}</p>
-                                      </div>
-                                    </Link>
-                                  </motion.div>
-                                );
-                              })}
-                            </motion.div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              <div className="nav-mega-full-inner">
+                <div className="nav-mega-card">
+                  <div className="nav-mega-topbar" />
+                  <div className="nav-mega-header">
+                    <span className="nav-mega-header-title">Browse all categories</span>
+                    <span className="nav-mega-header-count">
+                      {menuSimpleLinks.length} links
+                    </span>
                   </div>
+
+                  <motion.div
+                    variants={listVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="nav-mega-body"
+                  >
+           {menuSimpleLinks.map((item) => {
+  const active = isActive(item.path);
+  const colors = getIconColor(item.path);
+
+  return (
+    <motion.div key={item.label} variants={itemVariants}>
+      <Link
+        to={item.path}
+        onClick={handleMenuLinkClick}
+        className={`nav-mega-item ${active ? "is-active" : ""}`}
+      >
+        {/* ⭐ IMAGE thumbnail */}
+        <span className="nav-mega-thumb">
+          <img
+            src={item.img}
+            alt={item.label}
+            loading="lazy"
+            onError={(e) => {
+              // If image fails → replace with fallback icon colored by path
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                parent.outerHTML = `
+                  <span class="nav-mega-thumb-fallback"
+                    style="background:${colors.bg};color:${colors.fg}">
+                  </span>
+                `;
+              }
+            }}
+          />
+        </span>
+
+        <span className="nav-mega-text">
+          <span className="nav-mega-label">
+            {item.label}
+            {item.badge && <span className="nav-mega-badge">{item.badge}</span>}
+          </span>
+          {item.desc && <span className="nav-mega-desc">{item.desc}</span>}
+        </span>
+      </Link>
+    </motion.div>
+  );
+})}
+                  </motion.div>
                 </div>
               </div>
             </motion.div>
@@ -1666,7 +2047,7 @@ const Navbar = () => {
       </nav>
 
       {/* ═══════════════════════════════════════════════════════════════
-          ⭐ MOBILE BOTTOM SHEET — Menu + Close only
+          ⭐ MOBILE BOTTOM SHEET — with THEME TOGGLE row inside
          ═══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -1677,7 +2058,6 @@ const Navbar = () => {
             transition={{ duration: 0.25 }}
             className={`fixed inset-0 z-[9999] lg:hidden theme-${theme}`}
           >
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
               animate={{ opacity: 1, backdropFilter: "blur(10px)" }}
@@ -1687,7 +2067,6 @@ const Navbar = () => {
               onClick={() => setIsMenuOpen(false)}
             />
 
-            {/* Bottom sheet */}
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -1709,14 +2088,12 @@ const Navbar = () => {
                 boxShadow: "0 -24px 60px -20px rgba(0,0,0,0.55)",
               }}
             >
-              {/* Top accent */}
               <div
                 aria-hidden
                 className="h-[2px] w-full flex-shrink-0"
                 style={{ background: "linear-gradient(90deg, transparent, var(--nav-primary-2), transparent)" }}
               />
 
-              {/* Drag handle */}
               <div className="pt-2.5 pb-1 flex justify-center flex-shrink-0">
                 <div
                   aria-hidden
@@ -1730,7 +2107,6 @@ const Navbar = () => {
                 />
               </div>
 
-              {/* ═══ SHEET HEADER — Menu · Close ═══ */}
               <div
                 className="relative flex items-center justify-between px-4 pb-3 flex-shrink-0 z-20"
                 style={{ borderBottom: "1px solid var(--nav-line)" }}
@@ -1754,12 +2130,10 @@ const Navbar = () => {
                 </motion.button>
               </div>
 
-              {/* ═══ SHEET BODY ═══ */}
               <div
                 className="nav-sheet-scroll flex-1 overflow-y-auto px-4 py-4"
                 style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
               >
-                {/* ═══ USER CARD ═══ */}
                 {user && (
                   <motion.div
                     initial={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -1842,7 +2216,61 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
-                {/* ═══ MY ACCOUNT ═══ */}
+                {/* ⭐ THEME TOGGLE ROW (mobile sheet) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.3 }}
+                  className="mb-5"
+                >
+                  <button
+                    onClick={toggleTheme}
+                    className="flex w-full items-center gap-3 px-3 py-3 rounded-2xl transition-colors"
+                    style={{
+                      background: "var(--nav-panel-2)",
+                      border: "1px solid var(--nav-line)",
+                    }}
+                  >
+                    <span
+                      className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0"
+                      style={{
+                        background: "var(--nav-primary-soft)",
+                        color: "var(--nav-primary-2)",
+                      }}
+                    >
+                      {theme === "light" ? <FaMoon className="text-[13px]" /> : <FaSun className="text-[13px]" />}
+                    </span>
+                    <span className="flex-1 text-left font-ticket-body text-[13px] font-semibold text-[var(--nav-txt)]">
+                      {theme === "light" ? "Switch to Dark" : "Switch to Light"}
+                    </span>
+                    <span
+                      className="inline-flex items-center justify-center flex-shrink-0"
+                      style={{
+                        width: 38,
+                        height: 20,
+                        borderRadius: 999,
+                        background: theme === "light" ? "var(--nav-line-str)" : "var(--nav-primary-2)",
+                        transition: "background 0.25s ease",
+                        position: "relative",
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: theme === "light" ? 2 : 20,
+                          width: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          background: "#FFFFFF",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                          transition: "left 0.25s cubic-bezier(0.16,1,0.3,1)",
+                        }}
+                      />
+                    </span>
+                  </button>
+                </motion.div>
+
                 {user && (
                   <motion.nav
                     initial={{ opacity: 0, y: 12 }}
@@ -1871,8 +2299,7 @@ const Navbar = () => {
                               className="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
                               style={{ background: active ? "var(--nav-primary-soft)" : "transparent" }}
                             >
-                              <div
-                                className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
+                              <div                                className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
                                 style={{ backgroundColor: item.color.bg, color: item.color.fg }}
                               >
                                 <Icon className="text-[13px]" />
@@ -1900,7 +2327,6 @@ const Navbar = () => {
                   </motion.nav>
                 )}
 
-                {/* ═══ BROWSE GROUPS ═══ */}
                 {browseGroups.map((group, gi) => (
                   <nav key={group.title} className={gi > 0 ? "mb-5 mt-5" : "mb-5"}>
                     <SectionHeader label={group.title} delay={0.25 + gi * 0.08} />
@@ -2024,7 +2450,6 @@ const Navbar = () => {
                   </nav>
                 ))}
 
-                {/* ═══ ACCOUNT GROUPS ═══ */}
                 {user &&
                   accountGroups.map((group, gi) => (
                     <nav key={group.title} className="mb-5">
@@ -2083,7 +2508,6 @@ const Navbar = () => {
                     </nav>
                   ))}
 
-                {/* ═══ UPGRADE BANNER ═══ */}
                 {user && !isPremium && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
@@ -2135,7 +2559,6 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
-                {/* ═══ GUEST CTA ═══ */}
                 {!user && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
@@ -2168,7 +2591,6 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
-                {/* ═══ SIGN OUT ═══ */}
                 {user && (
                   <motion.button
                     initial={{ opacity: 0, y: 12 }}
@@ -2188,7 +2610,6 @@ const Navbar = () => {
                   </motion.button>
                 )}
 
-                {/* ═══ FOOTER ═══ */}
                 <div className="mt-5 pt-4" style={{ borderTop: "1px solid var(--nav-line)" }}>
                   <div className="flex items-center justify-center gap-2">
                     <FaBolt className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />

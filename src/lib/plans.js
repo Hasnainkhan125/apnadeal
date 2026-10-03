@@ -18,7 +18,7 @@ export const PLANS = {
     popular: false,
     isFree: true,
     limits: {
-      listings: 1,
+listings: 5,
       aiImages: 3,
       aiVideoSeconds: 0,
       featuredBoosts: 0,
@@ -29,13 +29,13 @@ export const PLANS = {
       goldBadge: false,
       prioritySupport: false,
     },
-    features: [
-      { title: "1 Active Listing",      desc: "Post one item at a time — sell it, then post the next." },
-      { title: "3 AI Images / month",   desc: "Try NanoBanana image generation." },
-      { title: "Live Seller Chat",      desc: "Message buyers and sellers in real time." },
-      { title: "Social Feed",           desc: "Post, like, comment and share." },
-      { title: "Escrow Checkout",       desc: "Safe payments on every confirmed deal." },
-    ],
+ features: [
+  { title: "5 Active Listings",     desc: "Post up to 5 items at once — grow your presence." },
+  { title: "3 AI Images / month",   desc: "Try NanoBanana image generation." },
+  { title: "Live Seller Chat",      desc: "Message buyers and sellers in real time." },
+  { title: "Social Feed",           desc: "Post, like, comment and share." },
+  { title: "Escrow Checkout",       desc: "Safe payments on every confirmed deal." },
+],
   },
 
   seller: {

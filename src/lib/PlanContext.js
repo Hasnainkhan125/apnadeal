@@ -69,7 +69,7 @@ export const PlanProvider = ({ children }) => {
     loadSubscription();
   }, [loadSubscription]);
 
-  /* ── Listen for external plan changes ── */
+  // ⭐ Reload whenever someone dispatches "plan-updated"
   useEffect(() => {
     const onUpdated = () => loadSubscription();
     window.addEventListener("plan-updated", onUpdated);
@@ -88,7 +88,7 @@ export const PlanProvider = ({ children }) => {
     isPro: planId === PLANS.pro.id,
     isPaid: planId !== PLANS.free.id,
 
-    // Limits
+    // Limits — free plan now returns 5 for listings
     limitListings: getLimit(planId, "listings"),
     limitAiImages: getLimit(planId, "aiImages"),
     limitVideoSeconds: getLimit(planId, "aiVideoSeconds"),

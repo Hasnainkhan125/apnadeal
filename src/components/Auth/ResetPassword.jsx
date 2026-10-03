@@ -377,7 +377,7 @@ const FontStyles = () => (
 );
 
 // ═══ BULLETPROOF LOGO ═══
-const LogoImage = ({ className = "h-full w-full object-contain p-1" }) => {
+const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);

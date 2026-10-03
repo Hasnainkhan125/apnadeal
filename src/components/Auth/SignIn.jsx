@@ -500,13 +500,13 @@ const FontStyles = () => (
 );
 
 // ═══ BULLETPROOF LOGO ═══
-const LogoImage = ({ className = "h-full w-full object-contain p-1" }) => {
+const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);
   if (failed) {
     return (
-      <div className="h-full w-full flex items-center justify-center font-black text-base rounded-lg"
+      <div className="h-full w-full flex items-center  justify-center font-black text-base rounded-lg"
         style={{ background: "linear-gradient(135deg, #F7941D 0%, #D4521A 100%)", color: "#FFFFFF" }}>
         A
       </div>

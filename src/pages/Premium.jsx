@@ -816,20 +816,20 @@ const Premium = () => {
 
   /* ── Plans ── */
   const plans = [
-    {
-      id: "starter", name: "Starter", badgeIcon: FaRocket,
-      tagline: "Perfect to explore the marketplace",
-      priceMonthly: 0, priceYearly: 0, icon: FaRocket, badge: null,
-      cta: "Start Free", credits: 0, popular: false, isFree: true,
-      features: [
-        { title: "1 Active Listing",    desc: "Post one item at a time. Sold it? Post the next." },
-        { title: "3 AI Images / month", desc: "Try NanoBanana image generation." },
-        { title: "Live Seller Chat",    desc: "Message buyers and sellers in real time." },
-        { title: "Social Feed",         desc: "Post, like, comment and share." },
-        { title: "Escrow Checkout",     desc: "Safe payments until both sides confirm." },
-        { title: "Buy Any Item",        desc: "Browse and purchase without limits." },
-      ],
-    },
+  {
+  id: "starter", name: "Starter", badgeIcon: FaRocket,
+  tagline: "Perfect to explore the marketplace",
+  priceMonthly: 0, priceYearly: 0, icon: FaRocket, badge: null,
+  cta: "Start Free", credits: 0, popular: false, isFree: true,
+  features: [
+    { title: "5 Active Listings",   desc: "Post up to 5 items at once — sell more, faster." },
+    { title: "3 AI Images / month", desc: "Try NanoBanana image generation." },
+    { title: "Live Seller Chat",    desc: "Message buyers and sellers in real time." },
+    { title: "Social Feed",         desc: "Post, like, comment and share." },
+    { title: "Escrow Checkout",     desc: "Safe payments until both sides confirm." },
+    { title: "Buy Any Item",        desc: "Browse and purchase without limits." },
+  ],
+},
     {
       id: "seller", name: "Seller", badgeIcon: FaBolt,
       tagline: "For serious sellers who want more reach",
