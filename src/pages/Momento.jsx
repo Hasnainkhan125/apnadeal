@@ -238,14 +238,32 @@ const formatPrice = (num) => {
   return `Rs.${n.toLocaleString("en-US")}`;
 };
 
-/* ⭐ Parse deep-link from URL — path or query */
+/* ⭐ Parse deep-link from URL — path OR query, and detect shorts */
 const parseDeepLink = () => {
   try {
-    const pathMatch = window.location.pathname.match(/^\/momento\/(post|short|reel|video)\/([^/]+)$/);
-    const pathId = pathMatch?.[2];
+    // 1. Path: /momento/(post|short|reel|video)/<id>
+    const pathMatch = window.location.pathname.match(
+      /^\/momento\/(post|short|reel|video)\/([^/]+)$/
+    );
+    if (pathMatch?.[2]) return { type: pathMatch[1], id: pathMatch[2] };
+
+    // 2. /momento/shorts?short=<id>  or /momento/shorts?id=<id>
+    if (/^\/momento\/shorts\/?$/.test(window.location.pathname)) {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("short") || params.get("id");
+      return id ? { type: "short", id } : { type: "shorts-list", id: null };
+    }
+
+    // 3. /momento/shorts/<id>
+    const shortMatch = window.location.pathname.match(/^\/momento\/shorts\/([^/]+)$/);
+    if (shortMatch?.[1]) return { type: "short", id: shortMatch[1] };
+
+    // 4. Legacy: /momento?post=…  or /momento?short=…
     const params = new URLSearchParams(window.location.search);
-    const queryId = params.get("post") || params.get("short");
-    return pathId || queryId || null;
+    const q = params.get("post") || params.get("short");
+    if (q) return { type: params.get("short") ? "short" : "post", id: q };
+
+    return null;
   } catch {
     return null;
   }
@@ -738,61 +756,65 @@ const Momento = () => {
   /* View state */
   const [view, setView] = useState('feed');
 
-const [deepLinkId, setDeepLinkId] = useState(() => parseDeepLink());
-const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
-const [deepLinkPost, setDeepLinkPost] = useState(null);
-const [deepLinkLoading, setDeepLinkLoading] = useState(false);
-/* ⭐ Fetch a single post by ID (for deep links when not in feed) */
-const fetchPostById = async (postId) => {
-  if (!postId) return null;
-  try {
-    const { data, error } = await supabase
-      .from('study_group_posts')
-      .select('*')
-      .eq('id', postId)
-      .maybeSingle();
+  /* ⭐ Deep link state — object form so we can distinguish post vs short */
+  const [deepLink, setDeepLink] = useState(() => parseDeepLink());
+  const deepLinkId = deepLink?.id || null;
+  const deepLinkType = deepLink?.type || null;
 
-    if (error || !data) return null;
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
+  const [deepLinkPost, setDeepLinkPost] = useState(null);
+  const [deepLinkLoading, setDeepLinkLoading] = useState(false);
 
-    // Enrich with user + group + listing
-    const [uR, sR, gR, lR] = await Promise.all([
-      supabase.from('users')
-        .select('id, name, full_name, username, email, avatar_url')
-        .eq('id', data.user_id).maybeSingle(),
-      supabase.from('user_settings')
-        .select('user_id, full_name, avatar, avatar_url')
-        .eq('user_id', data.user_id).maybeSingle(),
-      data.group_id
-        ? supabase.from('study_groups').select('id, name, image_url').eq('id', data.group_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      data.listing_id
-        ? supabase.from('listings')
-            .select('id, title, price, cover_image, city, area, category, status, user_id')
-            .eq('id', data.listing_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+  /* ⭐ Fetch a single post by ID (for deep links when not in feed) */
+  const fetchPostById = async (postId) => {
+    if (!postId) return null;
+    try {
+      const { data, error } = await supabase
+        .from('study_group_posts')
+        .select('*')
+        .eq('id', postId)
+        .maybeSingle();
 
-    const u = uR.data || {};
-    const s = sR.data || {};
+      if (error || !data) return null;
 
-    return {
-      ...data,
-      users: {
-        id: data.user_id,
-        full_name: s.full_name || u.full_name || u.name,
-        name: u.name,
-        username: u.username,
-        email: u.email,
-        avatar_url: s.avatar || s.avatar_url || u.avatar_url || null,
-      },
-      study_groups: gR.data || null,
-      linkedListing: lR.data || null,
-    };
-  } catch (err) {
-    console.error("fetchPostById failed:", err);
-    return null;
-  }
-};
+      const [uR, sR, gR, lR] = await Promise.all([
+        supabase.from('users')
+          .select('id, name, full_name, username, email, avatar_url')
+          .eq('id', data.user_id).maybeSingle(),
+        supabase.from('user_settings')
+          .select('user_id, full_name, avatar, avatar_url')
+          .eq('user_id', data.user_id).maybeSingle(),
+        data.group_id
+          ? supabase.from('study_groups').select('id, name, image_url').eq('id', data.group_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        data.listing_id
+          ? supabase.from('listings')
+              .select('id, title, price, cover_image, city, area, category, status, user_id')
+              .eq('id', data.listing_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      const u = uR.data || {};
+      const s = sR.data || {};
+
+      return {
+        ...data,
+        users: {
+          id: data.user_id,
+          full_name: s.full_name || u.full_name || u.name,
+          name: u.name,
+          username: u.username,
+          email: u.email,
+          avatar_url: s.avatar || s.avatar_url || u.avatar_url || null,
+        },
+        study_groups: gR.data || null,
+        linkedListing: lR.data || null,
+      };
+    } catch (err) {
+      console.error("fetchPostById failed:", err);
+      return null;
+    }
+  };
 
   /* Shorts + Video upload state */
   const [showShortsViewer, setShowShortsViewer] = useState(false);
@@ -927,7 +949,7 @@ const fetchPostById = async (postId) => {
 
   /* ⭐ Re-check deep link when URL changes */
   useEffect(() => {
-    const handleUrlChange = () => setDeepLinkId(parseDeepLink());
+    const handleUrlChange = () => setDeepLink(parseDeepLink());
     window.addEventListener("popstate", handleUrlChange);
     return () => window.removeEventListener("popstate", handleUrlChange);
   }, []);
@@ -1017,73 +1039,110 @@ const fetchPostById = async (postId) => {
     document.querySelectorAll('[data-post-id]').forEach((el) => obs.observe(el));
     return () => obs.disconnect();
   }, [posts]);
-/* ⭐ Deep-link: fetch by ID if not in feed, then scroll */
-useEffect(() => {
-  if (!deepLinkId) return;
 
-  let cancelled = false;
+  /* ⭐ Deep-link → Shorts: open the viewer immediately */
+  useEffect(() => {
+    if (!deepLink) return;
 
-  (async () => {
-    // 1. Check if already in feed
-    const inFeed = posts.find((p) => String(p.id) === String(deepLinkId));
-
-    if (inFeed) {
-      if (cancelled) return;
-      setDeepLinkPost(inFeed);
-      setDeepLinkNotFound(false);
-      setDeepLinkLoading(false);
+    // Just the shorts list, no specific video
+    if (deepLink.type === "shorts-list") {
+      setShortsStartIndex(0);
+      setShowShortsViewer(true);
       return;
     }
 
-    // 2. Wait for the initial feed load to finish before deciding it's missing
-    if (loading) return;
+    // Specific short by id
+    if (deepLink.type === "short" && deepLink.id) {
+      setShowShortsViewer(true);
 
-    // 3. Fetch it directly from the DB
-    setDeepLinkLoading(true);
-    const fetched = await fetchPostById(deepLinkId);
-    if (cancelled) return;
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from("study_group_posts")
+            .select("id")
+            .eq("is_short", true)
+            .eq("media_type", "video")
+            .order("created_at", { ascending: false })
+            .limit(100);
 
-    if (fetched) {
-      setDeepLinkPost(fetched);
-      setDeepLinkNotFound(false);
-    } else {
-      setDeepLinkPost(null);
-      setDeepLinkNotFound(true);
+          const idx = (data || []).findIndex(
+            (s) => String(s.id) === String(deepLink.id)
+          );
+          setShortsStartIndex(idx >= 0 ? idx : 0);
+        } catch {
+          setShortsStartIndex(0);
+        }
+      })();
     }
-    setDeepLinkLoading(false);
-  })();
+  }, [deepLink]);
 
-  return () => { cancelled = true; };
-}, [deepLinkId, posts, loading]);
+  /* ⭐ Deep-link: fetch by ID if not in feed, then scroll (POSTS ONLY) */
+  useEffect(() => {
+    if (!deepLinkId) return;
 
-/* ⭐ Scroll + highlight once we have the deep-link post */
-useEffect(() => {
-  if (!deepLinkPost) return;
+    // Skip if this deep link is a SHORT (handled by the effect above)
+    if (deepLinkType === "short" || deepLinkType === "shorts-list") return;
 
-  const t = setTimeout(() => {
-    const el = document.querySelector(`[data-post-id="${deepLinkPost.id}"]`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    let cancelled = false;
 
-    setHighlightedPostId(deepLinkPost.id);
-    setTimeout(() => setHighlightedPostId(null), 3200);
+    (async () => {
+      const inFeed = posts.find((p) => String(p.id) === String(deepLinkId));
 
-    // Clean up URL
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("post");
-      url.searchParams.delete("short");
-      const hasPath = /^\/momento\/(post|short|reel|video)\//.test(window.location.pathname);
-      if (hasPath) {
-        window.history.replaceState({}, "", "/momento");
-      } else {
-        window.history.replaceState({}, "", url.pathname + url.search);
+      if (inFeed) {
+        if (cancelled) return;
+        setDeepLinkPost(inFeed);
+        setDeepLinkNotFound(false);
+        setDeepLinkLoading(false);
+        return;
       }
-      setDeepLinkId(null);
-    } catch {}
-  }, 400);
 
-  return () => clearTimeout(t);
-}, [deepLinkPost]);
+      if (loading) return;
+
+      setDeepLinkLoading(true);
+      const fetched = await fetchPostById(deepLinkId);
+      if (cancelled) return;
+
+      if (fetched) {
+        setDeepLinkPost(fetched);
+        setDeepLinkNotFound(false);
+      } else {
+        setDeepLinkPost(null);
+        setDeepLinkNotFound(true);
+      }
+      setDeepLinkLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [deepLinkId, deepLinkType, posts, loading]);
+
+  /* ⭐ Scroll + highlight once we have the deep-link post */
+  useEffect(() => {
+    if (!deepLinkPost) return;
+
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-post-id="${deepLinkPost.id}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      setHighlightedPostId(deepLinkPost.id);
+      setTimeout(() => setHighlightedPostId(null), 3200);
+
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("post");
+        url.searchParams.delete("short");
+        const hasPath = /^\/momento\/(post|short|reel|video)\//.test(window.location.pathname);
+        if (hasPath) {
+          window.history.replaceState({}, "", "/momento");
+        } else {
+          window.history.replaceState({}, "", url.pathname + url.search);
+        }
+        setDeepLink(null);
+      } catch {}
+    }, 400);
+
+    return () => clearTimeout(t);
+  }, [deepLinkPost]);
+
   /* Fetchers */
   const fetchMyProfile = async () => {
     if (!user) return;
@@ -1490,12 +1549,15 @@ useEffect(() => {
     return f;
   }, [posts, activeFilter, savedPosts, searchQuery]);
 
-/* ⭐ What actually renders — if deep link active, show ONLY that post */
-const postsToRender = React.useMemo(() => {
-  if (!deepLinkId && !deepLinkPost) return filteredPosts;
-  if (deepLinkPost) return [deepLinkPost];
-  return [];
-}, [deepLinkId, deepLinkPost, filteredPosts]);
+  /* ⭐ What actually renders — if post deep link active, show ONLY that post */
+  const postsToRender = React.useMemo(() => {
+    // Shorts are handled by the viewer, not the feed
+    if (deepLinkType === "short" || deepLinkType === "shorts-list") return filteredPosts;
+
+    if (!deepLinkId && !deepLinkPost) return filteredPosts;
+    if (deepLinkPost) return [deepLinkPost];
+    return [];
+  }, [deepLinkId, deepLinkType, deepLinkPost, filteredPosts]);
 
   const handleOnboardingComplete = () => {
     try { localStorage.setItem('momento.onboarded', 'true'); } catch {}
@@ -1512,13 +1574,21 @@ const postsToRender = React.useMemo(() => {
         <StudyPostsStyles />
         <MomentoShorts
           startIndex={shortsStartIndex}
-          onClose={() => setShowShortsViewer(false)}
+          onClose={() => {
+            setShowShortsViewer(false);
+            setDeepLink(null);
+            try { window.history.replaceState({}, "", "/momento"); } catch {}
+          }}
         />
       </>
     );
   }
-/* ⭐ Deep-link active → single-post focused view */
-const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
+
+  /* ⭐ Deep-link active → single-post focused view (POSTS ONLY) */
+  const isDeepLinkView =
+    !!(deepLinkId || deepLinkPost) &&
+    deepLinkType !== "short" &&
+    deepLinkType !== "shorts-list";
 
   return (
     <div className="min-h-screen sp-bg relative font-dash overflow-x-hidden pb-24 lg:pb-0">
@@ -1674,7 +1744,7 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
           <AnimatePresence mode="wait">
             {view === 'feed' ? (
               <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                {/* ⭐ HIDE Fresh Drops + filters during deep link */}
+                {/* HIDE Fresh Drops + filters during deep link */}
                 {!isDeepLinkView && posts.length > 0 && (
                   <div className="mb-5">
                     <h2 className="text-lg font-black mb-3 tracking-tight" style={{ color: "var(--sp-txt)" }}>Fresh Drops</h2>
@@ -1718,7 +1788,7 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                   </div>
                 )}
 
-                {/* ⭐ HIDE filter chips during deep link */}
+                {/* HIDE filter chips during deep link */}
                 {!isDeepLinkView && (
                   <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
                     {CATEGORY_FILTERS.map((tab) => {
@@ -1738,7 +1808,7 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                   </div>
                 )}
 
-                {/* ⭐ BACK TO FEED banner during deep link */}
+                {/* BACK TO FEED banner during deep link */}
                 {isDeepLinkView && (
                   <div className="mb-4 flex items-center justify-between gap-3 p-3 rounded-2xl"
                     style={{ background: "var(--sp-card)", border: "1px solid var(--sp-line)" }}>
@@ -1750,7 +1820,8 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                     </div>
                     <button
                       onClick={() => {
-                        setDeepLinkId(null);
+                        setDeepLink(null);
+                        setDeepLinkPost(null);
                         setDeepLinkNotFound(false);
                         try { window.history.replaceState({}, "", "/momento"); } catch {}
                       }}
@@ -1763,19 +1834,19 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                   </div>
                 )}
 
-      {/* ⭐ LOADING state (deep link fetching) */}
-{isDeepLinkView && deepLinkLoading && (
-  <div className="text-center py-20 sp-card rounded-3xl">
-    <FaSpinner className="text-3xl animate-spin mx-auto mb-4" style={{ color: "var(--sp-primary)" }} />
-    <p className="text-sm font-bold" style={{ color: "var(--sp-txt-soft)" }}>
-      Loading post…
-    </p>
-  </div>
-)}
+                {/* LOADING state (deep link fetching) */}
+                {isDeepLinkView && deepLinkLoading && (
+                  <div className="text-center py-20 sp-card rounded-3xl">
+                    <FaSpinner className="text-3xl animate-spin mx-auto mb-4" style={{ color: "var(--sp-primary)" }} />
+                    <p className="text-sm font-bold" style={{ color: "var(--sp-txt-soft)" }}>
+                      Loading post…
+                    </p>
+                  </div>
+                )}
 
-{/* ⭐ POST NOT FOUND state */}
-{isDeepLinkView && !deepLinkLoading && deepLinkNotFound && (
-  <div className="text-center py-20 sp-card rounded-3xl">
+                {/* POST NOT FOUND state */}
+                {isDeepLinkView && !deepLinkLoading && deepLinkNotFound && (
+                  <div className="text-center py-20 sp-card rounded-3xl">
                     <div className="h-20 w-20 mx-auto mb-5 rounded-3xl flex items-center justify-center"
                       style={{ background: "var(--sp-card-2)", border: "1px solid var(--sp-line)" }}>
                       <FaExclamationTriangle className="text-3xl" style={{ color: "var(--sp-danger)" }} />
@@ -1787,13 +1858,13 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                       This post may have been deleted, or the link is broken.
                     </p>
                     <button
-               onClick={() => {
-  setDeepLinkId(null);
-  setDeepLinkPost(null);
-  setDeepLinkNotFound(false);
-  setDeepLinkLoading(false);
-  try { window.history.replaceState({}, "", "/momento"); } catch {}
-}}
+                      onClick={() => {
+                        setDeepLink(null);
+                        setDeepLinkPost(null);
+                        setDeepLinkNotFound(false);
+                        setDeepLinkLoading(false);
+                        try { window.history.replaceState({}, "", "/momento"); } catch {}
+                      }}
                       className="mt-6 px-7 py-3 rounded-2xl text-white font-black text-sm inline-flex items-center gap-2"
                       style={{ background: `linear-gradient(135deg, var(--sp-primary), var(--sp-primary-2))` }}
                     >
@@ -1803,7 +1874,7 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                   </div>
                 )}
 
-                {/* ⭐ NO POSTS state (feed empty, not deep link) */}
+                {/* NO POSTS state (feed empty, not deep link) */}
                 {!isDeepLinkView && postsToRender.length === 0 && (
                   <div className="text-center py-20 sp-card rounded-3xl">
                     <div className="h-20 w-20 mx-auto mb-5 rounded-3xl flex items-center justify-center"
@@ -1821,7 +1892,7 @@ const isDeepLinkView = !!deepLinkId || !!deepLinkPost;
                   </div>
                 )}
 
-                {/* ⭐ POSTS GRID */}
+                {/* POSTS GRID */}
                 {postsToRender.length > 0 && (
                   <div className="space-y-4">
                     {postsToRender.map((post, i) => {

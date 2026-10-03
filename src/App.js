@@ -599,6 +599,18 @@ function App() {
                           </Layout>
                         } />
 
+                        {/* ⭐ NEW — Shorts deep-link routes (path + query) */}
+                        <Route path="/momento/shorts" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+                        <Route path="/momento/shorts/:id" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+
                         {/* ═══ Settings / Dashboard ═══ */}
                         <Route path="/settings" element={
                           <Layout>
