@@ -8,10 +8,10 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaCheckCircle, FaSpinner, FaTimes, FaEye, FaCommentDots,
-  FaHeart, FaRocket, FaEdit, FaTrash, FaMapMarkerAlt,
+  FaCheckCircle, FaSpinner, FaEye,
+  FaRocket, FaEdit, FaTrash, FaMapMarkerAlt,
   FaTag, FaBolt, FaWhatsapp, FaCopy, FaChevronLeft,
-  FaArrowRight, FaCalendarAlt, FaExclamationTriangle,
+  FaArrowRight, FaExclamationTriangle,
   FaInfoCircle, FaCheck, FaHourglassHalf, FaBan, FaBoxOpen,
   FaUser, FaChartLine, FaChevronRight, FaFire, FaChevronDown,
   FaRegClock,
