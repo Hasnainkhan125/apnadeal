@@ -284,9 +284,8 @@ const GlobalAIAssistant = () => {
     "/chat",
     "/study-group-chat",
     "/feed",
-    // ⭐ NEW — Post Ad page (form + catalog)
     "/post-ad",
-    // ⭐ NEW — Marketplace chat page (full-screen chat UI)
+    "/momento",
     "/marketplace-chat",
   ];
 
@@ -570,7 +569,31 @@ function App() {
                             </ProtectedRoute>
                           </Layout>
                         } />
+
+                        {/* ═══ Momento ═══ */}
                         <Route path="/momento" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+
+                        {/* ⭐ Deep link for shared posts, shorts, videos, reels */}
+                        <Route path="/momento/post/:id" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+                        <Route path="/momento/short/:id" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+                        <Route path="/momento/video/:id" element={
+                          <Layout>
+                            <Momento />
+                          </Layout>
+                        } />
+                        <Route path="/momento/reel/:id" element={
                           <Layout>
                             <Momento />
                           </Layout>

@@ -1,7 +1,7 @@
 // pages/ElectronicsDetail.jsx — Alibaba-style marketplace layout
 // + Real seller stats + Rating modal + Follow toggle + Chat + Toast
 // + Pakistani price formatter (Lakh / Crore / Arab / Kharab)
-// (electronics logic preserved, UI restructured to 3-column marketplace)
+// + Full spec table (Alibaba style) + Product gallery grid
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -173,6 +173,67 @@ const FontStyles = () => (
       cursor: default;
     }
     .theme-light .pd-attr-chip { background: #FFFFFF; }
+
+    /* ⭐ SPEC TABLE — Alibaba style */
+    .pd-spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--nav-line-str);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pd-spec-table tr {
+      border-top: 1px solid var(--nav-line);
+    }
+    .pd-spec-table tr:first-child { border-top: none; }
+    .pd-spec-table tr:nth-child(odd)  { background: var(--nav-surface); }
+    .pd-spec-table tr:nth-child(even) { background: var(--nav-panel); }
+    .pd-spec-table td {
+      padding: 12px 16px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .pd-spec-table td.pd-spec-key {
+      width: 40%;
+      color: var(--nav-txt-soft);
+      font-weight: 500;
+      border-right: 1px solid var(--nav-line);
+    }
+    .pd-spec-table td.pd-spec-val {
+      width: 60%;
+      color: var(--nav-txt);
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    /* Gallery grid */
+    .pd-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .pd-gallery__item {
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--nav-line);
+      background: var(--nav-surface);
+      cursor: zoom-in;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .pd-gallery__item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -14px rgba(0,0,0,0.25);
+    }
+    .pd-gallery__item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 8px;
+      background: var(--nav-panel);
+    }
 
     /* SOLD STAMP */
     .sold-stamp {
@@ -619,9 +680,7 @@ const ElectronicsDetail = () => {
   const [copied, setCopied] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("photos");
   const [qty, setQty] = useState(1);
 
   const [sellerStats, setSellerStats] = useState({
@@ -649,12 +708,6 @@ const ElectronicsDetail = () => {
     if (!user || !listing) return false;
     return !!listing.user_id && listing.user_id === user.id;
   }, [user, listing]);
-
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const role = user?.user_metadata?.role || user?.user_metadata?.user_type || user?.role;
-    return role === "admin" || role === "super_admin" || user?.user_metadata?.is_admin === true || user?.is_admin === true;
-  }, [user]);
 
   /* ── Apply edited image on return from /ai-image ── */
   useEffect(() => {
@@ -1000,10 +1053,13 @@ const ElectronicsDetail = () => {
     return groups;
   }, [listing]);
 
-  const totalSpecFields = useMemo(
-    () => Object.values(groupedSpecs).reduce((sum, arr) => sum + arr.length, 0),
+  /* Flatten all spec rows in section order for the table */
+  const flatSpecs = useMemo(
+    () => SECTION_ORDER.flatMap((key) => groupedSpecs[key] || []),
     [groupedSpecs]
   );
+
+  const totalSpecFields = flatSpecs.length;
 
   /* Formatted price */
   const formattedPrice = useMemo(
@@ -1186,8 +1242,6 @@ const ElectronicsDetail = () => {
                 )}
               </motion.div>
             </div>
-
-    
 
             {/* Edit image */}
             <div className="flex justify-end">
@@ -1397,77 +1451,6 @@ const ElectronicsDetail = () => {
                 </button>
               </div>
             )}
-
-            {/* Full details */}
-            {Object.keys(groupedSpecs).length > 0 && (
-              <div className="rounded-xl pd-surface overflow-hidden mb-5">
-                <button type="button" onClick={() => setDetailsOpen((o) => !o)}
-                  className="w-full flex items-center gap-3 p-4 text-left" aria-expanded={detailsOpen}>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--nav-primary-soft)", border: "1px solid var(--nav-orange)" }}>
-                    <CategoryIcon className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-ticket-body text-[14px] font-bold pd-txt">Full {listing.category} Details</h3>
-                    <p className="font-ticket-body text-[11px] pd-txt-soft">
-                      {detailsOpen ? "Everything the seller provided" : `${totalSpecFields} details available · tap to view`}
-                    </p>
-                  </div>
-                  <motion.div animate={{ rotate: detailsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}
-                    className="h-8 w-8 rounded-full pd-surface-2 flex items-center justify-center flex-shrink-0">
-                    <FaChevronDown className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </motion.div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {detailsOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.32, ease: "easeInOut" }} className="overflow-hidden">
-                      <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: "1px solid var(--nav-line)" }}>
-                        {SECTION_ORDER.map((sectionKey) => {
-                          const items = groupedSpecs[sectionKey];
-                          if (!items || items.length === 0) return null;
-                          const meta = SECTION_META[sectionKey];
-                          const SectionIcon = meta.icon;
-                          return (
-                            <div key={sectionKey} className="pt-3">
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <SectionIcon className="text-[11px]" style={{ color: "var(--nav-orange)" }} />
-                                <p className="font-ticket-body text-[10px] font-bold uppercase tracking-widest pd-txt-soft">{meta.title}</p>
-                                <div className="flex-1 h-px" style={{ background: "var(--nav-line)" }} />
-                              </div>
-                              <div className="rounded-xl pd-surface-2 overflow-hidden">
-                                {items.map((item, idx) => {
-                                  const ItemIcon = item.icon;
-                                  return (
-                                    <div key={item.key} className="flex items-center gap-3 px-4 py-2.5"
-                                      style={{ borderBottom: idx !== items.length - 1 ? "1px solid var(--nav-line)" : "none" }}>
-                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        <ItemIcon className="text-[11px] flex-shrink-0" style={{ color: "var(--nav-orange)" }} />
-                                        <span className="font-ticket-body text-[11px] sm:text-xs font-semibold pd-txt-soft truncate">{item.label}</span>
-                                      </div>
-                                      <span className="font-ticket-body text-xs sm:text-sm font-bold pd-txt text-right">{renderSpecValue(item.value)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* Description */}
-            {listing.description && (
-              <div className="mb-5">
-                <h3 className="font-ticket-body text-[14px] font-bold pd-txt mb-2">Description</h3>
-                <p className="font-ticket-body text-[13px] leading-relaxed pd-txt-soft whitespace-pre-wrap">{listing.description}</p>
-              </div>
-            )}
           </div>
 
           {/* ─────── COLUMN 3: Right ─────── */}
@@ -1630,6 +1613,82 @@ const ElectronicsDetail = () => {
           </div>
         </div>
 
+        {/* ═══════════════════════════════════════════════════════════════
+            FULL-WIDTH SECTIONS BELOW 3-COLUMN GRID
+            Product Description · Specification Table · Image Gallery
+           ═══════════════════════════════════════════════════════════════ */}
+
+        {/* ─── SPECIFICATION TABLE (Alibaba style) ─── */}
+        {flatSpecs.length > 0 && (
+          <section className="mt-10">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold" style={{ color: "var(--nav-txt)" }}>
+                Specification
+              </h2>
+              <button
+                type="button"
+                onClick={() => pushToast("success", "Reported", "Thank you for your feedback")}
+                className="inline-flex items-center gap-1.5 font-ticket-body text-[12px] font-semibold hover:opacity-70 transition-opacity"
+                style={{ color: "var(--nav-txt-soft)" }}
+              >
+                <FaFlag className="text-[10px]" /> Report abuse
+              </button>
+            </div>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 4 }} />
+
+            <table className="pd-spec-table mt-3">
+              <tbody>
+                {flatSpecs.map((item, idx) => (
+                  <tr key={`${item.key}-${idx}`}>
+                    <td className="pd-spec-key">{item.label}</td>
+                    <td className="pd-spec-val">{renderSpecValue(item.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* ─── PRODUCT DESCRIPTION ─── */}
+        {listing.description && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Product Description
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+            <p
+              className="font-ticket-body whitespace-pre-wrap"
+              style={{ fontSize: 14, lineHeight: 1.7, color: "var(--nav-txt-soft)" }}
+            >
+              {listing.description}
+            </p>
+          </section>
+        )}
+
+        {/* ─── FULL IMAGE GALLERY ─── */}
+        {listing.images && listing.images.length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Product Images ({listing.images.length})
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+
+            <div className="pd-gallery">
+              {listing.images.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setActiveImage(i); setFullscreen(true); }}
+                  className="pd-gallery__item"
+                  aria-label={`Open image ${i + 1}`}
+                >
+                  <img src={img} alt={`${listing.title} ${i + 1}`} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Safety Tips */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="mt-8 relative overflow-hidden rounded-xl p-5"
@@ -1762,6 +1821,7 @@ const ElectronicsDetail = () => {
         onClose={() => setRatingModalOpen(false)}
         sellerName={seller?.name || "Seller"}
         onSubmit={submitRating}
+        onRatingSubmit={submitRating}
         existingRating={sellerStats.userRating}
       />
     </div>

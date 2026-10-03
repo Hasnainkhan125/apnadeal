@@ -1,6 +1,7 @@
 // components/Navbar.jsx — Advanced Modern Navbar (brand #fc9d03 · dark + light)
 // Floating glass capsule · animated gradient border · premium micro-interactions
 // ⭐ Plan-aware: reads free / seller / pro from PlanContext
+// ⭐ Mobile drawer is now a BOTTOM SHEET (menu only — cart + theme live in the navbar)
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -16,7 +17,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { readCart, writeCart } from "../lib/cartStore";
 import { useTheme } from "../hooks/useTheme";
-import { usePlan } from "../contexts/PlanContext"; // ⭐ NEW
+import { usePlan } from "../contexts/PlanContext";
 
 /* ═══════════════════════════════════════════════════════════════
    ADMIN EMAILS
@@ -61,9 +62,9 @@ const FontStyles = () => (
       --nav-txt:          #FFFFFF;
       --nav-txt-soft:     rgba(255,255,255,0.68);
       --nav-txt-faint:    rgba(255,255,255,0.42);
-      --nav-primary:      #E26A2C; /* Dark orange from logo */
-      --nav-primary-2:    #F58220; /* Light orange from logo */
-      --nav-primary-3:    #D35400; /* Deep burnt orange from logo */
+      --nav-primary:      #E26A2C;
+      --nav-primary-2:    #F58220;
+      --nav-primary-3:    #D35400;
       --nav-primary-soft: rgba(242,138,45,0.14);
       --nav-primary-glow: rgba(242,138,45,0.45);
       --nav-shadow:       0 8px 32px -12px rgba(0,0,0,0.7);
@@ -86,9 +87,9 @@ const FontStyles = () => (
       --nav-txt:          #1A1613;
       --nav-txt-soft:     rgba(26,22,19,0.62);
       --nav-txt-faint:    rgba(26,22,19,0.42);
-      --nav-primary:      #D35400; /* Deep burnt orange for light mode */
-      --nav-primary-2:    #F58220; /* Light orange for light mode */
-      --nav-primary-3:    #E26A2C; /* Mid orange for light mode */
+      --nav-primary:      #D35400;
+      --nav-primary-2:    #F58220;
+      --nav-primary-3:    #E26A2C;
       --nav-primary-soft: rgba(211,84,0,0.10);
       --nav-primary-glow: rgba(211,84,0,0.35);
       --nav-shadow:       0 8px 24px -12px rgba(0,0,0,0.12);
@@ -276,8 +277,20 @@ const FontStyles = () => (
     .nav-logo-orbit {
       animation: logoOrbit 12s linear infinite;
     }
+
+    /* ⭐ MOBILE BOTTOM SHEET SCROLL */
+    .nav-sheet-scroll {
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav-sheet-scroll::-webkit-scrollbar { width: 5px; }
+    .nav-sheet-scroll::-webkit-scrollbar-thumb {
+      background: var(--nav-line-str);
+      border-radius: 4px;
+    }
   `}</style>
 );
+
 const LogoImage = ({ className = "h-full w-full object-contain p-1" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
@@ -329,7 +342,7 @@ const ICON_COLORS = {
   "/edit-image":      { fg: "#F58220", bg: "rgba(242,138,45,0.18)" },
   "/image-generator": { fg: "#F58220", bg: "rgba(242,138,45,0.18)" },
   "/ai-image":        { fg: "#F58220", bg: "rgba(242,138,45,0.18)" },
-    "/marketplace-chat": { fg: "#2A8FBD", bg: "rgba(42,143,189,0.12)" },
+  "/marketplace-chat": { fg: "#2A8FBD", bg: "rgba(42,143,189,0.12)" },
 };
 
 const getIconColor = (path) =>
@@ -540,7 +553,7 @@ const MiniCart = ({ open, onClose, cart, onRemove, onOpenFull }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   PLAN BADGE — reads free / seller / pro
+   PLAN BADGE
    ═══════════════════════════════════════════════════════════════ */
 const PlanBadge = ({ planId = "free", isVerified = false, size = "md" }) => {
   const textSize = size === "sm" ? "text-[8.5px]" : "text-[9px]";
@@ -797,7 +810,7 @@ const ProfileDropdown = ({
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   SECTION HEADER — mobile drawer
+   SECTION HEADER — mobile sheet
    ═══════════════════════════════════════════════════════════════ */
 const SectionHeader = ({ label, delay = 0.25 }) => (
   <motion.div
@@ -825,7 +838,6 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  // ⭐ Plan state — single source of truth
   const planCtx = usePlan();
   const planId = planCtx?.planId || "free";
   const planName = planCtx?.plan?.name || "Starter";
@@ -836,7 +848,6 @@ const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -901,15 +912,15 @@ const Navbar = () => {
         { path: "/property",    icon: FaHome,      label: "Property",          description: "Homes, plots, commercial" },
       ],
     },
-{
-  title: "Discover",
-  links: [
-    { path: "/feed",                icon: FaNewspaper,     label: "Marketplace Feed", description: "All live listings", badge: "New" },
-    { path: "/marketplace-chat",    icon: FaCommentDots,   label: "Messages",         description: "Chat with buyers & sellers" },
-    { path: "/momento",             icon: FaRegPaperPlane, label: "Momento",          description: "Share your moments & stories", badge: "New" },
-    { path: "/ai-image",            icon: FaMagic,         label: "AI Studio",        description: "Generate images & remove BG", badge: "Pro", isSpecial: true },
-  ],
-},
+    {
+      title: "Discover",
+      links: [
+        { path: "/feed",                icon: FaNewspaper,     label: "Marketplace Feed", description: "All live listings", badge: "New" },
+        { path: "/marketplace-chat",    icon: FaCommentDots,   label: "Messages",         description: "Chat with buyers & sellers" },
+        { path: "/momento",             icon: FaRegPaperPlane, label: "Momento",          description: "Share your moments & stories", badge: "New" },
+        { path: "/ai-image",            icon: FaMagic,         label: "AI Studio",        description: "Generate images & remove BG", badge: "Pro", isSpecial: true },
+      ],
+    },
   ];
 
   const accountGroups = [
@@ -983,8 +994,6 @@ const Navbar = () => {
       if (!userEmail && user?.email) setUserEmail(user.email);
       if (!userFullName && user?.user_metadata?.full_name) setUserFullName(user.user_metadata.full_name);
 
-      // ⭐ Plan is now sourced from PlanContext — no DB read needed here.
-
       const { data: statsData } = await supabase
         .from("user_stats")
         .select("*")
@@ -1048,7 +1057,7 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    setIsMenuOpen(false); setIsSearchOpen(false); setIsProfileOpen(false);
+    setIsMenuOpen(false); setIsProfileOpen(false);
     setIsNotificationOpen(false); setIsMegaOpen(false); setIsCartOpen(false);
   }, [location.pathname]);
 
@@ -1065,11 +1074,11 @@ const Navbar = () => {
   };
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setIsSearchOpen(false);
       setIsSearchFocused(false);
+      setIsMenuOpen(false);
       setSearchQuery("");
     }
   };
@@ -1100,45 +1109,40 @@ const Navbar = () => {
         <FontStyles />
         <div className="nav-advanced-inner">
           <div className="nav-advanced-glass px-4" style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
- {/* ═══ LOGO — Loading state ═══ */}
-<Link
-  to="/feed"
-  className="group flex items-center flex-shrink-0"
->
-  <div className="h-24 w-24 sm:h-24 sm:w-24 flex items-center justify-center overflow-hidden">
-    <div
-      className="logo-inner"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <LogoImage />
-    </div>
-  </div>
+            <Link to="/feed" className="group flex items-center flex-shrink-0">
+              <div className="h-24 w-24 sm:h-24 sm:w-24 flex items-center justify-center overflow-hidden">
+                <div
+                  className="logo-inner"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  <LogoImage />
+                </div>
+              </div>
 
-  <div className="ml-2 sm:ml-2.5 leading-none">
-    <span
-      className="font-ticket-display text-base sm:text-[20px] font-bold tracking-[-0.03em]"
-      style={{ color: "var(--nav-txt)" }}
-    >
-      Dealora
-    </span>
-  </div>
+              <div className="ml-2 sm:ml-2.5 leading-none">
+                <span
+                  className="font-ticket-display text-base sm:text-[20px] font-bold tracking-[-0.03em]"
+                  style={{ color: "var(--nav-txt)" }}
+                >
+                  Dealora
+                </span>
+              </div>
 
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner,
-    body.theme-dark .logo-inner,
-    body.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
-</Link>
+              <style>{`
+                .theme-dark .logo-inner,
+                html.dark .logo-inner,
+                body.theme-dark .logo-inner,
+                body.dark .logo-inner {
+                  filter: invert(1) hue-rotate(180deg) brightness(1.1);
+                }
+              `}</style>
+            </Link>
             <FaSpinner className="animate-spin text-[var(--nav-primary-2)] text-sm" />
           </div>
         </div>
@@ -1161,34 +1165,30 @@ const Navbar = () => {
           <div className={`nav-advanced-glass ${isScrolled ? "is-scrolled" : ""}`} style={{ padding: "0 12px" }}>
             <div className="flex items-center justify-between h-[52px] sm:h-[56px] gap-2">
 
-  <Link
-  to="/feed"
-  className="group flex items-center flex-shrink-0"
->
-  <div className="h-14 w-14 sm:h-16 sm:w-16 flex items-center justify-center overflow-hidden">
-    <div
-      className="logo-inner"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <LogoImage />
-    </div>
-  </div>
+              {/* ═══ LOGO ═══ */}
+              <Link to="/feed" className="group flex items-center flex-shrink-0">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 flex items-center justify-center overflow-hidden">
+                  <div
+                    className="logo-inner"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  >
+                    <LogoImage />
+                  </div>
+                </div>
 
-
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
-</Link>
+                <style>{`
+                  .theme-dark .logo-inner,
+                  html.dark .logo-inner {
+                    filter: invert(1) hue-rotate(180deg) brightness(1.1);
+                  }
+                `}</style>
+              </Link>
 
               {/* ═══ DESKTOP CENTER ═══ */}
               <div className="hidden lg:flex flex-1 justify-center items-center gap-3">
@@ -1258,7 +1258,7 @@ const Navbar = () => {
                 )}
               </div>
 
-              {/* ═══ RIGHT SIDE ═══ */}
+              {/* ═══ RIGHT SIDE — cart + theme on ALL sizes ═══ */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
 
                 {/* Cart */}
@@ -1399,6 +1399,7 @@ const Navbar = () => {
                 {/* Profile / guest */}
                 {user ? (
                   <div className="relative" ref={profileRef}>
+                    {/* Mobile: opens bottom sheet */}
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
                       className="lg:hidden flex items-center gap-0.5 p-0.5 rounded-full hover:bg-[var(--nav-surface)] transition-all group"
@@ -1419,6 +1420,7 @@ const Navbar = () => {
                       <FaChevronDown className={`text-[var(--nav-txt)] text-[8px] transition-transform duration-200 ${isMenuOpen ? "rotate-180" : ""}`} />
                     </button>
 
+                    {/* Desktop: profile dropdown */}
                     <button
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
                       className="hidden lg:flex items-center gap-1.5 p-0.5 pl-1 rounded-full hover:bg-[var(--nav-surface)] transition-all group"
@@ -1512,7 +1514,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* ═══ MEGA PANEL ═══ */}
+        {/* ═══ MEGA PANEL (desktop) ═══ */}
         <AnimatePresence>
           {user && isMegaOpen && (
             <motion.div
@@ -1663,7 +1665,9 @@ const Navbar = () => {
         </AnimatePresence>
       </nav>
 
-      {/* ═══ MOBILE DRAWER ═══ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          ⭐ MOBILE BOTTOM SHEET — Menu + Close only
+         ═══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
@@ -1673,6 +1677,7 @@ const Navbar = () => {
             transition={{ duration: 0.25 }}
             className={`fixed inset-0 z-[9999] lg:hidden theme-${theme}`}
           >
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
               animate={{ opacity: 1, backdropFilter: "blur(10px)" }}
@@ -1682,74 +1687,79 @@ const Navbar = () => {
               onClick={() => setIsMenuOpen(false)}
             />
 
+            {/* Bottom sheet */}
             <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 260 }}
-              className="absolute right-0 top-0 h-full w-[92vw] xs:w-[88vw] sm:w-[80vw] max-w-md flex flex-col overflow-hidden"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 32, stiffness: 280 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.35 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 120) setIsMenuOpen(false);
+              }}
+              className="absolute left-0 right-0 bottom-0 flex flex-col overflow-hidden"
               style={{
+                maxHeight: "92vh",
                 background: "var(--nav-bg)",
-                borderLeft: "1px solid var(--nav-line)",
-                boxShadow: "-24px 0 60px -20px rgba(0,0,0,0.5)",
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                borderTop: "1px solid var(--nav-line)",
+                boxShadow: "0 -24px 60px -20px rgba(0,0,0,0.55)",
               }}
             >
+              {/* Top accent */}
               <div
                 aria-hidden
                 className="h-[2px] w-full flex-shrink-0"
                 style={{ background: "linear-gradient(90deg, transparent, var(--nav-primary-2), transparent)" }}
               />
 
-              <div
-                className="relative flex items-center justify-between px-5 py-4 flex-shrink-0 z-20"
-                style={{
-                  background: "var(--nav-bg)",
-                  borderBottom: "1px solid var(--nav-line)",
-                  backdropFilter: "blur(20px)",
-                  WebkitBackdropFilter: "blur(20px)",
-                }}
-              >
-  <Link
-  to="/feed"
-  onClick={() => setIsMenuOpen(false)}
-  className="group flex items-center gap-2"
->
-  <div className="h-14 w-14 flex items-center justify-center overflow-hidden flex-shrink-0">
-    <div
-      className="logo-inner"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <LogoImage />
-    </div>
-  </div>
+              {/* Drag handle */}
+              <div className="pt-2.5 pb-1 flex justify-center flex-shrink-0">
+                <div
+                  aria-hidden
+                  style={{
+                    width: 44,
+                    height: 4,
+                    borderRadius: 999,
+                    background: "var(--nav-line-str)",
+                    opacity: 0.7,
+                  }}
+                />
+              </div>
 
-  <style>{`
-    /* ═══ Force the logo to look IDENTICAL in dark mode ═══ */
-    .theme-dark .logo-inner,
-    html.dark .logo-inner {
-      filter: invert(1) hue-rotate(180deg) brightness(1.1);
-    }
-  `}</style>
-</Link>
+              {/* ═══ SHEET HEADER — Menu · Close ═══ */}
+              <div
+                className="relative flex items-center justify-between px-4 pb-3 flex-shrink-0 z-20"
+                style={{ borderBottom: "1px solid var(--nav-line)" }}
+              >
+                <span
+                  className="font-ticket-display text-[16px] font-bold"
+                  style={{ color: "var(--nav-txt)", letterSpacing: "-0.015em" }}
+                >
+                  Menu
+                </span>
+
                 <motion.button
                   whileHover={{ scale: 1.06 }}
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setIsMenuOpen(false)}
-                  className="relative h-9 w-9 rounded-full flex items-center justify-center transition-colors"
+                  className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ background: "var(--nav-surface)", border: "1px solid var(--nav-line)" }}
                   aria-label="Close menu"
                 >
-                  <FaTimes className="text-[13px]" style={{ color: "var(--nav-txt)" }} />
+                  <FaTimes style={{ fontSize: 13, color: "var(--nav-txt)" }} />
                 </motion.button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" }}>
+              {/* ═══ SHEET BODY ═══ */}
+              <div
+                className="nav-sheet-scroll flex-1 overflow-y-auto px-4 py-4"
+                style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+              >
+                {/* ═══ USER CARD ═══ */}
                 {user && (
                   <motion.div
                     initial={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -1832,6 +1842,7 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
+                {/* ═══ MY ACCOUNT ═══ */}
                 {user && (
                   <motion.nav
                     initial={{ opacity: 0, y: 12 }}
@@ -1889,6 +1900,7 @@ const Navbar = () => {
                   </motion.nav>
                 )}
 
+                {/* ═══ BROWSE GROUPS ═══ */}
                 {browseGroups.map((group, gi) => (
                   <nav key={group.title} className={gi > 0 ? "mb-5 mt-5" : "mb-5"}>
                     <SectionHeader label={group.title} delay={0.25 + gi * 0.08} />
@@ -2012,6 +2024,7 @@ const Navbar = () => {
                   </nav>
                 ))}
 
+                {/* ═══ ACCOUNT GROUPS ═══ */}
                 {user &&
                   accountGroups.map((group, gi) => (
                     <nav key={group.title} className="mb-5">
@@ -2070,6 +2083,7 @@ const Navbar = () => {
                     </nav>
                   ))}
 
+                {/* ═══ UPGRADE BANNER ═══ */}
                 {user && !isPremium && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
@@ -2121,6 +2135,7 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
+                {/* ═══ GUEST CTA ═══ */}
                 {!user && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
@@ -2153,6 +2168,7 @@ const Navbar = () => {
                   </motion.div>
                 )}
 
+                {/* ═══ SIGN OUT ═══ */}
                 {user && (
                   <motion.button
                     initial={{ opacity: 0, y: 12 }}
@@ -2172,12 +2188,13 @@ const Navbar = () => {
                   </motion.button>
                 )}
 
+                {/* ═══ FOOTER ═══ */}
                 <div className="mt-5 pt-4" style={{ borderTop: "1px solid var(--nav-line)" }}>
                   <div className="flex items-center justify-center gap-2">
                     <FaBolt className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
-              <p className="font-ticket-body text-[10px] font-bold text-[var(--nav-txt-faint)] tracking-wide">
-  APNaDeal v2.0
-</p>
+                    <p className="font-ticket-body text-[10px] font-bold text-[var(--nav-txt-faint)] tracking-wide">
+                      APNaDeal v2.0
+                    </p>
                   </div>
                 </div>
               </div>

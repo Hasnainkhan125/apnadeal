@@ -1,8 +1,9 @@
 // pages/ToyDetail.jsx — Alibaba-style marketplace layout
 // + Real seller stats + Rating modal + Follow toggle + Chat + Toast
 // + Pakistani price formatter (Lakh / Crore / Arab / Kharab)
+// + Full spec table (Alibaba style) + Product gallery grid
 // + Alibaba-style image zoom viewer (click to open, hover to zoom)
-// (toy logic preserved, UI restructured to 3-column marketplace)
+// + Related products section + expanded safety tips
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -39,7 +40,6 @@ const FontStyles = () => (
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     html, body { overflow-x: hidden; max-width: 100vw; }
 
-    /* ── LIGHT THEME (default — Alibaba style) ── */
     .theme-light {
       --nav-bg:           #FFFFFF;
       --nav-bg-2:         #FFFFFF;
@@ -72,7 +72,6 @@ const FontStyles = () => (
       --nav-pill-border:  rgba(20,20,30,0.08);
     }
 
-    /* ── DARK THEME ── */
     .theme-dark {
       --nav-bg:           #0A0A12;
       --nav-bg-2:         #0F0F1A;
@@ -161,7 +160,6 @@ const FontStyles = () => (
       border: 1px solid var(--nav-orange);
     }
 
-    /* Alibaba-like attribute chip */
     .pd-attr-chip {
       display: inline-flex;
       align-items: center;
@@ -175,6 +173,65 @@ const FontStyles = () => (
       cursor: default;
     }
     .theme-light .pd-attr-chip { background: #FFFFFF; }
+
+    /* ⭐ SPEC TABLE — Alibaba style */
+    .pd-spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--nav-line-str);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pd-spec-table tr { border-top: 1px solid var(--nav-line); }
+    .pd-spec-table tr:first-child { border-top: none; }
+    .pd-spec-table tr:nth-child(odd)  { background: var(--nav-surface); }
+    .pd-spec-table tr:nth-child(even) { background: var(--nav-panel); }
+    .pd-spec-table td {
+      padding: 12px 16px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .pd-spec-table td.pd-spec-key {
+      width: 40%;
+      color: var(--nav-txt-soft);
+      font-weight: 500;
+      border-right: 1px solid var(--nav-line);
+    }
+    .pd-spec-table td.pd-spec-val {
+      width: 60%;
+      color: var(--nav-txt);
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    /* Gallery grid */
+    .pd-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .pd-gallery__item {
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--nav-line);
+      background: var(--nav-surface);
+      cursor: zoom-in;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .pd-gallery__item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -14px rgba(0,0,0,0.25);
+    }
+    .pd-gallery__item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 8px;
+      background: var(--nav-panel);
+    }
 
     /* SOLD STAMP */
     .sold-stamp {
@@ -228,7 +285,6 @@ const FontStyles = () => (
       border-radius: 6px;
     }
 
-    /* Edit image shimmer */
     @keyframes navEditShimmer {
       0%   { background-position: -200% 0; }
       100% { background-position:  200% 0; }
@@ -340,7 +396,6 @@ const EditImageEntry = ({ onClick, imageUrl, returnTo, label = "Edit image with 
   );
 };
 
-// ─── Default fallback toys ────────────────
 const DEFAULT_TOYS = [
   { id: "default-toy-1", category: "Toys", title: "LEGO City Police Station 60316", brand: "LEGO", type: "Building Blocks", ageGroup: "5–7 years", condition: "Like New", location: "DHA Phase 5, Lahore", price: 24500, image: "/toys/toy1.png", verified: true, featured: true, status: "active", postedAgo: "22 min ago", description: "Complete LEGO City Police Station set, all pieces included, original box." },
   { id: "default-toy-2", category: "Toys", title: "Barbie Dreamhouse 2024 Edition", brand: "Barbie", type: "Doll", ageGroup: "3–5 years", condition: "New", location: "Gulberg III, Lahore", price: 38500, image: "/toys/toy2.png", verified: true, featured: true, status: "active", postedAgo: "1 hour ago", description: "Brand new sealed Barbie Dreamhouse, full warranty." },
@@ -639,10 +694,9 @@ const ToyDetail = () => {
   const [copied, setCopied] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [zoomViewerOpen, setZoomViewerOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("photos");
   const [qty, setQty] = useState(1);
+  const [relatedToys, setRelatedToys] = useState([]);   // ⭐ NEW
 
   const [sellerStats, setSellerStats] = useState({
     listings: 0, followers: 0, rating: 0, ratingCount: 0, isFollowing: false, userRating: 0,
@@ -669,12 +723,6 @@ const ToyDetail = () => {
     if (!user || !listing) return false;
     return !!listing.user_id && listing.user_id === user.id;
   }, [user, listing]);
-
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const role = user?.user_metadata?.role || user?.user_metadata?.user_type || user?.role;
-    return role === "admin" || role === "super_admin" || user?.user_metadata?.is_admin === true || user?.is_admin === true;
-  }, [user]);
 
   /* ── Fetch listing ── */
   useEffect(() => {
@@ -995,10 +1043,13 @@ const ToyDetail = () => {
     return groups;
   }, [listing]);
 
-  const totalSpecFields = useMemo(
-    () => Object.values(groupedSpecs).reduce((sum, arr) => sum + arr.length, 0),
+  /* Flatten all spec rows for the table */
+  const flatSpecs = useMemo(
+    () => SECTION_ORDER.flatMap((key) => groupedSpecs[key] || []),
     [groupedSpecs]
   );
+
+  const totalSpecFields = flatSpecs.length;
 
   const formattedPrice = useMemo(
     () => formatPakistaniPrice(listing?.price),
@@ -1101,7 +1152,7 @@ const ToyDetail = () => {
         {/* ═══ ALIBABA-STYLE 3-COLUMN GRID ═══ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-          {/* ─────── COLUMN 1: Left — Image + Seller card ─────── */}
+          {/* COLUMN 1: Left */}
           <div className="lg:col-span-4 space-y-5">
             <div className="flex gap-3">
               {listing.images.length > 1 && (
@@ -1169,20 +1220,6 @@ const ToyDetail = () => {
                   </div>
                 )}
               </motion.div>
-            </div>
-
-            {/* Photos / Video tabs */}
-            <div className="flex items-center gap-2 pd-surface-2 rounded-xl p-1 w-fit">
-              <button onClick={() => setActiveTab("photos")}
-                className={`px-4 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${activeTab === "photos" ? "pd-surface" : ""}`}
-                style={{ color: activeTab === "photos" ? "var(--nav-txt)" : "var(--nav-txt-soft)" }}>
-                Photos
-              </button>
-              <button onClick={() => setActiveTab("video")}
-                className={`px-4 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${activeTab === "video" ? "pd-surface" : ""}`}
-                style={{ color: activeTab === "video" ? "var(--nav-txt)" : "var(--nav-txt-soft)" }}>
-                Video
-              </button>
             </div>
 
             {/* Edit image */}
@@ -1260,13 +1297,12 @@ const ToyDetail = () => {
             </div>
           </div>
 
-          {/* ─────── COLUMN 2: Middle ─────── */}
+          {/* COLUMN 2: Middle */}
           <div className="lg:col-span-5">
             <h1 className={`font-ticket-body text-[22px] sm:text-[26px] font-bold leading-tight mb-3 ${isSold ? "opacity-60" : ""}`} style={{ color: "var(--nav-txt)" }}>
               {listing.title}
             </h1>
 
-            {/* Rating row */}
             <div className="flex items-center gap-3 flex-wrap mb-3 text-[12.5px]">
               <StarDisplay rating={sellerStats.rating || 4.9} size="md" showValue count={sellerStats.ratingCount || 0} />
               <span className="pd-txt-soft">·</span>
@@ -1279,7 +1315,6 @@ const ToyDetail = () => {
               </span>
             </div>
 
-            {/* Badges row */}
             <div className="flex items-center gap-2 flex-wrap mb-5 pb-4" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               {listing.verified && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold pd-txt-soft" style={{ border: "1px solid var(--nav-line-str)" }}>
@@ -1296,7 +1331,6 @@ const ToyDetail = () => {
               </span>
             </div>
 
-            {/* Price */}
             <div className="mb-5 pb-5" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               {formattedPrice.unit ? (
                 <>
@@ -1327,7 +1361,6 @@ const ToyDetail = () => {
               </div>
             </div>
 
-            {/* Attribute chips */}
             {attributeChips.length > 0 && (
               <div className="space-y-3 mb-5">
                 {attributeChips.map((chip) => (
@@ -1339,7 +1372,6 @@ const ToyDetail = () => {
               </div>
             )}
 
-            {/* Quantity */}
             {!isSold && !isOwner && (
               <div className="mb-5">
                 <p className="font-ticket-body text-[13px] font-bold pd-txt mb-2">Quantity</p>
@@ -1357,7 +1389,6 @@ const ToyDetail = () => {
               </div>
             )}
 
-            {/* Add to Cart / Buy Now */}
             {isOwner ? (
               <div className="space-y-2 mb-5">
                 <div className="flex items-center justify-center gap-2 w-full py-3 rounded-lg pd-owner-banner font-ticket-body font-bold text-sm"
@@ -1389,83 +1420,10 @@ const ToyDetail = () => {
                 </button>
               </div>
             )}
-
-            {/* Full details */}
-            {Object.keys(groupedSpecs).length > 0 && (
-              <div className="rounded-xl pd-surface overflow-hidden mb-5">
-                <button type="button" onClick={() => setDetailsOpen((o) => !o)}
-                  className="w-full flex items-center gap-3 p-4 text-left" aria-expanded={detailsOpen}>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--nav-primary-soft)", border: "1px solid var(--nav-orange)" }}>
-                    <CategoryIcon className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-ticket-body text-[14px] font-bold pd-txt">Full {listing.category} Details</h3>
-                    <p className="font-ticket-body text-[11px] pd-txt-soft">
-                      {detailsOpen ? "Everything the seller provided" : `${totalSpecFields} details available · tap to view`}
-                    </p>
-                  </div>
-                  <motion.div animate={{ rotate: detailsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}
-                    className="h-8 w-8 rounded-full pd-surface-2 flex items-center justify-center flex-shrink-0">
-                    <FaChevronDown className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </motion.div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {detailsOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.32, ease: "easeInOut" }} className="overflow-hidden">
-                      <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: "1px solid var(--nav-line)" }}>
-                        {SECTION_ORDER.map((sectionKey) => {
-                          const items = groupedSpecs[sectionKey];
-                          if (!items || items.length === 0) return null;
-                          const meta = SECTION_META[sectionKey];
-                          const SectionIcon = meta.icon;
-                          return (
-                            <div key={sectionKey} className="pt-3">
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <SectionIcon className="text-[11px]" style={{ color: "var(--nav-orange)" }} />
-                                <p className="font-ticket-body text-[10px] font-bold uppercase tracking-widest pd-txt-soft">{meta.title}</p>
-                                <div className="flex-1 h-px" style={{ background: "var(--nav-line)" }} />
-                              </div>
-                              <div className="rounded-xl pd-surface-2 overflow-hidden">
-                                {items.map((item, idx) => {
-                                  const ItemIcon = item.icon;
-                                  return (
-                                    <div key={item.key} className="flex items-center gap-3 px-4 py-2.5"
-                                      style={{ borderBottom: idx !== items.length - 1 ? "1px solid var(--nav-line)" : "none" }}>
-                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        <ItemIcon className="text-[11px] flex-shrink-0" style={{ color: "var(--nav-orange)" }} />
-                                        <span className="font-ticket-body text-[11px] sm:text-xs font-semibold pd-txt-soft truncate">{item.label}</span>
-                                      </div>
-                                      <span className="font-ticket-body text-xs sm:text-sm font-bold pd-txt text-right">{renderSpecValue(item.value)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* Description */}
-            {listing.description && (
-              <div className="mb-5">
-                <h3 className="font-ticket-body text-[14px] font-bold pd-txt mb-2">Description</h3>
-                <p className="font-ticket-body text-[13px] leading-relaxed pd-txt-soft whitespace-pre-wrap">{listing.description}</p>
-              </div>
-            )}
           </div>
 
-          {/* ─────── COLUMN 3: Right ─────── */}
+          {/* COLUMN 3: Right */}
           <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 h-fit">
-
-            {/* Delivery card */}
             <div className="rounded-xl pd-info-emerald p-4">
               <div className="flex items-start gap-2.5 mb-3">
                 <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--nav-green-soft)" }}>
@@ -1495,7 +1453,6 @@ const ToyDetail = () => {
               </div>
             </div>
 
-            {/* Return card */}
             <div className="rounded-xl pd-info-emerald p-4">
               <div className="flex items-start gap-2.5 mb-2">
                 <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--nav-green-soft)" }}>
@@ -1508,7 +1465,6 @@ const ToyDetail = () => {
               </div>
             </div>
 
-            {/* Order protection card */}
             <div className="rounded-xl pd-surface p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-ticket-body text-[15px] font-bold pd-txt">APNa Deal order protection</h3>
@@ -1546,7 +1502,6 @@ const ToyDetail = () => {
               </div>
             </div>
 
-            {/* Primary CTAs */}
             {!isOwner && !isSold ? (
               <div className="space-y-2.5">
                 <button onClick={handleWhatsApp}
@@ -1584,7 +1539,6 @@ const ToyDetail = () => {
               </div>
             )}
 
-            {/* Utility row */}
             <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
               <button onClick={toggleFavorite} disabled={isSold}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
@@ -1622,31 +1576,112 @@ const ToyDetail = () => {
           </div>
         </div>
 
-        {/* Safety Tips */}
+        {/* ─── SPECIFICATION TABLE ─── */}
+        {flatSpecs.length > 0 && (
+          <section className="mt-10">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold" style={{ color: "var(--nav-txt)" }}>
+                Specification
+              </h2>
+              <button
+                type="button"
+                onClick={() => pushToast("success", "Reported", "Thank you for your feedback")}
+                className="inline-flex items-center gap-1.5 font-ticket-body text-[12px] font-semibold hover:opacity-70 transition-opacity"
+                style={{ color: "var(--nav-txt-soft)" }}
+              >
+                <FaFlag className="text-[10px]" /> Report abuse
+              </button>
+            </div>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 4 }} />
+
+            <table className="pd-spec-table mt-3">
+              <tbody>
+                {flatSpecs.map((item, idx) => (
+                  <tr key={`${item.key}-${idx}`}>
+                    <td className="pd-spec-key">{item.label}</td>
+                    <td className="pd-spec-val">{renderSpecValue(item.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* ─── PRODUCT DESCRIPTION ─── */}
+        {listing.description && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Product Description
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+            <p
+              className="font-ticket-body whitespace-pre-wrap"
+              style={{ fontSize: 14, lineHeight: 1.7, color: "var(--nav-txt-soft)" }}
+            >
+              {listing.description}
+            </p>
+          </section>
+        )}
+
+        {/* ─── FULL IMAGE GALLERY ─── */}
+        {listing.images && listing.images.length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Product Images ({listing.images.length})
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+
+            <div className="pd-gallery">
+              {listing.images.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setActiveImage(i); setZoomViewerOpen(true); }}
+                  className="pd-gallery__item"
+                  aria-label={`Open image ${i + 1}`}
+                >
+                  <img src={img} alt={`${listing.title} ${i + 1}`} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+    
+        {/* ═══ EXPANDED SAFETY TIPS ═══ */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="mt-8 relative overflow-hidden rounded-xl p-5"
+          className="mt-10 relative overflow-hidden rounded-2xl p-6"
           style={{ background: "var(--nav-green-soft)", border: "1px solid var(--nav-green)" }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-9 h-9 rounded-full text-white" style={{ background: "#16A34A" }}>
-              <FaShieldAlt className="text-[14px]" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full text-white" style={{ background: "#16A34A" }}>
+              <FaShieldAlt className="text-[16px]" />
             </div>
             <div>
-              <span className="font-ticket-body text-[15px] font-bold pd-txt">Safety Tips</span>
-              <p className="font-ticket-body text-[11px] pd-txt-soft">Stay protected when buying toys</p>
+              <span className="font-ticket-body text-[17px] font-bold pd-txt">Safety Tips for Buying Toys</span>
+              <p className="font-ticket-body text-[12px] pd-txt-soft">Follow these guidelines to protect yourself and your child</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {[
-              "Inspect the toy for broken or missing parts",
-              "Check age-appropriate safety labels",
-              "Verify original box and accessories",
-              "Meet at a public, well-lit location",
-            ].map((tip, index) => (
-              <div key={index} className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 pd-surface">
-                <div className="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0" style={{ background: "var(--nav-green-soft)" }}>
+              { title: "Inspect for damage", body: "Check for broken parts, sharp edges, or loose screws before buying." },
+              { title: "Age-appropriate", body: "Match the toy's age rating with your child. Avoid small parts for under-3s." },
+              { title: "Original packaging", body: "Prefer toys with original box to verify authenticity and safety certifications." },
+              { title: "Check certifications", body: "Look for EN71, CE, or ASTM labels. Certified toys meet safety standards." },
+              { title: "Battery condition", body: "For electronic toys, test battery compartment and check for corrosion." },
+              { title: "Verify completeness", body: "Count pieces/accessories against the manual before accepting." },
+              { title: "Public meetups", body: "Meet in a public, well-lit place during daylight when buying locally." },
+              { title: "Sanitize used toys", body: "Wash or disinfect second-hand toys thoroughly before giving to a child." },
+              { title: "Avoid advance payment", body: "Never pay in advance. Inspect the toy in person first." },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 pd-surface">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 mt-0.5" style={{ background: "var(--nav-green-soft)" }}>
                   <FaCheck className="text-[8px]" style={{ color: "var(--nav-green)" }} />
                 </div>
-                <span className="font-ticket-body text-[13px] leading-snug pd-txt">{tip}</span>
+                <div className="min-w-0">
+                  <p className="font-ticket-body text-[12.5px] font-bold pd-txt leading-snug">{tip.title}</p>
+                  <p className="font-ticket-body text-[11px] pd-txt-soft leading-relaxed mt-0.5">{tip.body}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -1716,7 +1751,7 @@ const ToyDetail = () => {
         )}
       </AnimatePresence>
 
-      {/* ⭐ Alibaba-style image zoom viewer */}
+      {/* Alibaba-style image zoom viewer */}
       <ImageZoomViewer
         open={zoomViewerOpen}
         images={listing.images}

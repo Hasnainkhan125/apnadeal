@@ -2252,7 +2252,8 @@ const DEFAULT_PRICE_LO = 0;            // ⭐ start at 0
 const DEFAULT_PRICE_HI = 300000;       // ⭐ default upper = Rs. 3 Lac
 const [priceLo, setPriceLo] = useState(DEFAULT_PRICE_LO);
 const [priceHi, setPriceHi] = useState(DEFAULT_PRICE_HI);
-/* Sync to global filter (in raw rupees) */
+
+/* Sync to global filter (raw rupees — no ×1000 needed now) */
 useEffect(() => {
   if (filter.setPriceMin) filter.setPriceMin(String(priceLo));
 }, [priceLo]); // eslint-disable-line
@@ -2261,15 +2262,13 @@ useEffect(() => {
 }, [priceHi]); // eslint-disable-line
   const sliderRef = useRef(null);
   const [dragging, setDragging] = useState(null); // "lo" | "hi" | null
-
-  /* Sync to global filter */
-  useEffect(() => {
-    if (filter.setPriceMin) filter.setPriceMin(String(Math.round(priceLo * 1000)));
-  }, [priceLo]); // eslint-disable-line
-  useEffect(() => {
-    if (filter.setPriceMax) filter.setPriceMax(String(Math.round(priceHi * 1000)));
-  }, [priceHi]); // eslint-disable-line
-
+/* Sync to global filter */
+useEffect(() => {
+  if (filter.setPriceMin) filter.setPriceMin(String(Math.round(priceLo * 1000)));
+}, [priceLo]); // eslint-disable-line
+useEffect(() => {
+  if (filter.setPriceMax) filter.setPriceMax(String(Math.round(priceHi * 1000)));
+}, [priceHi]); // eslint-disable-line
   /* Histogram — reference bell curve */
   const histogram = useMemo(() => {
     const N = 40;
@@ -2292,8 +2291,10 @@ useEffect(() => {
     const rect = el.getBoundingClientRect();
     return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
   };
-  const valueFromPct = (pct) =>
-    Math.round((PRICE_MIN + (pct / 100) * (PRICE_MAX - PRICE_MIN)) * 100) / 100;
+const valueFromPct = (pct) => {
+  const raw = PRICE_MIN + (pct / 100) * (PRICE_MAX - PRICE_MIN);
+  return Math.round(raw / PRICE_STEP) * PRICE_STEP;
+};
 
   useEffect(() => {
     if (!dragging) return;
@@ -2504,7 +2505,7 @@ useEffect(() => {
                 <div>
                   <span className="fd-sb-price-label">From</span>
                   <div className="fd-sb-price-input-wrap">
-                    <span className="fd-sb-price-prefix">$</span>
+                    <span className="fd-sb-price-prefix">Rs</span>
                     <input
                       type="number"
                       step="0.5"
@@ -2522,7 +2523,7 @@ useEffect(() => {
                 <div>
                   <span className="fd-sb-price-label">To</span>
                   <div className="fd-sb-price-input-wrap">
-                    <span className="fd-sb-price-prefix">$</span>
+                    <span className="fd-sb-price-prefix">Rs</span>
                     <input
                       type="number"
                       step="0.5"

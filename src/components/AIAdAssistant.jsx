@@ -1,6 +1,6 @@
 // components/AIAdAssistant.jsx
 // ✨ AI Listing Assistant — human-like voice + voice input + bulk input
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -88,7 +88,6 @@ const VOICE_LINES = {
   subType:       "And what sub-type — residential, commercial, industrial, or agricultural?",
   title_type:    "What's the title type — freehold, leasehold, registry, fard, or allotment?",
   society:       "Which society or authority is it in — like DHA, Bahria, or something else?",
-  area:          "What's the size of the property? Just tell me the number.",
   areaUnit:      "And what unit — marla, kanal, square feet, or acres?",
   beds:          "How many bedrooms are there?",
   baths:         "And how many bathrooms?",
@@ -104,7 +103,6 @@ const VOICE_LINES = {
   screen:        "What's the screen size? For example, fourteen inches.",
   gender:        "Is it suitable for boys, girls, or unisex?",
   material:      "What material is it made of? Plastic, wood, metal, or fabric?",
-  battery:       "Does it need batteries — yes, no, or are they included?",
   assembly:      "Does it require assembly? Yes or no.",
   packaging:     "How's the packaging — original box, no box, or damaged box?",
   accessories:   "What items are included — like manual, charger, or extra pieces?",
@@ -277,7 +275,6 @@ const useSpeech = () => {
     try { window.speechSynthesis?.cancel(); } catch {}
   }, []);
 
-  /* ⭐ Prime the speech engine on first user gesture (mobile requirement) */
   const unlock = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (unlockedRef.current) return;
@@ -294,26 +291,19 @@ const useSpeech = () => {
     if (!enabled) return;
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (!text) return;
-
     try { window.speechSynthesis.cancel(); } catch {}
-
     const u = new SpeechSynthesisUtterance(String(text));
     if (!voiceRef.current) voiceRef.current = pickFemaleVoice();
     if (voiceRef.current) u.voice = voiceRef.current;
     u.lang = voiceRef.current?.lang || "en-US";
-
     u.rate = 0.98;
     u.pitch = 1.16;
     u.volume = 1;
-
     u.onstart = () => setSpeaking(true);
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
-
     utteranceRef.current = u;
-    setTimeout(() => {
-      try { window.speechSynthesis.speak(u); } catch {}
-    }, 80);
+    setTimeout(() => { try { window.speechSynthesis.speak(u); } catch {} }, 80);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
@@ -345,11 +335,7 @@ const useSpeech = () => {
 /* ═══════════════ Build a human-like spoken line for a question ═══════════════ */
 function buildSpokenLine(question, specs) {
   if (!question) return "";
-
-  if (question.id === "category") {
-    return VOICE_LINES.category;
-  }
-
+  if (question.id === "category") return VOICE_LINES.category;
   const line = VOICE_LINES[question.id];
   if (line) {
     if (question.id === "make" && specs?.category) {
@@ -363,7 +349,6 @@ function buildSpokenLine(question, specs) {
     }
     return line;
   }
-
   const label = String(question.label || "").trim().replace(/\?+$/, "");
   return `Alright. ${label}.`;
 }
@@ -426,24 +411,15 @@ const Orb = ({ state = "idle", size = 120, speaking = false }) => {
       />
       <div
         className="relative h-full w-full rounded-full overflow-hidden"
-        style={{
-          background: "#0b0612",
-          boxShadow: "inset 0 0 36px rgba(255,255,255,.4), 0 0 0 1.5px rgba(255,255,255,.28)",
-        }}
+        style={{ background: "#0b0612", boxShadow: "inset 0 0 36px rgba(255,255,255,.4), 0 0 0 1.5px rgba(255,255,255,.28)" }}
       >
         {useVideo ? (
           <video
             ref={vidRef}
             src={VIDEO_SRC}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
+            autoPlay loop muted playsInline preload="auto"
             onError={() => setFailed(true)}
-            onLoadedData={(e) => {
-              e.currentTarget.playbackRate = state === "thinking" ? 1.8 : state === "listening" ? 1.4 : 1;
-            }}
+            onLoadedData={(e) => { e.currentTarget.playbackRate = state === "thinking" ? 1.8 : state === "listening" ? 1.4 : 1; }}
             className="absolute inset-0 h-full w-full object-cover"
             style={{ transform: "scale(1.7)" }}
           />
@@ -454,34 +430,17 @@ const Orb = ({ state = "idle", size = 120, speaking = false }) => {
                 key={i}
                 className="absolute rounded-full"
                 style={{
-                  width: size * 1.05,
-                  height: size * 1.05,
-                  left: size * -0.025,
-                  top: size * -0.025,
-                  background: b.c,
-                  filter: `blur(${size * 0.22}px)`,
+                  width: size * 1.05, height: size * 1.05,
+                  left: size * -0.025, top: size * -0.025,
+                  background: b.c, filter: `blur(${size * 0.22}px)`,
                 }}
-                animate={{
-                  x: b.x.map((v) => v * u),
-                  y: b.y.map((v) => v * u),
-                  scale: [1, 1.2, 0.9],
-                }}
-                transition={{
-                  duration: b.d * k,
-                  repeat: Infinity,
-                  repeatType: "mirror",
-                  ease: "easeInOut",
-                }}
+                animate={{ x: b.x.map((v) => v * u), y: b.y.map((v) => v * u), scale: [1, 1.2, 0.9] }}
+                transition={{ duration: b.d * k, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
               />
             ))}
           </>
         )}
-        <span
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: "radial-gradient(circle at 30% 22%,rgba(255,255,255,.45),transparent 50%)",
-          }}
-        />
+        <span className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 30% 22%,rgba(255,255,255,.45),transparent 50%)" }} />
       </div>
     </motion.div>
   );
@@ -564,12 +523,8 @@ const PhotoPicker = ({ photos, onPick, onRemove, t }) => {
         >
           <FaCloudUploadAlt className="text-white text-xl sm:text-2xl" />
         </div>
-        <p className="text-[15px] sm:text-[16px] font-extrabold" style={{ color: t.text }}>
-          Tap to add photos
-        </p>
-        <p className="text-[11.5px] sm:text-[12px] font-semibold" style={{ color: t.sub }}>
-          Up to 5 images · Max 5MB each
-        </p>
+        <p className="text-[15px] sm:text-[16px] font-extrabold" style={{ color: t.text }}>Tap to add photos</p>
+        <p className="text-[11.5px] sm:text-[12px] font-semibold" style={{ color: t.sub }}>Up to 5 images · Max 5MB each</p>
       </button>
     );
   }
@@ -644,7 +599,6 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
   const isListeningRef = useRef(false);
   const t = isDark ? THEMES.dark : THEMES.light;
 
-  /* ⭐ TTS */
   const {
     speak, stop: stopSpeech, toggle: toggleSpeech,
     unlock: unlockSpeech, resume: resumeSpeech,
@@ -683,12 +637,9 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
     stopSpeech();
   }, [stopSpeech]);
 
-  /* ⭐ Resume TTS when tab becomes visible again (mobile suspends it) */
   useEffect(() => {
     if (!open || !speechEnabled) return;
-    const onVis = () => {
-      if (document.visibilityState === "visible") resumeSpeech();
-    };
+    const onVis = () => { if (document.visibilityState === "visible") resumeSpeech(); };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [open, speechEnabled, resumeSpeech]);
@@ -699,7 +650,6 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
     }
   }, [question, isThinking]);
 
-  /* ⭐ SPEAK human-like line for the new question */
   useEffect(() => {
     if (!open || !speechEnabled) return;
     if (isThinking) return;
@@ -713,7 +663,6 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
       }
       return;
     }
-
     if (question?.label) {
       const line = buildSpokenLine(question, specs);
       if (lastSpokenRef.current !== line) {
@@ -771,60 +720,70 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
       setSpecs(merged);
       if (userAnswer && q?.id) setAnswered((p) => (p.includes(q.id) ? p : [...p, q.id]));
 
-      if (data.listing && data.needsAnswers === false) {
+      /* ⭐ If AI says "done" but we haven't collected photos yet → force photo step */
+      if (data.listing && data.needsAnswers === false && !answered.includes("photos") && q?.id !== "photos") {
+        const photoQ = { id: "photos", label: "Add photos of your item", type: "photos" };
+        questionRef.current = photoQ;
+        setQuestion(photoQ);
+        setAiMessage(data.message || "Almost done!");
+        setAnswer("");
+        return;
+      }
+
+      /* Only finalize from AI if the photos step has already been answered */
+      if (data.listing && data.needsAnswers === false && q?.id === "photos") {
         questionRef.current = null;
         setQuestion(null);
         setFinalListing({ ...data.listing, images: photos.map((p) => p.url) });
         setAiMessage(data.message || "Your listing is ready.");
-      } else {
-        const nextQ = data.question || null;
-        if (nextQ) {
-          if (!nextQ.suggestions && Array.isArray(nextQ.options)) {
-            nextQ.suggestions = nextQ.options;
-          }
-          if (!nextQ.suggestions && nextQ.type !== "color" && nextQ.type !== "photos") {
-            const fallbacks = {
-              engine: ["660cc","1000cc","1300cc","1500cc","1800cc","2000cc","2500cc+"],
-              mileage: ["Under 10,000 km","10,000-50,000 km","50,000-100,000 km","100,000+ km"],
-              year: ["2024","2023","2022","2021","2020","2019","2018","2017"],
-              ownersCount: ["1st","2nd","3rd","4th+"],
-              registeredIn: ["Lahore","Karachi","Islamabad","Rawalpindi","Faisalabad"],
-              city: ["Lahore","Karachi","Islamabad","Rawalpindi","Faisalabad"],
-              transmission: ["Automatic","Manual","CVT","DCT","Tiptronic"],
-              fuel: ["Petrol","Diesel","CNG","Electric","Hybrid"],
-              bodyType: ["Sedan","Hatchback","SUV","Crossover","MPV","Van"],
-              color: ["White","Black","Silver","Grey","Red","Blue"],
-              storage: ["32GB","64GB","128GB","256GB","512GB","1TB"],
-              ram: ["2GB","3GB","4GB","6GB","8GB","12GB","16GB"],
-              network: ["5G","4G LTE","3G","WiFi Only"],
-              areaUnit: ["Marla","Kanal","Sq. Ft.","Sq. Yards","Acre"],
-              beds: ["1","2","3","4","5","6+"],
-              baths: ["1","2","3","4","5","6+"],
-              floors: ["Ground only","Ground + 1","Ground + 2","Ground + 3+"],
-              parking: ["None","1","2","3","4+"],
-              furnished: ["Unfurnished","Semi-Furnished","Fully Furnished"],
-              delivery: ["Yes","No","Pickup Only"],
-              pta: ["Yes","No"],
-              boxAvailable: ["Yes","No"],
-              fingerprint: ["Yes","No"],
-              accidentFree: ["Yes","No","Minor"],
-            };
-            const fb = fallbacks[nextQ.id];
-            if (fb) nextQ.suggestions = fb;
-          }
-        }
-        questionRef.current = nextQ;
-        setQuestion(nextQ);
-        setAiMessage(data.message || "");
-        setAnswer("");
+        return;
       }
+
+      const nextQ = data.question || null;
+      if (nextQ) {
+        if (!nextQ.suggestions && Array.isArray(nextQ.options)) nextQ.suggestions = nextQ.options;
+        if (!nextQ.suggestions && nextQ.type !== "color" && nextQ.type !== "photos") {
+          const fallbacks = {
+            engine: ["660cc","1000cc","1300cc","1500cc","1800cc","2000cc","2500cc+"],
+            mileage: ["Under 10,000 km","10,000-50,000 km","50,000-100,000 km","100,000+ km"],
+            year: ["2024","2023","2022","2021","2020","2019","2018","2017"],
+            ownersCount: ["1st","2nd","3rd","4th+"],
+            registeredIn: ["Lahore","Karachi","Islamabad","Rawalpindi","Faisalabad"],
+            city: ["Lahore","Karachi","Islamabad","Rawalpindi","Faisalabad"],
+            transmission: ["Automatic","Manual","CVT","DCT","Tiptronic"],
+            fuel: ["Petrol","Diesel","CNG","Electric","Hybrid"],
+            bodyType: ["Sedan","Hatchback","SUV","Crossover","MPV","Van"],
+            color: ["White","Black","Silver","Grey","Red","Blue"],
+            storage: ["32GB","64GB","128GB","256GB","512GB","1TB"],
+            ram: ["2GB","3GB","4GB","6GB","8GB","12GB","16GB"],
+            network: ["5G","4G LTE","3G","WiFi Only"],
+            areaUnit: ["Marla","Kanal","Sq. Ft.","Sq. Yards","Acre"],
+            beds: ["1","2","3","4","5","6+"],
+            baths: ["1","2","3","4","5","6+"],
+            floors: ["Ground only","Ground + 1","Ground + 2","Ground + 3+"],
+            parking: ["None","1","2","3","4+"],
+            furnished: ["Unfurnished","Semi-Furnished","Fully Furnished"],
+            delivery: ["Yes","No","Pickup Only"],
+            pta: ["Yes","No"],
+            boxAvailable: ["Yes","No"],
+            fingerprint: ["Yes","No"],
+            accidentFree: ["Yes","No","Minor"],
+          };
+          const fb = fallbacks[nextQ.id];
+          if (fb) nextQ.suggestions = fb;
+        }
+      }
+      questionRef.current = nextQ;
+      setQuestion(nextQ);
+      setAiMessage(data.message || "");
+      setAnswer("");
     } catch (err) {
       console.error("AI error:", err);
       setError("I couldn't reach the AI. Check your connection and try again.");
     } finally {
       setIsThinking(false);
     }
-  }, [photos, stopSpeech]);
+  }, [photos, stopSpeech, answered]);
 
   const start = useCallback(() => {
     specsRef.current = {}; questionRef.current = null; historyRef.current = [];
@@ -839,7 +798,6 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
   const submitAnswer = useCallback((v) => {
     const val = String(v ?? answer).trim();
     if (!val || isThinking) return;
-    /* ⭐ Any tap on an answer chip/button also unlocks TTS */
     try { unlockSpeech(); } catch {}
     stopSpeech();
     askAI(val);
@@ -854,17 +812,12 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
   }, []);
 
   const startVoice = useCallback(() => {
-    /* ⭐ Unlock speech engine on this same tap (mobile) */
     try { unlockSpeech(); } catch {}
-
-    /* ⭐ Check for mic permission first */
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       alert("Voice input isn't supported on this browser. Please type instead.");
       return;
     }
-
-    /* ⭐ If we can check permission state, do it and alert if denied */
     const beginRecognition = () => {
       try { recRef.current?.stop(); } catch {}
       stopSpeech();
@@ -879,7 +832,6 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
         if (code === "not-allowed" || code === "service-not-allowed") {
           alert("Microphone access is blocked. Please allow microphone permission in your browser settings and try again.");
         } else if (code === "no-speech") {
-          /* ignore — user didn't speak */
         } else {
           alert(`Voice input error: ${code || "unknown"}. Please try again or type instead.`);
         }
@@ -918,10 +870,7 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
     const x = voiceText.trim();
     stopVoice();
     setVoiceText("");
-    if (x) {
-      stopSpeech();
-      askAI(x);
-    }
+    if (x) { stopSpeech(); askAI(x); }
   };
   const cancelVoice = () => { stopVoice(); setVoiceText(""); };
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -942,18 +891,50 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
   };
 
   const removePhoto = (id) => setPhotos((prev) => prev.filter((p) => p.id !== id));
-  const confirmPhotos = () => {
+
+  /* ⭐ Finalize LOCALLY — no AI call, so the user never gets stuck here */
+  const confirmPhotos = useCallback(() => {
     if (photos.length === 0) return;
-    askAI(`[${photos.length} photo${photos.length > 1 ? "s" : ""} uploaded]`);
-  };
+    try { stopSpeech(); } catch {}
+
+    const s = specsRef.current || {};
+    const listing = {
+      category:    s.category    || "",
+      title:       s.title       || "",
+      description: s.description || "",
+      price:       s.price != null ? Number(s.price) || s.price : "",
+      condition:   s.condition   || "",
+      city:        s.city        || "",
+      area:        s.area        || "",
+      specs:       { ...s },
+      images:      photos.map((p) => p.url),
+    };
+    Object.keys(listing.specs).forEach((k) => {
+      const v = listing.specs[k];
+      if (v === "" || v == null) delete listing.specs[k];
+    });
+
+    questionRef.current = null;
+    setQuestion(null);
+    setAnswered((p) => (p.includes("photos") ? p : [...p, "photos"]));
+    setFinalListing(listing);
+    setAiMessage("Perfect — I have everything! Your listing is ready.");
+    setIsThinking(false);
+    setError("");
+  }, [photos, stopSpeech]);
 
   const apply = () => { if (finalListing) { onSubmit?.(finalListing); onClose?.(); } };
+
+  /* ⭐ useMemo MUST be called before any early return */
+  const chips = useMemo(
+    () => Object.entries(specs).filter(([, v]) => v && typeof v !== "object").slice(-8),
+    [specs]
+  );
 
   if (!open) return null;
 
   const orbState = isListening ? "listening" : isThinking ? "thinking" : "idle";
   const progress = finalListing ? 1 : Math.min(answered.length / 12, 0.95);
-  const chips = Object.entries(specs).filter(([, v]) => v && typeof v !== "object").slice(-8);
   const showInput = !isThinking && !error && !finalListing && question && question.type !== "photos";
   const isCategoryQuestion = question?.id === "category";
 
@@ -992,17 +973,11 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
             <div
               className="relative flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center"
               style={{
-                width: 30,
-                height: 30,
+                width: 30, height: 30,
                 background: speaking ? "#FFFFFF" : "rgba(255,255,255,0.06)",
-                border: speaking
-                  ? "1px solid rgba(255,255,255,0.9)"
-                  : "1px solid rgba(255,255,255,0.12)",
-                boxShadow: speaking
-                  ? "0 0 0 3px rgba(255,255,255,0.18), 0 0 20px -4px rgba(255,255,255,0.55)"
-                  : "none",
-                transition:
-                  "background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+                border: speaking ? "1px solid rgba(255,255,255,0.9)" : "1px solid rgba(255,255,255,0.12)",
+                boxShadow: speaking ? "0 0 0 3px rgba(255,255,255,0.18), 0 0 20px -4px rgba(255,255,255,0.55)" : "none",
+                transition: "background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
               }}
             >
               <img
@@ -1010,18 +985,12 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
                 alt="APNa Deal"
                 className="w-full h-full object-contain p-1"
                 draggable={false}
-                style={{
-                  filter: speaking ? "brightness(0.15)" : "brightness(1)",
-                  transition: "filter 0.3s ease",
-                }}
+                style={{ filter: speaking ? "brightness(0.15)" : "brightness(1)", transition: "filter 0.3s ease" }}
                 onError={(e) => {
                   e.currentTarget.style.display = "none";
-                  e.currentTarget.parentElement.innerHTML = `
-                    <span style="color:${speaking ? "#111" : "#fff"};font-size:11px;font-weight:800;">A</span>
-                  `;
+                  e.currentTarget.parentElement.innerHTML = `<span style="color:${speaking ? "#111" : "#fff"};font-size:11px;font-weight:800;">A</span>`;
                 }}
               />
-
               {speaking && (
                 <motion.span
                   className="absolute inset-0 rounded-full pointer-events-none"
@@ -1033,18 +1002,9 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
             </div>
 
             <div className="leading-tight min-w-0">
-              <p className="text-[13px] sm:text-[14px] font-extrabold truncate">
-                APNa AI
-              </p>
-              <p
-                className="text-[10.5px] sm:text-[11px] font-semibold truncate"
-                style={{ color: t.sub }}
-              >
-                {speaking
-                  ? "Speaking…"
-                  : answered.length
-                  ? `${answered.length} detail${answered.length > 1 ? "s" : ""} saved`
-                  : "Listing assistant"}
+              <p className="text-[13px] sm:text-[14px] font-extrabold truncate">APNa AI</p>
+              <p className="text-[10.5px] sm:text-[11px] font-semibold truncate" style={{ color: t.sub }}>
+                {speaking ? "Speaking…" : answered.length ? `${answered.length} detail${answered.length > 1 ? "s" : ""} saved` : "Listing assistant"}
               </p>
             </div>
           </div>
@@ -1056,11 +1016,7 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
                 aria-label={speechEnabled ? "Mute AI voice" : "Unmute AI voice"}
                 title={speechEnabled ? "Mute AI voice" : "Unmute AI voice"}
                 className="h-9 w-9 sm:h-10 sm:w-10 rounded-full flex items-center justify-center active:scale-95 transition"
-                style={{
-                  ...glass,
-                  color: speechEnabled ? BRAND : t.sub,
-                  opacity: speechEnabled ? 1 : 0.6,
-                }}
+                style={{ ...glass, color: speechEnabled ? BRAND : t.sub, opacity: speechEnabled ? 1 : 0.6 }}
               >
                 {speechEnabled ? <FaVolumeUp className="text-[13px]" /> : <FaVolumeMute className="text-[13px]" />}
               </button>
@@ -1137,30 +1093,19 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
                   {question.type === "select" && Array.isArray(question.options) && (
                     <div className={`flex flex-wrap gap-2.5 sm:gap-3 justify-center ${isCategoryQuestion ? "max-w-2xl" : "max-w-lg"}`}>
                       {question.options.map((o, i) => (
-                        <SuggestionChip
-                          key={o}
-                          label={o}
-                          onPick={submitAnswer}
-                          glass={glass}
-                          index={i}
-                          variant={isCategoryQuestion ? "category" : "pill"}
-                        />
+                        <SuggestionChip key={o} label={o} onPick={submitAnswer} glass={glass} index={i} variant={isCategoryQuestion ? "category" : "pill"} />
                       ))}
                     </div>
                   )}
 
                   {isCategoryQuestion && (
                     <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.6 }}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
                       className="mt-5 text-[12px] sm:text-[13px] font-semibold max-w-md"
                       style={{ color: t.sub }}
                     >
                       💡 Or type anything — like{" "}
-                      <span style={{ color: BRAND }}>
-                        "Toyota Corolla 2020, white, 45,000 km, 62 lac, Lahore"
-                      </span>{" "}
+                      <span style={{ color: BRAND }}>"Toyota Corolla 2020, white, 45,000 km, 62 lac, Lahore"</span>{" "}
                       — and I'll fill in the details automatically.
                     </motion.p>
                   )}
@@ -1184,13 +1129,7 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
                     Array.isArray(question.suggestions) && question.suggestions.length > 0 && (
                     <div className="flex flex-wrap gap-2 justify-center max-w-lg">
                       {question.suggestions.map((s, i) => (
-                        <SuggestionChip
-                          key={s}
-                          label={s}
-                          onPick={submitAnswer}
-                          glass={glass}
-                          index={i}
-                        />
+                        <SuggestionChip key={s} label={s} onPick={submitAnswer} glass={glass} index={i} />
                       ))}
                     </div>
                   )}
@@ -1231,6 +1170,18 @@ const AIAdAssistant = ({ open, onClose, onSubmit }) => {
                   <h2 className="text-[22px] sm:text-[28px] md:text-[34px] font-extrabold leading-tight mb-5 sm:mb-6 max-w-xl" style={{ letterSpacing: "-0.025em" }}>
                     <Reveal text={aiMessage || "Your listing is ready."} />
                   </h2>
+
+                  {/* Photo preview strip */}
+                  {finalListing.images?.length > 0 && (
+                    <div className="w-full max-w-md flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+                      {finalListing.images.map((url, i) => (
+                        <div key={i} className="flex-shrink-0 h-16 w-16 sm:h-20 sm:w-20 rounded-2xl overflow-hidden" style={{ border: `2px solid ${BRAND}55` }}>
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="w-full max-w-md rounded-3xl p-4 sm:p-5 text-left space-y-2.5 sm:space-y-3" style={glass}>
                     {[
                       ["Category", finalListing.category],

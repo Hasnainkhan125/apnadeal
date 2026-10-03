@@ -1,7 +1,7 @@
 // pages/PropertyDetail.jsx — Alibaba-style marketplace layout
 // + Real seller stats + Centered Rating modal + Follow toggle + Chat + Toast
 // + Pakistani price formatter (Lakh / Crore / Arab / Kharab)
-// (property logic preserved, UI restructured to 3-column marketplace)
+// + Full spec table (Alibaba style) + Product gallery grid
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -39,7 +39,6 @@ const FontStyles = () => (
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     html, body { overflow-x: hidden; max-width: 100vw; }
 
-    /* ── LIGHT THEME (default — Alibaba style) ── */
     .theme-light {
       --nav-bg:           #FFFFFF;
       --nav-bg-2:         #FFFFFF;
@@ -70,7 +69,6 @@ const FontStyles = () => (
       --nav-gold:         #B45309;
     }
 
-    /* ── DARK THEME ── */
     .theme-dark {
       --nav-bg:           #0A0A12;
       --nav-bg-2:         #0F0F1A;
@@ -145,20 +143,74 @@ const FontStyles = () => (
     }
     .pd-btn-success:hover { filter: brightness(1.08); }
 
-    .pd-divider {
-      border-color: var(--nav-line);
-    }
+    .pd-divider { border-color: var(--nav-line); }
 
-    /* Orange underline on active tab */
-    .pd-tab-underline {
-      position: relative;
-    }
+    .pd-tab-underline { position: relative; }
     .pd-tab-underline::after {
       content: "";
       position: absolute;
       left: 0; right: 0; bottom: -1px;
       height: 2px;
       background: var(--nav-orange);
+    }
+
+    /* ⭐ SPEC TABLE — Alibaba style */
+    .pd-spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--nav-line-str);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pd-spec-table tr { border-top: 1px solid var(--nav-line); }
+    .pd-spec-table tr:first-child { border-top: none; }
+    .pd-spec-table tr:nth-child(odd)  { background: var(--nav-surface); }
+    .pd-spec-table tr:nth-child(even) { background: var(--nav-panel); }
+    .pd-spec-table td {
+      padding: 12px 16px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px;
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .pd-spec-table td.pd-spec-key {
+      width: 40%;
+      color: var(--nav-txt-soft);
+      font-weight: 500;
+      border-right: 1px solid var(--nav-line);
+    }
+    .pd-spec-table td.pd-spec-val {
+      width: 60%;
+      color: var(--nav-txt);
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    /* Gallery grid */
+    .pd-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .pd-gallery__item {
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--nav-line);
+      background: var(--nav-surface);
+      cursor: zoom-in;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .pd-gallery__item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -14px rgba(0,0,0,0.25);
+    }
+    .pd-gallery__item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 8px;
+      background: var(--nav-panel);
     }
 
     /* SOLD STAMP */
@@ -213,7 +265,6 @@ const FontStyles = () => (
       border-radius: 6px;
     }
 
-    /* Alibaba-like attribute chip */
     .pd-attr-chip {
       display: inline-flex;
       align-items: center;
@@ -226,11 +277,8 @@ const FontStyles = () => (
       font-weight: 500;
       cursor: default;
     }
-    .theme-light .pd-attr-chip {
-      background: #FFFFFF;
-    }
+    .theme-light .pd-attr-chip { background: #FFFFFF; }
 
-    /* Edit image shimmer (kept from original) */
     @keyframes navEditShimmer {
       0%   { background-position: -200% 0; }
       100% { background-position:  200% 0; }
@@ -268,28 +316,19 @@ const FontStyles = () => (
 
 /* ═══════════════════════════════════════════════════════════════
    PAKISTANI PRICE FORMATTER
-   • Under 1 Lakh       → "45,000"
-   • 1 Lakh – 1 Crore   → "45 Lakh" + full
-   • 1 Crore – 1 Arab   → "2.5 Crore" + full
-   • 1 Arab – 1 Kharab  → "1.2 Arab" + full
-   • 1 Kharab+          → "1.5 Kharab" + full
    ═══════════════════════════════════════════════════════════════ */
 const formatPakistaniPrice = (num) => {
   const n = Number(num || 0);
-  if (!isFinite(n) || n <= 0) {
-    return { short: "0", long: "0", unit: "" };
-  }
+  if (!isFinite(n) || n <= 0) return { short: "0", long: "0", unit: "" };
 
-  const LAKH   = 100000;          // 1 Lakh   = 100,000
-  const CRORE  = 10000000;        // 1 Crore  = 10,000,000
-  const ARAB   = 1000000000;      // 1 Arab   = 1,000,000,000
-  const KHARAB = 100000000000;    // 1 Kharab = 100,000,000,000
+  const LAKH   = 100000;
+  const CRORE  = 10000000;
+  const ARAB   = 1000000000;
+  const KHARAB = 100000000000;
 
   const fmt = (value, unit) => {
     const rounded = Math.round(value * 100) / 100;
-    const str = rounded % 1 === 0
-      ? rounded.toString()
-      : rounded.toFixed(2).replace(/\.?0+$/, "");
+    const str = rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2).replace(/\.?0+$/, "");
     return { short: str, unit };
   };
 
@@ -321,14 +360,9 @@ const SoldOverlay = ({ size = "large" }) => (
 );
 
 /* ═══════════════════════════════════════════════════════════════
-   EDIT IMAGE ENTRY (kept from original)
+   EDIT IMAGE ENTRY
    ═══════════════════════════════════════════════════════════════ */
-const EditImageEntry = ({
-  onClick, imageUrl, returnTo,
-  label = "Edit image with AI",
-  compact = false,
-  navigate,
-}) => {
+const EditImageEntry = ({ onClick, imageUrl, returnTo, label = "Edit image with AI", compact = false, navigate }) => {
   const handleClick = () => {
     if (typeof onClick === "function") { onClick(); return; }
     if (typeof navigate === "function") {
@@ -359,7 +393,7 @@ const EditImageEntry = ({
   );
 };
 
-/* ─── Default fallback (unchanged) ─── */
+/* ─── Default fallback ─── */
 const DEFAULT_PROPERTY = [
   { id: "default-prop-1", category: "House", title: "5 Marla Brand New House in DHA Phase 5", area: "5 Marla", beds: 3, baths: 3, location: "DHA Phase 5, Lahore", price: 14500000, image: "/car4.png", verified: true, featured: true, status: "active", postedAgo: "2 hours ago", description: "Brand new 5 Marla house in DHA Phase 5. Ideal location, near park and mosque. Modern construction with imported fittings, Spanish tiles, wooden flooring in bedrooms. Covered car parking. Ready for possession." },
   { id: "default-prop-2", category: "House", title: "10 Marla Luxury House in Bahria Town", area: "10 Marla", beds: 5, baths: 5, location: "Bahria Town, Lahore", price: 32500000, image: "/car1.png", verified: true, featured: true, status: "active", postedAgo: "5 hours ago", description: "Fully renovated 10 Marla double-storey house with basement." },
@@ -457,7 +491,7 @@ const normalizeWhatsApp = (raw) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   TOAST (unchanged)
+   TOAST
    ═══════════════════════════════════════════════════════════════ */
 const Toast = ({ toast, onDismiss, duration = 2600 }) => {
   const isError = toast?.type === "error";
@@ -542,7 +576,7 @@ const StarDisplay = ({ rating, size = "sm", showValue = false, count = 0 }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   RATING MODAL (unchanged)
+   RATING MODAL
    ═══════════════════════════════════════════════════════════════ */
 const RatingModal = ({ open, onClose, sellerName, onSubmit, existingRating }) => {
   const [rating, setRating] = useState(existingRating || 0);
@@ -659,9 +693,7 @@ const PropertyDetail = () => {
   const [copied, setCopied] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("photos"); // photos | video
 
   const [sellerStats, setSellerStats] = useState({
     listings: 0, followers: 0, rating: 0, ratingCount: 0, isFollowing: false, userRating: 0,
@@ -682,12 +714,6 @@ const PropertyDetail = () => {
     if (!user || !listing) return false;
     return !!listing.user_id && listing.user_id === user.id;
   }, [user, listing]);
-
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
-    const role = user?.user_metadata?.role || user?.user_metadata?.user_type || user?.role;
-    return role === "admin" || role === "super_admin" || user?.user_metadata?.is_admin === true || user?.is_admin === true;
-  }, [user]);
 
   /* ── Apply edited image on return from /ai-image ── */
   useEffect(() => {
@@ -912,7 +938,6 @@ const PropertyDetail = () => {
       pushToast("info", "WhatsApp unavailable", "Seller's number is not available. Please use chat instead.");
       return;
     }
-    // Use formatted price in the WhatsApp message too
     const priceObj = formatPakistaniPrice(listing?.price);
     const priceText = priceObj.unit
       ? `PKR ${priceObj.short} ${priceObj.unit} (${priceObj.long})`
@@ -972,8 +997,6 @@ const PropertyDetail = () => {
     }
   };
 
-  const formatRs = (num) => `PKR ${Number(num || 0).toLocaleString("en-US")}`;
-
   const groupedSpecs = useMemo(() => {
     if (!listing) return {};
     const specs = listing.specs || {};
@@ -991,21 +1014,13 @@ const PropertyDetail = () => {
     return groups;
   }, [listing]);
 
-  const totalSpecFields = useMemo(
-    () => Object.values(groupedSpecs).reduce((sum, arr) => sum + arr.length, 0),
+  /* Flatten all spec rows for the table */
+  const flatSpecs = useMemo(
+    () => SECTION_ORDER.flatMap((key) => groupedSpecs[key] || []),
     [groupedSpecs]
   );
 
-  const quickSpecs = useMemo(() => {
-    if (!listing) return [];
-    const s = listing.specs || {};
-    return [
-      { icon: FaRulerCombined, label: "Area", value: s.area || listing.area },
-      { icon: FaBed, label: "Beds", value: s.beds || listing.beds },
-      { icon: FaBath, label: "Baths", value: s.baths || listing.baths },
-      { icon: FaHome, label: "Type", value: s.type || listing.category },
-    ].filter((x) => x.value && x.value !== "0" && x.value !== 0);
-  }, [listing]);
+  const totalSpecFields = flatSpecs.length;
 
   /* Formatted price object (Lakh / Crore / Arab) */
   const formattedPrice = useMemo(
@@ -1066,7 +1081,7 @@ const PropertyDetail = () => {
       <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {/* Breadcrumb (Alibaba-style) */}
+        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[12px] pd-txt-soft mb-5 flex-wrap">
           <Link to="/feed" className="hover:opacity-80 inline-flex items-center gap-1" style={{ color: "inherit" }}>
             <FaStore className="text-[10px]" /> Shop
@@ -1118,11 +1133,9 @@ const PropertyDetail = () => {
            ═══════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-          {/* ─────── COLUMN 1: Left — Image gallery + Seller card ─────── */}
+          {/* COLUMN 1: Left — Image gallery + Seller card */}
           <div className="lg:col-span-4 space-y-5">
-            {/* Main image + thumbnails */}
             <div className="flex gap-3">
-              {/* Thumbnails strip */}
               {listing.images.length > 1 && (
                 <div className="flex flex-col gap-2 flex-shrink-0 max-h-[460px] overflow-y-auto scrollbar-hide">
                   {listing.images.slice(0, 6).map((img, i) => (
@@ -1143,7 +1156,6 @@ const PropertyDetail = () => {
                 </div>
               )}
 
-              {/* Main image */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 className="relative flex-1 min-w-0 pd-surface rounded-2xl overflow-hidden group aspect-square">
                 <img src={listing.images[activeImage]} alt={listing.title}
@@ -1181,7 +1193,6 @@ const PropertyDetail = () => {
                   </>
                 )}
 
-                {/* Image counter badge bottom-right */}
                 {listing.images.length > 1 && (
                   <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md z-30"
                     style={{ background: "rgba(0,0,0,0.55)", color: "#FFFFFF" }}>
@@ -1196,7 +1207,7 @@ const PropertyDetail = () => {
               <EditImageEntry navigate={navigate} imageUrl={listing.images[activeImage]} returnTo={`/property/${id}`} compact />
             </div>
 
-            {/* ═══ Seller card (Alibaba supplier card style) ═══ */}
+            {/* Seller card */}
             <div className="rounded-2xl pd-surface p-4">
               <div className="flex items-center gap-3 mb-4">
                 <SellerAvatar avatar={seller?.avatar_url} name={seller?.name || "U"} planId={seller?.planId || "free"} verified={seller?.verified || listing.verified} size={52} />
@@ -1214,7 +1225,6 @@ const PropertyDetail = () => {
                 </div>
               </div>
 
-              {/* Stats row */}
               <div className="grid grid-cols-3 gap-2 mb-4 pb-4" style={{ borderBottom: "1px solid var(--nav-line)" }}>
                 {[
                   { label: "Rating", value: statsLoading ? "…" : sellerStats.ratingCount > 0 ? sellerStats.rating.toFixed(1) : "0.0" },
@@ -1229,13 +1239,11 @@ const PropertyDetail = () => {
                 ))}
               </div>
 
-              {/* Star display */}
               <div className="flex items-center gap-2 mb-4">
                 {statsLoading ? <div className="h-3 w-24 pd-shimmer" />
                   : <StarDisplay rating={sellerStats.rating} size="sm" showValue count={sellerStats.ratingCount} />}
               </div>
 
-              {/* Buttons */}
               {!isOwner ? (
                 <div className="space-y-2">
                   <button onClick={handleRateSeller} disabled={isSold}
@@ -1269,14 +1277,12 @@ const PropertyDetail = () => {
             </div>
           </div>
 
-          {/* ─────── COLUMN 2: Middle — Title, price, attributes ─────── */}
+          {/* COLUMN 2: Middle */}
           <div className="lg:col-span-5">
-            {/* Title */}
             <h1 className={`font-ticket-body text-[22px] sm:text-[26px] font-bold leading-tight mb-3 ${isSold ? "opacity-60" : ""}`} style={{ color: "var(--nav-txt)" }}>
               {listing.title}
             </h1>
 
-            {/* Rating row + sold count (Alibaba-style) */}
             <div className="flex items-center gap-3 flex-wrap mb-3 text-[12.5px]">
               <StarDisplay rating={sellerStats.rating || 4.9} size="md" showValue count={sellerStats.ratingCount || 0} />
               <span className="pd-txt-soft">·</span>
@@ -1289,7 +1295,6 @@ const PropertyDetail = () => {
               </span>
             </div>
 
-            {/* Certifications row (fake badges, Alibaba-style) */}
             <div className="flex items-center gap-2 flex-wrap mb-5 pb-4" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold pd-txt-soft" style={{ border: "1px solid var(--nav-line-str)" }}>
                 <FaCheckCircle className="text-[9px] text-green-500" /> Document verified
@@ -1302,74 +1307,44 @@ const PropertyDetail = () => {
               </span>
             </div>
 
-            {/* ═══ SINGLE PRICE with Lakh/Crore/Arab formatting ═══ */}
+            {/* SINGLE PRICE with Lakh/Crore/Arab formatting */}
             <div className="mb-5 pb-5" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               {formattedPrice.unit ? (
                 <>
-                  {/* Big short form (e.g. "1.45 Crore") */}
-                  <p
-                    className={`font-ticket-body text-[28px] sm:text-[34px] font-bold leading-none ${isSold ? "line-through opacity-60" : ""}`}
-                    style={{ color: "var(--nav-txt)" }}
-                  >
+                  <p className={`font-ticket-body text-[28px] sm:text-[34px] font-bold leading-none ${isSold ? "line-through opacity-60" : ""}`} style={{ color: "var(--nav-txt)" }}>
                     <span className="text-[16px] sm:text-[18px] font-semibold mr-1.5">PKR</span>
                     {formattedPrice.short}
-                    <span className="text-[18px] sm:text-[22px] font-semibold ml-2">
-                      {formattedPrice.unit}
-                    </span>
+                    <span className="text-[18px] sm:text-[22px] font-semibold ml-2">{formattedPrice.unit}</span>
                   </p>
-
-                  {/* Full number below (smaller, muted) */}
-                  <p
-                    className="font-ticket-body text-[12.5px] sm:text-[13px] font-medium mt-1.5 tabular-nums"
-                    style={{ color: "var(--nav-txt-soft)" }}
-                  >
+                  <p className="font-ticket-body text-[12.5px] sm:text-[13px] font-medium mt-1.5 tabular-nums" style={{ color: "var(--nav-txt-soft)" }}>
                     PKR {formattedPrice.long}
                   </p>
                 </>
               ) : (
-                /* Plain full number (under 1 lakh) */
-                <p
-                  className={`font-ticket-body text-[28px] sm:text-[34px] font-bold leading-none ${isSold ? "line-through opacity-60" : ""}`}
-                  style={{ color: "var(--nav-txt)" }}
-                >
+                <p className={`font-ticket-body text-[28px] sm:text-[34px] font-bold leading-none ${isSold ? "line-through opacity-60" : ""}`} style={{ color: "var(--nav-txt)" }}>
                   <span className="text-[16px] sm:text-[18px] font-semibold mr-1.5">PKR</span>
                   {formattedPrice.long}
                 </p>
               )}
 
-              {/* Small meta row under price */}
               <div className="flex items-center gap-3 flex-wrap mt-3">
                 {listing.specs?.priceNegotiable === "Yes" && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold"
-                    style={{
-                      background: "var(--nav-primary-soft)",
-                      color: "var(--nav-orange)",
-                      border: "1px solid var(--nav-orange)",
-                    }}
-                  >
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold"
+                    style={{ background: "var(--nav-primary-soft)", color: "var(--nav-orange)", border: "1px solid var(--nav-orange)" }}>
                     <FaCheck className="text-[8px]" /> Price Negotiable
                   </span>
                 )}
                 {listing.specs?.installments === "Yes" && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold"
-                    style={{
-                      background: "var(--nav-green-soft)",
-                      color: "var(--nav-green)",
-                      border: "1px solid var(--nav-green)",
-                    }}
-                  >
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold"
+                    style={{ background: "var(--nav-green-soft)", color: "var(--nav-green)", border: "1px solid var(--nav-green)" }}>
                     <FaCheck className="text-[8px]" /> Installments Available
                   </span>
                 )}
-                <span className="font-ticket-body text-[11px] pd-txt-soft">
-                  Posted {listing.postedAgo}
-                </span>
+                <span className="font-ticket-body text-[11px] pd-txt-soft">Posted {listing.postedAgo}</span>
               </div>
             </div>
 
-            {/* ═══ ATTRIBUTE CHIPS ═══ */}
+            {/* ATTRIBUTE CHIPS */}
             <div className="space-y-3 mb-5">
               {attributeChips.map((chip) => (
                 <div key={chip.label} className="flex items-baseline gap-3">
@@ -1378,112 +1353,11 @@ const PropertyDetail = () => {
                 </div>
               ))}
             </div>
-
-            {/* ═══ FULL DETAILS (grouped sections, collapsible) ═══ */}
-            {Object.keys(groupedSpecs).length > 0 && (
-              <div className="rounded-xl pd-surface overflow-hidden mb-5">
-                <button type="button" onClick={() => setDetailsOpen((o) => !o)}
-                  className="w-full flex items-center gap-3 p-4 text-left" aria-expanded={detailsOpen}>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--nav-primary-soft)", border: "1px solid var(--nav-orange)" }}>
-                    <CategoryIcon className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-ticket-body text-[14px] font-bold pd-txt">Full Property Details</h3>
-                    <p className="font-ticket-body text-[11px] pd-txt-soft">
-                      {detailsOpen ? "Everything the seller provided" : `${totalSpecFields} details available · tap to view`}
-                    </p>
-                  </div>
-                  <motion.div animate={{ rotate: detailsOpen ? 180 : 0 }} transition={{ duration: 0.25 }}
-                    className="h-8 w-8 rounded-full pd-surface-2 flex items-center justify-center flex-shrink-0">
-                    <FaChevronDown className="text-xs" style={{ color: "var(--nav-orange)" }} />
-                  </motion.div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {detailsOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.32, ease: "easeInOut" }} className="overflow-hidden">
-                      <div className="px-4 pb-4 pt-1 space-y-4" style={{ borderTop: "1px solid var(--nav-line)" }}>
-                        {SECTION_ORDER.map((sectionKey) => {
-                          const items = groupedSpecs[sectionKey];
-                          if (!items || items.length === 0) return null;
-                          const meta = SECTION_META[sectionKey];
-                          const SectionIcon = meta.icon;
-                          return (
-                            <div key={sectionKey} className="pt-3">
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <SectionIcon className="text-[11px]" style={{ color: "var(--nav-orange)" }} />
-                                <p className="font-ticket-body text-[10px] font-bold uppercase tracking-widest pd-txt-soft">{meta.title}</p>
-                                <div className="flex-1 h-px" style={{ background: "var(--nav-line)" }} />
-                              </div>
-                              <div className="rounded-xl pd-surface-2 overflow-hidden">
-                                {items.map((item, idx) => {
-                                  const ItemIcon = item.icon;
-                                  return (
-                                    <div key={item.key} className="flex items-center gap-3 px-4 py-2.5"
-                                      style={{ borderBottom: idx !== items.length - 1 ? "1px solid var(--nav-line)" : "none" }}>
-                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        <ItemIcon className="text-[11px] flex-shrink-0" style={{ color: "var(--nav-orange)" }} />
-                                        <span className="font-ticket-body text-[11px] sm:text-xs font-semibold pd-txt-soft truncate">{item.label}</span>
-                                      </div>
-                                      <span className="font-ticket-body text-xs sm:text-sm font-bold pd-txt text-right">{renderSpecValue(item.value)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* ═══ Description ═══ */}
-            {listing.description && (
-              <div className="mb-5">
-                <h3 className="font-ticket-body text-[14px] font-bold pd-txt mb-2">Description</h3>
-                <p className="font-ticket-body text-[13px] leading-relaxed pd-txt-soft whitespace-pre-wrap">{listing.description}</p>
-              </div>
-            )}
-
-            {/* ═══ Property Policies ═══ */}
-            <div className="rounded-xl pd-surface p-5 mb-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-9 h-9 rounded-full text-white" style={{ background: "#16A34A" }}>
-                  <FaFileContract className="text-[14px]" />
-                </div>
-                <div>
-                  <span className="font-ticket-body text-[15px] font-bold pd-txt">Property Policies</span>
-                  <p className="font-ticket-body text-[11px] pd-txt-soft">Follow these to protect yourself before buying</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {POLICIES.map((p) => {
-                  const Icon = p.icon;
-                  return (
-                    <div key={p.title} className="flex items-start gap-2.5 rounded-xl pd-surface-2 p-3">
-                      <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "var(--nav-primary-soft)" }}>
-                        <Icon className="text-[10px]" style={{ color: "var(--nav-orange)" }} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-ticket-body text-[11.5px] font-bold pd-txt mb-0.5">{p.title}</p>
-                        <p className="font-ticket-body text-[10.5px] pd-txt-soft leading-relaxed">{p.body}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
-          {/* ─────── COLUMN 3: Right — Shipping + Actions ─────── */}
+          {/* COLUMN 3: Right */}
           <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 h-fit">
-
-            {/* Shipping card (Alibaba-style) */}
+            {/* Shipping card */}
             <div className="rounded-xl pd-surface p-4">
               <h3 className="font-ticket-body text-[15px] font-bold pd-txt mb-3">Site Visit</h3>
               <p className="font-ticket-body text-[12px] pd-txt-soft leading-relaxed mb-3">
@@ -1499,7 +1373,7 @@ const PropertyDetail = () => {
               )}
             </div>
 
-            {/* Order protection card (Alibaba-style) */}
+            {/* Order protection card */}
             <div className="rounded-xl pd-surface p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-ticket-body text-[15px] font-bold pd-txt">APNa Deal order protection</h3>
@@ -1516,7 +1390,6 @@ const PropertyDetail = () => {
                     </p>
                   </div>
                 </div>
-
                 <div className="flex items-start gap-2.5">
                   <FaUndo className="text-[12px] flex-shrink-0 mt-0.5" style={{ color: "var(--nav-orange)" }} />
                   <div>
@@ -1528,7 +1401,6 @@ const PropertyDetail = () => {
                 </div>
               </div>
 
-              {/* Payment method icons */}
               <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: "1px solid var(--nav-line)" }}>
                 <FaCcVisa className="text-base" style={{ color: "#1A1F71" }} />
                 <FaCcMastercard className="text-base" style={{ color: "#EB001B" }} />
@@ -1539,14 +1411,13 @@ const PropertyDetail = () => {
               </div>
             </div>
 
-            {/* ═══ PRIMARY CTA BUTTONS (Alibaba-style — Send Inquiry + Chat now) ═══ */}
+            {/* PRIMARY CTAs */}
             {!isOwner && !isSold ? (
               <div className="space-y-2.5">
-               <button onClick={handleWhatsApp}
-  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full font-ticket-body text-[14px] font-bold text-white transition-all pd-btn-orange">
-  <FaWhatsapp className="text-[16px]" />
-  Send Inquiry
-</button>
+                <button onClick={handleWhatsApp}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full font-ticket-body text-[14px] font-bold text-white transition-all pd-btn-orange">
+                  <FaWhatsapp className="text-[16px]" /> Send Inquiry
+                </button>
                 <button onClick={handleContactSeller}
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full font-ticket-body text-[14px] font-bold transition-all"
                   style={{ border: "1.5px solid var(--nav-orange)", color: "var(--nav-orange)", background: "transparent" }}>
@@ -1581,7 +1452,7 @@ const PropertyDetail = () => {
               </div>
             )}
 
-            {/* Small utility row */}
+            {/* Utility row */}
             <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
               <button onClick={toggleFavorite} disabled={isSold}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
@@ -1620,9 +1491,109 @@ const PropertyDetail = () => {
           </div>
         </div>
 
-        {/* ═══ Safety Tips ═══ */}
+        {/* ─── SPECIFICATION TABLE (Alibaba style) ─── */}
+        {flatSpecs.length > 0 && (
+          <section className="mt-10">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold" style={{ color: "var(--nav-txt)" }}>
+                Specification
+              </h2>
+              <button
+                type="button"
+                onClick={() => pushToast("success", "Reported", "Thank you for your feedback")}
+                className="inline-flex items-center gap-1.5 font-ticket-body text-[12px] font-semibold hover:opacity-70 transition-opacity"
+                style={{ color: "var(--nav-txt-soft)" }}
+              >
+                <FaFlag className="text-[10px]" /> Report abuse
+              </button>
+            </div>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 4 }} />
+
+            <table className="pd-spec-table mt-3">
+              <tbody>
+                {flatSpecs.map((item, idx) => (
+                  <tr key={`${item.key}-${idx}`}>
+                    <td className="pd-spec-key">{item.label}</td>
+                    <td className="pd-spec-val">{renderSpecValue(item.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* ─── PRODUCT DESCRIPTION ─── */}
+        {listing.description && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Property Description
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+            <p
+              className="font-ticket-body whitespace-pre-wrap"
+              style={{ fontSize: 14, lineHeight: 1.7, color: "var(--nav-txt-soft)" }}
+            >
+              {listing.description}
+            </p>
+          </section>
+        )}
+
+        {/* ─── FULL IMAGE GALLERY ─── */}
+        {listing.images && listing.images.length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-ticket-body text-[20px] sm:text-[24px] font-bold mb-3" style={{ color: "var(--nav-txt)" }}>
+              Property Images ({listing.images.length})
+            </h2>
+            <div style={{ height: 1, background: "var(--nav-line-str)", marginBottom: 16 }} />
+
+            <div className="pd-gallery">
+              {listing.images.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setActiveImage(i); setFullscreen(true); }}
+                  className="pd-gallery__item"
+                  aria-label={`Open image ${i + 1}`}
+                >
+                  <img src={img} alt={`${listing.title} ${i + 1}`} loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ═══ Property Policies ═══ */}
+        <div className="rounded-xl pd-surface p-5 my-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full text-white" style={{ background: "#16A34A" }}>
+              <FaFileContract className="text-[14px]" />
+            </div>
+            <div>
+              <span className="font-ticket-body text-[15px] font-bold pd-txt">Property Policies</span>
+              <p className="font-ticket-body text-[11px] pd-txt-soft">Follow these to protect yourself before buying</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {POLICIES.map((p) => {
+              const Icon = p.icon;
+              return (
+                <div key={p.title} className="flex items-start gap-2.5 rounded-xl pd-surface-2 p-3">
+                  <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "var(--nav-primary-soft)" }}>
+                    <Icon className="text-[10px]" style={{ color: "var(--nav-orange)" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-ticket-body text-[11.5px] font-bold pd-txt mb-0.5">{p.title}</p>
+                    <p className="font-ticket-body text-[10.5px] pd-txt-soft leading-relaxed">{p.body}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Safety Tips */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="mt-8 relative overflow-hidden rounded-xl p-5"
+          className="relative overflow-hidden rounded-xl p-5"
           style={{ background: "var(--nav-green-soft)", border: "1px solid var(--nav-green)" }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center w-9 h-9 rounded-full text-white" style={{ background: "#16A34A" }}>
@@ -1684,7 +1655,6 @@ const PropertyDetail = () => {
         )}
       </AnimatePresence>
 
-      {/* Rating Modal */}
       <RatingModal
         open={ratingModalOpen}
         onClose={() => setRatingModalOpen(false)}
