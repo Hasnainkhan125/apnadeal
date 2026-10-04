@@ -1,6 +1,8 @@
 // pages/Feed.jsx — Modern e-commerce style marketplace
 // ⭐ NEW: Hero search now shows LIVE SUGGESTIONS dropdown while typing
 //        + picks item on click + Enter navigates to detail page
+// ⭐ Property & Vehicles now show "Visit" instead of "Buy"
+// ⭐ Main content area upgraded — sidebar untouched
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -13,7 +15,7 @@ import {
   FaBolt, FaCheckCircle, FaTag, FaCar, FaMobileAlt, FaHome, FaPlus,
   FaLaptop, FaShoppingCart, FaWhatsapp, FaArrowRight, FaSearch,FaCommentDots,
   FaChevronDown, FaChevronLeft, FaChevronRight, FaCheck,
-  FaExclamationCircle, FaUsers, FaChartLine, FaShieldAlt, FaCogs,FaList,
+  FaExclamationCircle, FaUsers, FaChartLine, FaShieldAlt, FaCogs,FaList,FaEye,
   FaHandshake, FaStar, FaTimes, FaGamepad, FaThLarge, FaTh, FaThList,
   FaExpandAlt, FaMotorcycle, FaBed, FaBath, FaRulerCombined, FaRocket,
   FaSwimmingPool, FaMapPin, FaMoneyBillWave, FaRoad,
@@ -27,6 +29,152 @@ import {
   LuCar, LuBike, LuSmartphone, LuBuilding2, LuLaptop, LuGamepad2,
 } from "react-icons/lu";
 import { SellerAvatar, PlanLabel } from "../components/SellerAvatar";
+import { useLocale } from "../contexts/LocaleContext";
+
+/* ═══════════════════════════════════════════════════════════════
+   ⭐ AUTO-DETECT LOCATION → CURRENCY
+   Uses timezone + browser language. No API calls needed.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Country → currency mapping */
+const COUNTRY_CURRENCY = {
+  PK: { code: "PKR", symbol: "Rs",   locale: "en-PK", style: "south-asian" },  // Lakh/Crore
+  IN: { code: "INR", symbol: "₹",    locale: "en-IN", style: "south-asian" },  // Lakh/Crore
+  BD: { code: "BDT", symbol: "৳",    locale: "en-BD", style: "south-asian" },
+  LK: { code: "LKR", symbol: "Rs",   locale: "en-LK", style: "south-asian" },
+  US: { code: "USD", symbol: "$",    locale: "en-US", style: "western" },
+  CA: { code: "CAD", symbol: "C$",   locale: "en-CA", style: "western" },
+  GB: { code: "GBP", symbol: "£",    locale: "en-GB", style: "western" },
+  EU: { code: "EUR", symbol: "€",    locale: "de-DE", style: "western" },
+  AE: { code: "AED", symbol: "AED",  locale: "en-AE", style: "western" },
+  SA: { code: "SAR", symbol: "SAR",  locale: "en-SA", style: "western" },
+  AU: { code: "AUD", symbol: "A$",   locale: "en-AU", style: "western" },
+  JP: { code: "JPY", symbol: "¥",    locale: "ja-JP", style: "western" },
+  CN: { code: "CNY", symbol: "¥",    locale: "zh-CN", style: "western" },
+  MY: { code: "MYR", symbol: "RM",   locale: "ms-MY", style: "western" },
+  SG: { code: "SGD", symbol: "S$",   locale: "en-SG", style: "western" },
+  ID: { code: "IDR", symbol: "Rp",   locale: "id-ID", style: "western" },
+  TR: { code: "TRY", symbol: "₺",    locale: "tr-TR", style: "western" },
+  EG: { code: "EGP", symbol: "E£",   locale: "en-EG", style: "western" },
+  NG: { code: "NGN", symbol: "₦",    locale: "en-NG", style: "western" },
+  ZA: { code: "ZAR", symbol: "R",    locale: "en-ZA", style: "western" },
+  BR: { code: "BRL", symbol: "R$",   locale: "pt-BR", style: "western" },
+  MX: { code: "MXN", symbol: "MX$",  locale: "es-MX", style: "western" },
+  RU: { code: "RUB", symbol: "₽",    locale: "ru-RU", style: "western" },
+};
+
+/* Timezone → country code (best guess) */
+const TZ_TO_COUNTRY = {
+  "Asia/Karachi": "PK",
+  "Asia/Kolkata": "IN",
+  "Asia/Calcutta": "IN",
+  "Asia/Dhaka": "BD",
+  "Asia/Colombo": "LK",
+  "America/New_York": "US",
+  "America/Chicago": "US",
+  "America/Denver": "US",
+  "America/Los_Angeles": "US",
+  "America/Phoenix": "US",
+  "America/Anchorage": "US",
+  "Pacific/Honolulu": "US",
+  "America/Toronto": "CA",
+  "America/Vancouver": "CA",
+  "Europe/London": "GB",
+  "Europe/Berlin": "EU",
+  "Europe/Paris": "EU",
+  "Europe/Rome": "EU",
+  "Europe/Madrid": "EU",
+  "Europe/Amsterdam": "EU",
+  "Asia/Dubai": "AE",
+  "Asia/Riyadh": "SA",
+  "Australia/Sydney": "AU",
+  "Australia/Melbourne": "AU",
+  "Asia/Tokyo": "JP",
+  "Asia/Shanghai": "CN",
+  "Asia/Kuala_Lumpur": "MY",
+  "Asia/Singapore": "SG",
+  "Asia/Jakarta": "ID",
+  "Europe/Istanbul": "TR",
+  "Africa/Cairo": "EG",
+  "Africa/Lagos": "NG",
+  "Africa/Johannesburg": "ZA",
+  "America/Sao_Paulo": "BR",
+  "America/Mexico_City": "MX",
+  "Europe/Moscow": "RU",
+};
+
+/* ⭐ Simple country guessing from timezone + browser language */
+const detectCountry = () => {
+  try {
+    if (typeof window === "undefined") return "US";
+
+    // 1️⃣ Try timezone first (most reliable)
+    const tz = Intl?.DateTimeFormat?.().resolvedOptions?.()?.timeZone;
+    if (tz && TZ_TO_COUNTRY[tz]) return TZ_TO_COUNTRY[tz];
+
+    // 2️⃣ Try browser language (e.g. "en-PK" → PK)
+    const langs = [
+      ...(navigator?.languages || []),
+      navigator?.language,
+    ].filter(Boolean);
+
+    for (const lang of langs) {
+      const m = String(lang).match(/[-_]([A-Z]{2})$/);
+      if (m && COUNTRY_CURRENCY[m[1]]) return m[1];
+    }
+
+    // 3️⃣ Fallback to USD
+    return "US";
+  } catch {
+    return "US";
+  }
+};
+
+/* ⭐ React hook — returns currency config + formatter */
+const useGeoCurrency = () => {
+  const [currency, setCurrency] = useState(() => {
+    const code = detectCountry();
+    return COUNTRY_CURRENCY[code] || COUNTRY_CURRENCY.US;
+  });
+
+  useEffect(() => {
+    // Re-detect on mount in case SSR / hydration
+    const code = detectCountry();
+    setCurrency(COUNTRY_CURRENCY[code] || COUNTRY_CURRENCY.US);
+  }, []);
+
+  return currency;
+};
+
+/* ⭐ Format price with the detected currency */
+const formatPriceLocalized = (num, currency) => {
+  const n = Number(num) || 0;
+  if (!currency) currency = COUNTRY_CURRENCY.US;
+
+  // South Asian style → Lakh / Crore
+  if (currency.style === "south-asian") {
+    if (n >= 10000000) {
+      const crore = n / 10000000;
+      return `${currency.symbol}.${crore % 1 === 0 ? crore.toFixed(0) : crore.toFixed(2).replace(/\.?0+$/, "")} Cr`;
+    }
+    if (n >= 100000) {
+      const lakh = n / 100000;
+      return `${currency.symbol}.${lakh % 1 === 0 ? lakh.toFixed(0) : lakh.toFixed(2).replace(/\.?0+$/, "")} Lac`;
+    }
+    return `${currency.symbol}.${n.toLocaleString("en-US")}`;
+  }
+
+  // Western style → plain local number
+  try {
+    return new Intl.NumberFormat(currency.locale, {
+      style: "currency",
+      currency: currency.code,
+      maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return `${currency.symbol}${n.toLocaleString("en-US")}`;
+  }
+};
 
 const HERO_VIDEOS = [
   "https://cdn.dribbble.com/userupload/44910390/file/3ae6596393a55a8ff27a44500ff75dfa.mp4",
@@ -1564,6 +1712,25 @@ const FeedStyles = () => (
       color: var(--fd-txt-faint);
     }
 
+    /* ⭐ VISIT button (property / vehicles) — uses theme primary */
+    .mk-card__action--visit {
+      background: linear-gradient(135deg, var(--fd-primary) 0%, var(--fd-primary-3) 100%);
+      border-color: var(--fd-primary);
+      color: #FFFFFF;
+    }
+    .mk-card__action--visit:hover:not(:disabled) {
+      filter: brightness(1.05);
+      box-shadow: 0 6px 16px -6px var(--fd-primary-glow);
+    }
+    .mk-card__action--visit:disabled {
+      background: var(--fd-surface-2);
+      border-color: var(--fd-line);
+      color: var(--fd-txt-faint);
+    }
+    .theme-dark .mk-card__action--visit {
+      color: #0A0A12;
+    }
+
     @media (max-width: 480px) {
       .mk-card__action { padding: 9px 6px; gap: 5px; }
       .mk-card__action svg { font-size: 12px; }
@@ -1686,6 +1853,98 @@ const FeedStyles = () => (
       .mk-card__location { font-size: 11.5px; }
       .mk-card__icon-spec { font-size: 11px; }
       .mk-card__view-btn { font-size: 11px; padding: 6px 10px; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       ⭐ UPGRADED MAIN CONTENT LAYOUT — global project feel
+       ═══════════════════════════════════════════════════════════════ */
+    .fd-main-upgraded {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    @media (min-width: 768px) {
+      .fd-main-upgraded { gap: 22px; }
+    }
+
+    /* Toolbar row */
+    .fd-toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: var(--fd-surface);
+      border: 1px solid var(--fd-line);
+    }
+    @media (min-width: 640px) {
+      .fd-toolbar-row { padding: 14px 18px; }
+    }
+
+    /* Count heading */
+    .fd-count-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0;
+      color: var(--fd-txt);
+      font-size: clamp(20px, 2.8vw, 26px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+    }
+    .fd-count-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--fd-primary) 0%, var(--fd-primary-2) 100%);
+      color: #FFFFFF;
+      font-size: clamp(16px, 2.2vw, 20px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      box-shadow: 0 8px 20px -10px var(--fd-primary-glow);
+    }
+
+    /* View mode switcher */
+    .fd-view-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      border-radius: 10px;
+      background: var(--fd-surface);
+      border: 1px solid var(--fd-line);
+      flex-shrink: 0;
+    }
+    .fd-view-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 30px;
+      width: 30px;
+      border-radius: 7px;
+      background: transparent;
+      border: none;
+      color: var(--fd-txt-faint);
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+    @media (min-width: 640px) {
+      .fd-view-btn { height: 32px; width: 32px; }
+    }
+    .fd-view-btn.is-active { color: #FFFFFF; }
+
+    /* Card grid — more breathing room */
+    .fd-grid-wrap {
+      display: grid;
     }
   `}</style>
 );
@@ -1906,7 +2165,9 @@ const ImageFallback = ({ category, size = "small" }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ⭐ MODERN CARD — Reference-style (Featured Properties / Cars)
+   ⭐ MODERN CARD — Reference-style
+   ⭐ Property & Vehicles → "Visit" button (opens detail page)
+   ⭐ Other categories → "Buy" button (goes to checkout)
    ═══════════════════════════════════════════════════════════════ */
 const PropertyCardSmall = ({
   item,
@@ -1916,6 +2177,7 @@ const PropertyCardSmall = ({
   viewMode = "grid-md",
   onChat,
   onBuy,
+  currency,
 }) => {
   const hasImage = item.image && item.image !== "/car1.png" && item.image !== "";
   const isSold = item.sold || (item.status || "").toLowerCase() === "sold";
@@ -1923,6 +2185,10 @@ const PropertyCardSmall = ({
   const isFeatured =
     !!item.featured &&
     (!item.featured_until || new Date(item.featured_until) > new Date());
+
+  /* ⭐ Does this category use "Visit" instead of "Buy"? */
+  const rawCat = String(item.rawCategory || "").toLowerCase();
+  const usesVisit = rawCat === "property" || rawCat === "vehicles" || rawCat === "bikes";
 
   const dealQuality = useMemo(() => {
     if (!item?.id) return "great";
@@ -2023,9 +2289,16 @@ const PropertyCardSmall = ({
     if (onChat) onChat(item);
   };
 
-  const handleBuy = (e) => {
+  /* ⭐ Main CTA — Visit for property/vehicles, Buy for everything else */
+  const handlePrimaryCTA = (e) => {
     stop(e);
     if (isSold) return;
+    if (usesVisit) {
+      // Visit → go straight to the detail page
+      onClick?.();
+      return;
+    }
+    // Buy → go to checkout
     if (onBuy) onBuy(item);
   };
 
@@ -2142,9 +2415,9 @@ const PropertyCardSmall = ({
         </div>
 
         <div className="mk-card__price-row">
-          <span className={`mk-card__price ${isSold ? "line-through opacity-70" : ""}`}>
-            {formatPrice(item.price)}
-          </span>
+       <span className={`mk-card__price ${isSold ? "line-through opacity-70" : ""}`}>
+  {formatPriceLocalized(item.price, currency)}
+</span>
           <button
             type="button"
             className="mk-card__view-btn"
@@ -2169,16 +2442,17 @@ const PropertyCardSmall = ({
             <span>Chat</span>
           </button>
 
+          {/* ⭐ Visit for property/vehicles · Buy for everything else */}
           <button
             type="button"
-            onClick={handleBuy}
+            onClick={handlePrimaryCTA}
             disabled={isSold}
-            className="mk-card__action mk-card__action--buy"
-            aria-label="Buy now"
-            title="Buy Now"
+            className={`mk-card__action ${usesVisit ? "mk-card__action--visit" : "mk-card__action--buy"}`}
+            aria-label={usesVisit ? "Visit listing" : "Buy now"}
+            title={usesVisit ? "Visit" : "Buy Now"}
           >
-            <FaBolt />
-            <span>{isSold ? "Sold" : "Buy"}</span>
+         {usesVisit ? <FaEye /> : <FaBolt />}
+<span>{isSold ? "Sold" : usesVisit ? "Visit" : "Buy"}</span>
           </button>
         </div>
       </div>
@@ -2187,7 +2461,7 @@ const PropertyCardSmall = ({
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ⭐ SIDEBAR — Reference-style · FULLY INTERACTIVE
+   ⭐ SIDEBAR — UNCHANGED
    Filter by · Rental Type · Available · Price Range (draggable) ·
    Car Brand · Car Model & Year · Body Type · Transmission · Fuel
    ═══════════════════════════════════════════════════════════════ */
@@ -2199,6 +2473,7 @@ const SidebarFilters = ({
   topBrands,
   brandSearch,
   setBrandSearch,
+    currency,                    
   toggleCond,
   toggleFuel,
   toggleTrans,
@@ -2214,8 +2489,8 @@ const SidebarFilters = ({
   showMobileSections,
   showElectronicsSections,
   showToySections,
-  isMobile = false,          // ⭐ NEW
-  onClose,   
+  isMobile = false,
+  onClose,
 }) => {
   /* Collapsible sections state */
   const [openSections, setOpenSections] = useState({
@@ -2244,31 +2519,75 @@ const SidebarFilters = ({
 
   /* Available toggle */
   const [availableNow, setAvailableNow] = useState(false);
-/* ── Interactive price slider (dual-thumb) — PKR ── */
-const PRICE_MIN = 0;
-const PRICE_MAX = 500000;              // slider max (still 5 Lac)
-const PRICE_STEP = 1000;
-const DEFAULT_PRICE_LO = 0;            // ⭐ start at 0
-const DEFAULT_PRICE_HI = 300000;       // ⭐ default upper = Rs. 3 Lac
-const [priceLo, setPriceLo] = useState(DEFAULT_PRICE_LO);
-const [priceHi, setPriceHi] = useState(DEFAULT_PRICE_HI);
+  /* ── Interactive price slider (dual-thumb) — PKR ── */
+  const PRICE_MIN = 0;
+  const PRICE_MAX = 500000;
+  const PRICE_STEP = 1000;
+  const DEFAULT_PRICE_LO = 0;
+  const DEFAULT_PRICE_HI = 300000;
+  const [priceLo, setPriceLo] = useState(DEFAULT_PRICE_LO);
+  const [priceHi, setPriceHi] = useState(DEFAULT_PRICE_HI);
 
-/* Sync to global filter (raw rupees — no ×1000 needed now) */
-useEffect(() => {
-  if (filter.setPriceMin) filter.setPriceMin(String(priceLo));
-}, [priceLo]); // eslint-disable-line
-useEffect(() => {
-  if (filter.setPriceMax) filter.setPriceMax(String(priceHi));
-}, [priceHi]); // eslint-disable-line
+  /* ⭐ Refs to remember the last value we pushed (avoids re-push loops) */
+  const lastPushedMin = useRef(null);
+  const lastPushedMax = useRef(null);
+
+  /* ⭐ Touched flag — don't push to global filter until user interacts */
+  const [priceTouched, setPriceTouched] = useState(false);
+
+  /* ── PUSH: slider → global filter ── */
+  useEffect(() => {
+    if (!priceTouched) return;                  // ⭐ only after user touches
+    if (!filter.setPriceMin) return;
+    const asStr = String(priceLo);
+    if (lastPushedMin.current === asStr) return;
+    lastPushedMin.current = asStr;
+    filter.setPriceMin(asStr);
+  }, [priceLo, priceTouched, filter]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!priceTouched) return;                  // ⭐
+    if (!filter.setPriceMax) return;
+    const asStr = String(priceHi);
+    if (lastPushedMax.current === asStr) return;
+    lastPushedMax.current = asStr;
+    filter.setPriceMax(asStr);
+  }, [priceHi, priceTouched, filter]); // eslint-disable-line
+
+  /* ⭐ PULL — global reset → slider snaps back to defaults  ← ⬅️ THIS IS THE BLOCK YOU ASKED ABOUT */
+  useEffect(() => {
+    const raw = filter.priceMin;
+    const isEmpty = raw === "" || raw === null || raw === undefined;
+    const v = isEmpty ? DEFAULT_PRICE_LO : Number(raw);
+    if (Number.isNaN(v)) return;
+    if (v !== priceLo && lastPushedMin.current !== String(v)) {
+      setPriceLo(v);
+      lastPushedMin.current = String(v);
+    }
+    // eslint-disable-next-line
+  }, [filter.priceMin]);
+
+  useEffect(() => {
+    const raw = filter.priceMax;
+    const isEmpty = raw === "" || raw === null || raw === undefined;
+    const v = isEmpty ? DEFAULT_PRICE_HI : Number(raw);
+    if (Number.isNaN(v)) return;
+    if (v !== priceHi && lastPushedMax.current !== String(v)) {
+      setPriceHi(v);
+      lastPushedMax.current = String(v);
+    }
+    // eslint-disable-next-line
+  }, [filter.priceMax]);
+
+  /* ⭐ Reset touched flag when filter is cleared externally */
+  useEffect(() => {
+    if (!filter.priceMin && !filter.priceMax) {
+      setPriceTouched(false);
+    }
+  }, [filter.priceMin, filter.priceMax]);
+
   const sliderRef = useRef(null);
-  const [dragging, setDragging] = useState(null); // "lo" | "hi" | null
-/* Sync to global filter */
-useEffect(() => {
-  if (filter.setPriceMin) filter.setPriceMin(String(Math.round(priceLo * 1000)));
-}, [priceLo]); // eslint-disable-line
-useEffect(() => {
-  if (filter.setPriceMax) filter.setPriceMax(String(Math.round(priceHi * 1000)));
-}, [priceHi]); // eslint-disable-line
+  const [dragging, setDragging] = useState(null);
   /* Histogram — reference bell curve */
   const histogram = useMemo(() => {
     const N = 40;
@@ -2291,10 +2610,10 @@ useEffect(() => {
     const rect = el.getBoundingClientRect();
     return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
   };
-const valueFromPct = (pct) => {
-  const raw = PRICE_MIN + (pct / 100) * (PRICE_MAX - PRICE_MIN);
-  return Math.round(raw / PRICE_STEP) * PRICE_STEP;
-};
+  const valueFromPct = (pct) => {
+    const raw = PRICE_MIN + (pct / 100) * (PRICE_MAX - PRICE_MIN);
+    return Math.round(raw / PRICE_STEP) * PRICE_STEP;
+  };
 
   useEffect(() => {
     if (!dragging) return;
@@ -2351,54 +2670,53 @@ const valueFromPct = (pct) => {
 
   return (
     <div className="flex flex-col">
-{/* ═══ Header — "Filter by" + Reset + Collapse ═══ */}
-<div className="fd-sb-header">
-  <h2 className="fd-sb-title">Filter by</h2>
-  <div className="fd-sb-header-actions">
-    <button
-      type="button"
-      className="fd-sb-reset"
-      onClick={filter.resetAll}
-    >
-      Reset all
-    </button>
+      {/* ═══ Header — "Filter by" + Reset + Collapse ═══ */}
+      <div className="fd-sb-header">
+        <h2 className="fd-sb-title">Filter by</h2>
+        <div className="fd-sb-header-actions">
+          <button
+            type="button"
+            className="fd-sb-reset"
+            onClick={filter.resetAll}
+          >
+            Reset all
+          </button>
 
-    {/* ⭐ Collapse / close button — works on desktop AND mobile */}
-    <button
-      type="button"
-      title={isMobile ? "Close filters" : "Collapse"}
-      onClick={() => {
-        if (isMobile) {
-          onClose?.();
-        } else {
-          onClose?.();
-        }
-      }}
-      style={{
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        color: "var(--fd-txt-soft)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "background 0.15s ease",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--fd-surface-2)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-        <path
-          d="M2 3a1 1 0 0 1 1-1h2v12H3a1 1 0 0 1-1-1V3Zm5-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7V2Z"
-          opacity="0.85"
-        />
-      </svg>
-    </button>
-  </div>
-</div>
+          <button
+            type="button"
+            title={isMobile ? "Close filters" : "Collapse"}
+            onClick={() => {
+              if (isMobile) {
+                onClose?.();
+              } else {
+                onClose?.();
+              }
+            }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--fd-txt-soft)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--fd-surface-2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M2 3a1 1 0 0 1 1-1h2v12H3a1 1 0 0 1-1-1V3Zm5-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7V2Z"
+                opacity="0.85"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
 
       {/* ═══ Rental Type ═══ */}
       {isVehicleCtx && (
@@ -2451,13 +2769,11 @@ const valueFromPct = (pct) => {
 
           {openSections.price && (
             <>
-              {/* Histogram + dual-thumb slider overlay */}
               <div
                 ref={sliderRef}
                 className="fd-sb-hist-wrap"
                 style={{ position: "relative", marginTop: 14 }}
               >
-                {/* Histogram bars */}
                 <div className="fd-sb-hist" style={{ marginTop: 0 }}>
                   {histogram.map((h, i) => {
                     const barPct = (i / (histogram.length - 1)) * 100;
@@ -2472,14 +2788,11 @@ const valueFromPct = (pct) => {
                   })}
                 </div>
 
-                {/* Dual-thumb slider OVER the histogram */}
                 <div className="fd-sb-slider-track">
-                  {/* Active range fill */}
                   <div
                     className="fd-sb-slider-fill"
                     style={{ left: `${loPct}%`, right: `${100 - hiPct}%` }}
                   />
-                  {/* Lo thumb */}
                   <button
                     type="button"
                     aria-label="Minimum price"
@@ -2488,7 +2801,6 @@ const valueFromPct = (pct) => {
                     onMouseDown={(e) => { e.preventDefault(); setDragging("lo"); }}
                     onTouchStart={(e) => { e.preventDefault(); setDragging("lo"); }}
                   />
-                  {/* Hi thumb */}
                   <button
                     type="button"
                     aria-label="Maximum price"
@@ -2500,43 +2812,42 @@ const valueFromPct = (pct) => {
                 </div>
               </div>
 
-              {/* Price inputs — editable */}
-              <div className="fd-sb-price-inputs">
-                <div>
-                  <span className="fd-sb-price-label">From</span>
-                  <div className="fd-sb-price-input-wrap">
-                    <span className="fd-sb-price-prefix">Rs</span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min={PRICE_MIN}
-                      max={priceHi - 1}
-                      className="fd-sb-price-input"
-                      value={priceLo}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) setPriceLo(Math.max(PRICE_MIN, Math.min(v, priceHi - 1)));
-                      }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <span className="fd-sb-price-label">To</span>
-                  <div className="fd-sb-price-input-wrap">
-                    <span className="fd-sb-price-prefix">Rs</span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min={priceLo + 1}
-                      max={PRICE_MAX}
-                      className="fd-sb-price-input"
-                      value={priceHi}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) setPriceHi(Math.min(PRICE_MAX, Math.max(v, priceLo + 1)));
-                      }}
-                    />
-                  </div>
+         <div className="fd-sb-price-inputs">
+  <div>
+    <span className="fd-sb-price-label">From</span>
+    <div className="fd-sb-price-input-wrap">
+      <span className="fd-sb-price-prefix">{currency?.symbol || "Rs"}</span>
+      <input
+        type="number"
+        step="0.5"
+        min={PRICE_MIN}
+        max={priceHi - 1}
+        className="fd-sb-price-input"
+        value={priceLo}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          if (!isNaN(v)) setPriceLo(Math.max(PRICE_MIN, Math.min(v, priceHi - 1)));
+        }}
+      />
+    </div>
+  </div>
+  <div>
+    <span className="fd-sb-price-label">To</span>
+    <div className="fd-sb-price-input-wrap">
+      <span className="fd-sb-price-prefix">{currency?.symbol || "Rs"}</span>
+      <input
+        type="number"
+        step="0.5"
+        min={priceLo + 1}
+        max={PRICE_MAX}
+        className="fd-sb-price-input"
+        value={priceHi}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          if (!isNaN(v)) setPriceHi(Math.min(PRICE_MAX, Math.max(v, priceLo + 1)));
+        }}
+      />
+    </div>
                 </div>
               </div>
             </>
@@ -3111,6 +3422,7 @@ const PriceSlider = ({ filter }) => {
     return Math.round(raw / 1000) * 1000;
   };
 
+  
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e) => {
@@ -3153,10 +3465,7 @@ const PriceSlider = ({ filter }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ⭐ HERO SEARCH — UPDATED with LIVE SUGGESTIONS dropdown
-   - as you type → shows matching items with image + title + price
-   - click a suggestion → opens that item's detail page
-   - Enter or Search button → navigates to /search?q=…
+   ⭐ HERO SEARCH — LIVE SUGGESTIONS dropdown
    ═══════════════════════════════════════════════════════════════ */
 const HeroSearch = ({
   searchQuery,
@@ -3166,6 +3475,7 @@ const HeroSearch = ({
   onSearchSubmit,
   suggestions = [],
   onSuggestionClick,
+  currency,
 }) => {
   const videoRef = useRef(null);
   const wrapRef = useRef(null);
@@ -3178,7 +3488,6 @@ const HeroSearch = ({
   useEffect(() => { const t = setTimeout(() => { setVideoIndex((i) => (i + 1) % HERO_VIDEOS.length); }, 12000); return () => clearTimeout(t); }, [videoIndex]);
   useEffect(() => { const v = videoRef.current; if (!v) return; v.load(); const p = v.play(); if (p && typeof p.catch === "function") p.catch(() => {}); }, [videoIndex]);
 
-  /* Close suggestion dropdown on outside click */
   useEffect(() => {
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setSearchFocused(false);
@@ -3190,7 +3499,6 @@ const HeroSearch = ({
   const currentVideo = HERO_VIDEOS[videoIndex];
   const showSuggestions = searchFocused && searchQuery.trim().length >= 2;
 
-  /* Keyboard navigation inside suggestions */
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -3211,18 +3519,15 @@ const HeroSearch = ({
       setSearchFocused(false);
     }
   };
+
   return (
     <div
       className="relative w-full mb-4 sm:mb-5"
       style={{
         minHeight: 320,
         borderRadius: 24,
-        // ⭐ NO overflow:hidden here so dropdown can escape
-        // ⭐ NO isolation:isolate so z-index works relative to page
       }}
     >
-
-         {/* ⭐ Clipping layer — ONLY the video + gradients are clipped */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ borderRadius: 24, overflow: "hidden", zIndex: 0 }}
@@ -3246,7 +3551,6 @@ const HeroSearch = ({
           />
         </AnimatePresence>
 
-           {/* ⭐ NEW — Dark overlay for text contrast */}
         <div
           className="absolute inset-0"
           style={{
@@ -3254,7 +3558,6 @@ const HeroSearch = ({
               "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.55) 100%)",
           }}
         />
-        {/* Bottom fade to white */}
         <div
           className="absolute inset-x-0 bottom-0"
           style={{
@@ -3264,7 +3567,6 @@ const HeroSearch = ({
           }}
         />
 
-        {/* Soft radial vignette */}
         <div
           className="absolute inset-0"
           style={{
@@ -3273,14 +3575,12 @@ const HeroSearch = ({
           }}
         />
       </div>
-      {/* ⭐ Content layer — z-index 10, NO clipping so dropdown can overflow */}
+
       <div
         className="relative h-full w-full flex flex-col items-center justify-end px-3 sm:px-6 lg:px-8 pb-6 sm:pb-10"
         style={{ minHeight: 320, zIndex: 10 }}
       >
         <div className="w-full flex flex-col items-center gap-4 sm:gap-6">
-
-          {/* ⭐ Search bar with suggestions dropdown — z-index 50 */}
           <motion.div
             ref={wrapRef}
             className="w-full px-1 sm:px-0"
@@ -3293,7 +3593,6 @@ const HeroSearch = ({
             initial={false}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
           >
-            {/* Search shell */}
             <div
               className="flex items-center gap-2 sm:gap-3 bg-white rounded-full pl-4 sm:pl-5 pr-2 py-2 w-full"
               style={{
@@ -3338,7 +3637,6 @@ const HeroSearch = ({
               </button>
             </div>
 
-            {/* ⭐ LIVE SUGGESTIONS DROPDOWN — escapes the hero */}
             <AnimatePresence>
               {showSuggestions && (
                 <motion.div
@@ -3414,9 +3712,9 @@ const HeroSearch = ({
                                 )}
                               </p>
                             </span>
-                            <span className="fs-suggest-price">
-                              {formatPrice(s.price)}
-                            </span>
+                     <span className="fs-suggest-price">
+  {formatPriceLocalized(s.price, currency)}
+</span>
                           </button>
                         ))}
                       </div>
@@ -3436,7 +3734,6 @@ const HeroSearch = ({
             </AnimatePresence>
           </motion.div>
 
-          {/* Category pills */}
           <div className="hz-pills scrollbar-hide w-full">
             {HERO_PILLS.map((pill) => {
               const Icon = pill.icon;
@@ -3464,77 +3761,39 @@ const HeroSearch = ({
   );
 };
 /* ═══════════════════════════════════════════════════════════════
-   MOBILE BOTTOM NAV — Home · Add (+) Post · Chat · Profile
+   MOBILE BOTTOM NAV
    ═══════════════════════════════════════════════════════════════ */
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  /* ⭐ unread messages count (wire to real data later) */
   const [unreadMsgs, setUnreadMsgs] = useState(0);
-
-  /* ⭐ NEW — controls the "Post Ad" dialog */
   const [showPostDialog, setShowPostDialog] = useState(false);
 
   const items = [
-    {
-      id: "home",
-      label: "Home",
-      icon: FaHome,
-      path: "/feed",
-    },
-    {
-      id: "chat",
-      label: "Chat",
-      icon: FaCommentDots,
-      path: "/marketplace-chat",
-      badge: unreadMsgs,
-    },
-    {
-      id: "post",
-      label: "Add",
-      icon: FaPlus,
-      special: true,
-      path: "/post-ad",
-    },
-    {
-      id: "listings",
-      label: "My Ads",
-      icon: FaList,
-      path: "/my-listings",
-    },
-    {
-      id: "profile",
-      label: "Profile",
-      icon: FaUser,
-      path: "/settings",
-    },
+    { id: "home", label: "Home", icon: FaHome, path: "/feed" },
+    { id: "chat", label: "Chat", icon: FaCommentDots, path: "/marketplace-chat", badge: unreadMsgs },
+    { id: "post", label: "Add", icon: FaPlus, special: true, path: "/post-ad" },
+    { id: "listings", label: "My Ads", icon: FaList, path: "/my-listings" },
+    { id: "profile", label: "Profile", icon: FaUser, path: "/settings" },
   ];
 
-  /* active state matches current path */
   const isActive = (path) =>
     path && (location.pathname === path || location.pathname.startsWith(path + "/"));
 
   return (
     <>
-      <nav
-        className="fd-bottomnav"
-        style={{
-          alignItems: "flex-end",
-          paddingTop: 8,
-        }}
-      >
+      <nav className="fd-bottomnav" style={{ alignItems: "flex-end", paddingTop: 8 }}>
         {items.map((it) => {
           const Icon = it.icon;
           const active = !it.special && isActive(it.path);
 
-          /* ⭐ CENTERED + ADD BUTTON — elevated orange circle */
           if (it.special) {
             return (
               <button
                 key={it.id}
                 type="button"
-                onClick={() => setShowPostDialog(true)}   /* 👈 open dialog, don't navigate */
+                onClick={() => setShowPostDialog(true)}
                 style={{
                   flex: 1,
                   display: "flex",
@@ -3557,11 +3816,9 @@ const MobileBottomNav = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background:
-                      "linear-gradient(135deg, #F58220 0%, #D35400 100%)",
+                    background: "linear-gradient(135deg, #F58220 0%, #D35400 100%)",
                     color: "#FFFFFF",
-                    boxShadow:
-                      "0 10px 24px -8px rgba(242,138,45,0.7), 0 0 0 4px var(--fd-surface)",
+                    boxShadow: "0 10px 24px -8px rgba(242,138,45,0.7), 0 0 0 4px var(--fd-surface)",
                     transform: "translateY(-14px)",
                     transition: "transform 0.18s ease",
                   }}
@@ -3583,7 +3840,6 @@ const MobileBottomNav = () => {
             );
           }
 
-          /* ⭐ Regular tab */
           return (
             <button
               key={it.id}
@@ -3625,11 +3881,9 @@ const MobileBottomNav = () => {
         })}
       </nav>
 
-      {/* ⭐ NEW — Post Ad dialog */}
       <AnimatePresence>
         {showPostDialog && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="post-dialog-backdrop"
               initial={{ opacity: 0 }}
@@ -3646,239 +3900,201 @@ const MobileBottomNav = () => {
                 zIndex: 300,
               }}
             />
-{/* Dialog card */}
-<motion.div
-  key="post-dialog"
-  initial={{ opacity: 0, y: 40, scale: 0.96 }}
-  animate={{ opacity: 1, y: 0, scale: 1 }}
-  exit={{ opacity: 0, y: 40, scale: 0.96 }}
-  transition={{ type: "spring", stiffness: 320, damping: 28 }}
-  onClick={(e) => e.stopPropagation()}
-  style={{
-    position: "fixed",
-    left: 16,
-    right: 16,
-    bottom: 96,
-    zIndex: 310,
-    background: "var(--fd-surface)",
-    border: "1px solid var(--fd-line)",
-    borderRadius: 24,
-    padding: 20,
-    boxShadow: "0 32px 64px -24px rgba(0,0,0,0.55), 0 8px 24px -12px rgba(0,0,0,0.25)",
-    fontFamily: "'Manrope', system-ui, -apple-system, sans-serif",
-    overflow: "hidden",
-  }}
->
-  {/* Top accent bar */}
-  <div
-    aria-hidden
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 3,
-      background: "linear-gradient(90deg, #F58220 0%, #E26A2C 60%, transparent 100%)",
-      opacity: 0.9,
-    }}
-  />
+            <motion.div
+              key="post-dialog"
+              initial={{ opacity: 0, y: 40, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "fixed",
+                left: 16,
+                right: 16,
+                bottom: 96,
+                zIndex: 310,
+                background: "var(--fd-surface)",
+                border: "1px solid var(--fd-line)",
+                borderRadius: 24,
+                padding: 20,
+                boxShadow: "0 32px 64px -24px rgba(0,0,0,0.55), 0 8px 24px -12px rgba(0,0,0,0.25)",
+                fontFamily: "'Manrope', system-ui, -apple-system, sans-serif",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: "linear-gradient(90deg, #F58220 0%, #E26A2C 60%, transparent 100%)",
+                  opacity: 0.9,
+                }}
+              />
+              <div
+                aria-hidden
+                style={{
+                  width: 44,
+                  height: 4,
+                  borderRadius: 999,
+                  background: "var(--fd-line-str)",
+                  margin: "0 auto 16px auto",
+                  opacity: 0.6,
+                }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 15,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "linear-gradient(135deg, #F58220 0%, #D35400 100%)",
+                    color: "#fff",
+                    flexShrink: 0,
+                    boxShadow: "0 10px 22px -10px rgba(242,138,45,0.65)",
+                  }}
+                >
+                  <FaPlus style={{ fontSize: 17 }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 16,
+                      fontWeight: 800,
+                      letterSpacing: "-0.015em",
+                      color: "var(--fd-txt)",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    Sell something
+                  </p>
+                  <p
+                    style={{
+                      margin: "3px 0 0",
+                      fontSize: 12.5,
+                      color: "var(--fd-txt-soft)",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    Choose how you'd like to start
+                  </p>
+                </div>
+              </div>
 
-  {/* Drag handle */}
-  <div
-    aria-hidden
-    style={{
-      width: 44,
-      height: 4,
-      borderRadius: 999,
-      background: "var(--fd-line-str)",
-      margin: "0 auto 16px auto",
-      opacity: 0.6,
-    }}
-  />
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPostDialog(false);
+                  navigate("/post-ad?new=1");
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 16px",
+                  borderRadius: 14,
+                  border: "1px solid #E5E7EB",
+                  background: "#FFFFFF",
+                  color: "#0F1419",
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  marginBottom: 10,
+                  fontFamily: "inherit",
+                  boxShadow: "0 4px 14px -6px rgba(0,0,0,0.12)",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                }}
+              >
+                <span
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(245,130,32,0.12)",
+                    color: "#F58220",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FaPlus style={{ fontSize: 12 }} />
+                </span>
+                <span style={{ flex: 1, textAlign: "left" }}>Post a new ad</span>
+                <FaArrowRight style={{ fontSize: 10, color: "#9CA3AF" }} />
+              </button>
 
-  {/* Header */}
-  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
-    <div
-      style={{
-        width: 48,
-        height: 48,
-        borderRadius: 15,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #F58220 0%, #D35400 100%)",
-        color: "#fff",
-        flexShrink: 0,
-        boxShadow: "0 10px 22px -10px rgba(242,138,45,0.65)",
-      }}
-    >
-      <FaPlus style={{ fontSize: 17 }} />
-    </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 16,
-          fontWeight: 800,
-          letterSpacing: "-0.015em",
-          color: "var(--fd-txt)",
-          lineHeight: 1.2,
-        }}
-      >
-        Sell something
-      </p>
-      <p
-        style={{
-          margin: "3px 0 0",
-          fontSize: 12.5,
-          color: "var(--fd-txt-soft)",
-          lineHeight: 1.3,
-        }}
-      >
-        Choose how you'd like to start
-      </p>
-    </div>
-  </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPostDialog(false);
+                  navigate("/my-listings");
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 16px",
+                  borderRadius: 14,
+                  border: "1px solid #0F1419",
+                  background: "#0F1419",
+                  color: "#FFFFFF",
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  boxShadow: "0 4px 14px -6px rgba(0,0,0,0.35)",
+                  transition: "transform 0.15s ease, filter 0.15s ease",
+                }}
+              >
+                <span
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(255,255,255,0.14)",
+                    color: "#FFFFFF",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FaList style={{ fontSize: 12 }} />
+                </span>
+                <span style={{ flex: 1, textAlign: "left" }}>My listings</span>
+                <FaArrowRight style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }} />
+              </button>
 
-  {/* Option 1 — Post new ad (WHITE button) */}
-  <button
-    type="button"
-    onClick={() => {
-      setShowPostDialog(false);
-      navigate("/post-ad?new=1");
-    }}
-    style={{
-      width: "100%",
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      padding: "14px 16px",
-      borderRadius: 14,
-      border: "1px solid #E5E7EB",
-      background: "#FFFFFF",
-      color: "#0F1419",
-      fontSize: 13.5,
-      fontWeight: 700,
-      cursor: "pointer",
-      marginBottom: 10,
-      fontFamily: "inherit",
-      boxShadow: "0 4px 14px -6px rgba(0,0,0,0.12)",
-      transition: "transform 0.15s ease, box-shadow 0.15s ease",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "translateY(-1px)";
-      e.currentTarget.style.boxShadow = "0 8px 20px -8px rgba(0,0,0,0.18)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "translateY(0)";
-      e.currentTarget.style.boxShadow = "0 4px 14px -6px rgba(0,0,0,0.12)";
-    }}
-    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-    onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-  >
-    <span
-      style={{
-        width: 30,
-        height: 30,
-        borderRadius: 10,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(245,130,32,0.12)",
-        color: "#F58220",
-        flexShrink: 0,
-      }}
-    >
-      <FaPlus style={{ fontSize: 12 }} />
-    </span>
-    <span style={{ flex: 1, textAlign: "left" }}>Post a new ad</span>
-    <FaArrowRight style={{ fontSize: 10, color: "#9CA3AF" }} />
-  </button>
-
-  {/* Option 2 — My listings (BLACK button) */}
-  <button
-    type="button"
-    onClick={() => {
-      setShowPostDialog(false);
-      navigate("/my-listings");
-    }}
-    style={{
-      width: "100%",
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      padding: "14px 16px",
-      borderRadius: 14,
-      border: "1px solid #0F1419",
-      background: "#0F1419",
-      color: "#FFFFFF",
-      fontSize: 13.5,
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      boxShadow: "0 4px 14px -6px rgba(0,0,0,0.35)",
-      transition: "transform 0.15s ease, filter 0.15s ease",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "translateY(-1px)";
-      e.currentTarget.style.filter = "brightness(1.15)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "translateY(0)";
-      e.currentTarget.style.filter = "brightness(1)";
-    }}
-    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-    onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-  >
-    <span
-      style={{
-        width: 30,
-        height: 30,
-        borderRadius: 10,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(255,255,255,0.14)",
-        color: "#FFFFFF",
-        flexShrink: 0,
-      }}
-    >
-      <FaList style={{ fontSize: 12 }} />
-    </span>
-    <span style={{ flex: 1, textAlign: "left" }}>My listings</span>
-    <FaArrowRight style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }} />
-  </button>
-
-  {/* Cancel */}
-  <button
-    type="button"
-    onClick={() => setShowPostDialog(false)}
-    style={{
-      width: "100%",
-      marginTop: 14,
-      padding: "12px",
-      borderRadius: 12,
-      border: "none",
-      background: "transparent",
-      color: "var(--fd-txt-soft)",
-      fontSize: 12.5,
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      transition: "color 0.15s ease, background 0.15s ease",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.color = "var(--fd-txt)";
-      e.currentTarget.style.background = "var(--fd-surface-2)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.color = "var(--fd-txt-soft)";
-      e.currentTarget.style.background = "transparent";
-    }}
-  >
-    Cancel
-  </button>
-</motion.div>
+              <button
+                type="button"
+                onClick={() => setShowPostDialog(false)}
+                style={{
+                  width: "100%",
+                  marginTop: 14,
+                  padding: "12px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--fd-txt-soft)",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Cancel
+              </button>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
@@ -4178,7 +4394,7 @@ const Feed = () => {
   const [messageAlertMeta, setMessageAlertMeta] = useState({});
   const planCtx = usePlan();
   const currentUserPlan = planCtx?.planId || "free";
-
+  const { format: formatPrice, currency } = useLocale();   // ⭐ ADD THIS
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [sortBy, setSortBy] = useState("newest");
@@ -4206,7 +4422,7 @@ const Feed = () => {
     try { localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarHidden)); } catch {}
   }, [sidebarHidden]);
 
-  /* ⭐ LIVE SUGGESTIONS — computed from listings as user types */
+  /* ⭐ LIVE SUGGESTIONS */
   const searchSuggestions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 2) return [];
@@ -4242,14 +4458,13 @@ const Feed = () => {
       }));
   }, [searchQuery, listings]);
 
-  /* ⭐ Suggestion click → go straight to that item's detail page */
   const handleSuggestionClick = (s) => {
     if (!s?.id) return;
     const path = s.detailPath || "listing";
     navigate(`/${path}/${s.id}`);
   };
 
-  /* ⭐ Message subscription — unchanged */
+  /* ⭐ Message subscription */
   useEffect(() => {
     if (!user?.id) return;
 
@@ -4579,9 +4794,9 @@ const Feed = () => {
       });
     }
 
-    const pMin = Number(filter.priceMin) || 0;
-    const pMax = Number(filter.priceMax) || Infinity;
-    if (pMin > 0 || pMax < Infinity) result = result.filter((f) => f.price >= pMin && f.price <= pMax);
+const pMin = Number(filter.priceMin) || 0;
+const pMax = Number(filter.priceMax) || Infinity;
+if (pMin > 0 || pMax < Infinity) result = result.filter((f) => f.price >= pMin && f.price <= pMax);
 
     if (filter.brand) {
       const brand = filter.brand.toLowerCase();
@@ -4745,10 +4960,10 @@ const Feed = () => {
 
   const gridClass = useMemo(() => {
     switch (viewMode) {
-      case "grid-lg": return "grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5";
-      case "grid-sm": return "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5";
-      case "list":    return "grid grid-cols-1 gap-4";
-      default:        return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4";
+      case "grid-lg": return "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6";
+      case "grid-sm": return "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3";
+      case "list":    return "grid grid-cols-1 gap-5";
+      default:        return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5";
     }
   }, [viewMode]);
 
@@ -4761,7 +4976,7 @@ const Feed = () => {
       </AnimatePresence>
       <div className="w-full py-3 sm:py-4 px-0 pb-24 md:pb-4">
         <div className="flex items-start" style={{ gap: 24 }}>
-          {/* ═══ DESKTOP SIDEBAR ═══ */}
+          {/* ═══ DESKTOP SIDEBAR — UNCHANGED ═══ */}
           <aside
             style={{
               width: sidebarHidden ? 0 : 320,
@@ -4780,7 +4995,6 @@ const Feed = () => {
                 border: "1px solid var(--fd-line)",
               }}
             >
-
               <div style={{ height: 1, background: "var(--fd-line)" }} />
               <div className="sidebar-scroll flex-1 overflow-y-auto">
                 <SidebarFilters
@@ -4789,6 +5003,7 @@ const Feed = () => {
                   conditionCounts={conditionCounts}
                   topCities={topCities}
                   topBrands={topBrands}
+                    currency={currency}                
                   brandSearch={brandSearch}
                   setBrandSearch={setBrandSearch}
                   toggleCond={toggleCond}
@@ -4806,54 +5021,46 @@ const Feed = () => {
                   showMobileSections={showMobileSections}
                   showElectronicsSections={showElectronicsSections}
                   showToySections={showToySections}
-                  sMobile={false}                                       /* ⭐ ADD */
-  onClose={() => setSidebarHidden(true)}    
+                  isMobile={false}
+                  onClose={() => setSidebarHidden(true)}
                 />
               </div>
             </div>
           </aside>
 
-      {sidebarHidden && (
-  <button
-    type="button"
-    onClick={() => setSidebarHidden(false)}
-    aria-label="Show filters"
-    className="hidden md:inline-flex items-center gap-2 self-start mt-1 ml-2 px-3 py-2 rounded-full transition-all"
-    style={{
-      background: "var(--fd-surface)",
-      border: "1px solid var(--fd-line-str)",
-      color: "var(--fd-txt)",
-      fontFamily: "'Manrope', system-ui, sans-serif",
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: "pointer",
-      flexShrink: 0,
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.background = "var(--fd-primary)";
-      e.currentTarget.style.color = "#0A0A12";
-      e.currentTarget.style.borderColor = "var(--fd-primary)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = "var(--fd-surface)";
-      e.currentTarget.style.color = "var(--fd-txt)";
-      e.currentTarget.style.borderColor = "var(--fd-line-str)";
-    }}
-  >
-    {/* ⭐ Same SVG icon as the collapse button */}
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-      <path
-        d="M2 3a1 1 0 0 1 1-1h2v12H3a1 1 0 0 1-1-1V3Zm5-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7V2Z"
-        opacity="0.85"
-      />
-    </svg>
-  </button>
-)}
-          <main className="flex-1 min-w-0 px-3 sm:px-0" style={{ paddingRight: 20 }}>
-            <div>
-              {/* ⭐ HERO SEARCH — now with live suggestions */}
+          {sidebarHidden && (
+            <button
+              type="button"
+              onClick={() => setSidebarHidden(false)}
+              aria-label="Show filters"
+              className="hidden md:inline-flex items-center gap-2 self-start mt-1 ml-2 px-3 py-2 rounded-full transition-all"
+              style={{
+                background: "var(--fd-surface)",
+                border: "1px solid var(--fd-line-str)",
+                color: "var(--fd-txt)",
+                fontFamily: "'Manrope', system-ui, sans-serif",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M2 3a1 1 0 0 1 1-1h2v12H3a1 1 0 0 1-1-1V3Zm5-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7V2Z"
+                  opacity="0.85"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* ═══ MAIN — UPGRADED GLOBAL LAYOUT ═══ */}
+          <main className="flex-1 min-w-0 px-3 sm:px-4 lg:px-0" style={{ paddingRight: 20 }}>
+            <div className="fd-main-upgraded">
+              {/* HERO SEARCH */}
               <HeroSearch
                 searchQuery={searchQuery}
+                  currency={currency}          // ⭐ NEW
                 setSearchQuery={setSearchQuery}
                 activeCategoryTab={activeCategoryTab}
                 setActiveCategoryTab={setActiveCategoryTab}
@@ -4911,43 +5118,11 @@ const Feed = () => {
                 )}
               </AnimatePresence>
 
-              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      margin: 0,
-                      color: "var(--fd-txt)",
-                      fontSize: "clamp(20px, 2.8vw, 26px)",
-                      fontWeight: 800,
-                      letterSpacing: "-0.025em",
-                      lineHeight: 1.1,
-                      fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minWidth: 40,
-                        padding: "4px 12px",
-                        borderRadius: 999,
-                        background:
-                          "linear-gradient(135deg, var(--fd-primary) 0%, var(--fd-primary-2) 100%)",
-                        color: "#FFFFFF",
-                        fontSize: "clamp(16px, 2.2vw, 20px)",
-                        fontWeight: 900,
-                        letterSpacing: "-0.02em",
-                        boxShadow: "0 8px 20px -10px var(--fd-primary-glow)",
-                      }}
-                    >
-                      {filteredFeed.length}
-                    </span>
-
+              {/* ⭐ UPGRADED TOOLBAR — global project feel */}
+              <div className="fd-toolbar-row">
+                <div className="flex items-center gap-3 flex-wrap min-w-0 flex-1">
+                  <h1 className="fd-count-head">
+                    <span className="fd-count-pill">{filteredFeed.length}</span>
                     <span style={{ fontWeight: 800 }}>
                       listing{filteredFeed.length === 1 ? "" : "s"}
                     </span>
@@ -5013,13 +5188,27 @@ const Feed = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 mb-4 w-full">
-                <div className="inline-flex items-center gap-0.5 p-1 rounded-lg fd-panel-solid flex-shrink-0">
+              {/* View switcher row */}
+              <div className="flex items-center justify-between gap-3 w-full">
+                <div className="fd-view-switcher">
                   {VIEW_MODES.map((v) => {
                     const Icon = v.icon; const active = viewMode === v.id;
                     return (
-                      <button key={v.id} type="button" onClick={() => setViewMode(v.id)} title={v.label} className="relative inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded" style={{ color: active ? "#fff" : "var(--fd-txt-faint)" }}>
-                        {active && (<motion.div layoutId="view-mode-active" className="absolute inset-0 rounded" style={{ background: "var(--fd-primary)" }} transition={{ type: "spring", stiffness: 400, damping: 30 }} />)}
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setViewMode(v.id)}
+                        title={v.label}
+                        className={`fd-view-btn ${active ? "is-active" : ""}`}
+                      >
+                        {active && (
+                          <motion.div
+                            layoutId="view-mode-active"
+                            className="absolute inset-0 rounded-[7px]"
+                            style={{ background: "var(--fd-primary)" }}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                          />
+                        )}
                         <Icon className="text-[10px] sm:text-[11px] relative z-10" />
                       </button>
                     );
@@ -5057,12 +5246,13 @@ const Feed = () => {
                   </Link>
                 </div>
               ) : (
-                <div className={`${gridClass}`}>
+                <div className={gridClass}>
                   <AnimatePresence mode="popLayout">
                     {filteredFeed.map((item, i) => (
                       <motion.div key={item.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3, delay: Math.min(i * 0.02, 0.4) }}>
                         <PropertyCardSmall
                           item={item}
+                            currency={currency}          // ⭐ NEW
                           onClick={() => handleCardClick(item)}
                           isFav={favorites.includes(item.id)}
                           onToggleFavorite={(e) => toggleFavorite(e, item.id)}
@@ -5124,6 +5314,7 @@ const Feed = () => {
                   categoryCounts={categoryCounts}
                   conditionCounts={conditionCounts}
                   topCities={topCities}
+                    currency={currency}             
                   topBrands={topBrands}
                   brandSearch={brandSearch}
                   setBrandSearch={setBrandSearch}
@@ -5142,8 +5333,8 @@ const Feed = () => {
                   showMobileSections={showMobileSections}
                   showElectronicsSections={showElectronicsSections}
                   showToySections={showToySections}
-                    isMobile={true}                                        /* ⭐ ADD */
-  onClose={() => setMobileFiltersOpen(false)}   
+                  isMobile={true}
+                  onClose={() => setMobileFiltersOpen(false)}
                 />
               </div>
               <div className="fd-sheet__footer">

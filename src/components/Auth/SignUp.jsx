@@ -33,7 +33,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
 /* ═══════════════════════════════════════════════════════════════
-   3 VIDEO URLS + FEATURE LABELS
+   3 VIDEO URLS + FEATURE LABELS (DESKTOP ONLY)
    ═══════════════════════════════════════════════════════════════ */
 const BRAND_VIDEOS = [
   {
@@ -89,17 +89,13 @@ const useTheme = () => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   FONTS + THEME TOKENS — Logo gradient (#F7941D → #ED6E1F → #D4521A)
+   FONTS + THEME TOKENS
    ═══════════════════════════════════════════════════════════════ */
 const FontStyles = () => (
- <style>{`
+  <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     .auth-font { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
-    /* ══════════════════════════════════════════════════════════
-       LOGO GRADIENT — signature diagonal (135deg)
-       light amber (top-left) → mid orange → deep burnt (bottom-right)
-       ══════════════════════════════════════════════════════════ */
     :root {
       --brand-grad-start: #F7941D;
       --brand-grad-mid:   #ED6E1F;
@@ -110,10 +106,10 @@ const FontStyles = () => (
     /* ── DARK THEME ── */
     html.theme-dark, .theme-dark {
       --hf-backdrop:      rgba(0,0,0,0.65);
-      --hf-shell:         #1A1A1E;
-      --hf-shell-2:       #212127;
-      --hf-panel:         #23232A;
-      --hf-panel-soft:    #26262E;
+      --hf-shell:         #0F0F14;
+      --hf-shell-2:       #16161C;
+      --hf-panel:         #1A1A20;
+      --hf-panel-soft:    #212127;
       --hf-line:          rgba(255,255,255,0.06);
       --hf-line-str:      rgba(255,255,255,0.10);
       --hf-txt:           #FFFFFF;
@@ -207,7 +203,6 @@ const FontStyles = () => (
     .hf-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .hf-btn svg { flex-shrink: 0; }
 
-    /* ⭐ Business email button — full logo gradient fill */
     .hf-btn--amber {
       background: var(--brand-grad) !important;
       background-image: var(--brand-grad) !important;
@@ -232,7 +227,6 @@ const FontStyles = () => (
       border-color: transparent !important;
     }
 
-    /* ⭐ Primary submit — full logo gradient */
     .hf-btn--primary {
       background: var(--brand-grad) !important;
       background-image: var(--brand-grad) !important;
@@ -257,7 +251,7 @@ const FontStyles = () => (
       border-color: transparent !important;
     }
 
-    /* ═══════ MOBILE PILL BUTTONS ═══════ */
+    /* ═══════ MOBILE PILL BUTTONS — theme-aware, no video backdrop ═══════ */
     .hf-mob-btn {
       width: 100%;
       display: flex;
@@ -272,7 +266,7 @@ const FontStyles = () => (
       letter-spacing: -0.005em;
       cursor: pointer;
       border: 1px solid transparent;
-      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease;
+      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       line-height: 1.25;
       text-align: center;
       white-space: normal;
@@ -285,28 +279,27 @@ const FontStyles = () => (
     .hf-mob-btn svg { flex-shrink: 0; }
 
     .hf-mob-btn--white {
-      background: #FFFFFF;
-      color: #0A0A12;
-      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.45);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
+      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.25);
     }
     .hf-mob-btn--white:hover:not(:disabled) {
-      filter: brightness(0.97);
+      background: var(--hf-panel-soft);
+      border-color: var(--hf-line-str);
     }
 
     .hf-mob-btn--ghost {
-      background: rgba(20,20,22,0.55);
-      color: #FFFFFF;
-      border: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
       font-weight: 600;
-      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.4);
     }
     .hf-mob-btn--ghost:hover:not(:disabled) {
-      background: rgba(20,20,22,0.7);
+      background: var(--hf-panel-soft);
+      border-color: var(--hf-line-str);
     }
 
-    /* ⭐ Mobile amber CTA — full logo gradient */
     .hf-mob-btn--amber {
       background: var(--brand-grad) !important;
       background-image: var(--brand-grad) !important;
@@ -345,26 +338,25 @@ const FontStyles = () => (
       box-shadow: 0 0 0 3px rgba(237,110,31,0.18);
     }
 
+    /* Mobile input — theme aware, no blur */
     .hf-input-mob {
       width: 100%;
       padding: 12px 14px 12px 40px;
       border-radius: 12px;
-      background: rgba(20,20,22,0.55);
-      color: #FFFFFF;
-      border: 1px solid rgba(255,255,255,0.16);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
       font-family: 'Inter', system-ui, sans-serif;
-      font-size: 16px; /* ⭐ 16px prevents iOS Safari auto-zoom on focus */
+      font-size: 16px; /* prevents iOS zoom */
       outline: none;
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
       transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
       line-height: 1.3;
     }
-    .hf-input-mob::placeholder { color: rgba(255,255,255,0.5); }
+    .hf-input-mob::placeholder { color: var(--hf-txt-faint); }
     .hf-input-mob:focus {
       border-color: #ED6E1F;
-      background: rgba(20,20,22,0.7);
-      box-shadow: 0 0 0 3px rgba(237,110,31,0.28);
+      background: var(--hf-panel-soft);
+      box-shadow: 0 0 0 3px rgba(237,110,31,0.22);
     }
 
     .hf-checkbox {
@@ -374,13 +366,11 @@ const FontStyles = () => (
       height: 18px;
       border-radius: 5px;
       border: 1.5px solid var(--hf-line-str);
-      background: rgba(255,255,255,0.06);
+      background: var(--hf-panel-soft);
       cursor: pointer;
       position: relative;
       transition: all 0.15s ease;
       flex-shrink: 0;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
     .hf-checkbox:checked {
       background: var(--brand-grad);
@@ -410,23 +400,6 @@ const FontStyles = () => (
     @keyframes hf-shimmer {
       0% { transform: translateX(-150%) skewX(-16deg); }
       100% { transform: translateX(450%) skewX(-16deg); }
-    }
-
-    /* ═══════ BLACK BACKDROP BLUR OVERLAY (mobile) ═══════ */
-    .hf-mob-backdrop {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        180deg,
-        rgba(0,0,0,0.55) 0%,
-        rgba(0,0,0,0.65) 30%,
-        rgba(0,0,0,0.78) 60%,
-        rgba(0,0,0,0.92) 100%
-      );
-      backdrop-filter: blur(14px) saturate(115%);
-      -webkit-backdrop-filter: blur(14px) saturate(115%);
-      z-index: 8;
-      pointer-events: none;
     }
 
     /* ⭐ PASSKEY SETUP ANIMATIONS */
@@ -480,7 +453,6 @@ const FontStyles = () => (
       }
     }
 
-    /* Tiny phones (Galaxy Fold, iPhone SE 1st gen) */
     @media (max-width: 360px) {
       .hf-mob-btn {
         padding: 10px 14px;
@@ -499,7 +471,6 @@ const FontStyles = () => (
       }
     }
 
-    /* Landscape phones — reduce vertical spacing */
     @media (max-height: 500px) and (max-width: 1023px) {
       .hf-mob-content {
         padding-top: calc(env(safe-area-inset-top, 0px) + 44px) !important;
@@ -518,14 +489,14 @@ const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1"
     return (
       <div className="h-full w-full flex items-center justify-center font-black text-base rounded-lg"
         style={{ background: "var(--brand-grad)", color: "#FFFFFF" }}>
-        A
+        D
       </div>
     );
   }
   return (
     <img
       src={sources[idx]}
-      alt="APNa Deal"
+      alt="Dealora"
       className={className}
       onError={() => {
         if (idx < sources.length - 1) setIdx(idx + 1);
@@ -536,7 +507,7 @@ const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1"
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ⭐ PASSKEY SETUP SCREEN — animated, shown after signup
+   ⭐ PASSKEY SETUP SCREEN
    ═══════════════════════════════════════════════════════════════ */
 const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
   return (
@@ -546,9 +517,7 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
       exit={{ opacity: 0 }}
       className="w-full max-w-[380px] mx-auto flex flex-col items-center"
     >
-      {/* Animated fingerprint scanner */}
       <div className="relative mb-6 flex items-center justify-center flex-shrink-0" style={{ width: 160, height: 160 }}>
-        {/* Pulse rings */}
         <span className="absolute inset-0 rounded-full pk-pulse-1"
           style={{ border: "2px solid var(--hf-amber)" }} />
         <span className="absolute inset-0 rounded-full pk-pulse-2"
@@ -556,21 +525,18 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
         <span className="absolute inset-0 rounded-full pk-pulse-3"
           style={{ border: "2px solid var(--hf-amber)" }} />
 
-        {/* Outer orbit ring */}
         <svg className="absolute inset-0 pk-orbit-slow" viewBox="0 0 160 160">
           <circle cx="80" cy="80" r="72" fill="none" stroke="var(--hf-amber)"
             strokeWidth="1" strokeDasharray="3 8" opacity="0.5" />
           <circle cx="80" cy="8" r="2.5" fill="var(--hf-amber)" />
         </svg>
 
-        {/* Middle orbit ring */}
         <svg className="absolute inset-0 pk-orbit-med" viewBox="0 0 160 160">
           <circle cx="80" cy="80" r="58" fill="none" stroke="var(--hf-amber)"
             strokeWidth="1" strokeDasharray="2 6" opacity="0.35" />
           <circle cx="80" cy="22" r="2" fill="var(--hf-amber)" />
         </svg>
 
-        {/* Center circle — floating */}
         <div className="relative h-24 w-24 rounded-full pk-float flex items-center justify-center"
           style={{
             background: "var(--brand-grad)",
@@ -578,14 +544,12 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
           }}>
           <FaFingerprint className="text-white" style={{ fontSize: 42 }} />
 
-          {/* Scan line */}
           <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
             <div className="absolute inset-x-0 h-1 pk-scan"
               style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)" }} />
           </div>
         </div>
 
-        {/* Corner accents */}
         <span className="absolute top-2 left-2 h-3.5 w-3.5 border-t-2 border-l-2 rounded-tl-lg pk-ring-glow"
           style={{ borderColor: "var(--hf-amber)" }} />
         <span className="absolute top-2 right-2 h-3.5 w-3.5 border-t-2 border-r-2 rounded-tr-lg pk-ring-glow"
@@ -596,7 +560,6 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
           style={{ borderColor: "var(--hf-amber)" }} />
       </div>
 
-      {/* Heading */}
       <motion.h2
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -617,7 +580,6 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
         Sign in next time with just your <strong style={{ color: "var(--hf-txt)" }}>Face ID, fingerprint, or PIN</strong> — no password needed. Safer and faster.
       </motion.p>
 
-      {/* Benefits */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -649,7 +611,6 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
         })}
       </motion.div>
 
-      {/* Error */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -668,7 +629,6 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
         )}
       </AnimatePresence>
 
-      {/* Actions */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -707,7 +667,6 @@ const PasskeySetupScreen = ({ onRegister, onSkip, isLoading, error }) => {
         </button>
       </motion.div>
 
-      {/* Footer */}
       <p className="mt-5 text-[10px] text-center max-w-[280px]"
         style={{ color: "var(--hf-txt-faint)" }}>
         You can always set up a passkey later from <strong>Settings → Security</strong>
@@ -733,17 +692,15 @@ const SignUp = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  /* ⭐ NEW — passkey setup phase after successful signup */
-  const [phase, setPhase] = useState('form'); // 'form' | 'passkey' | 'done'
+  const [phase, setPhase] = useState('form');
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState('');
-const { user, loading: authLoading, signUp, signInWithGoogle, signInWithGitHub, registerPasskey, isPasskeySupported } = useAuth();
+  const { user, loading: authLoading, signUp, signInWithGoogle, signInWithGitHub, registerPasskey, isPasskeySupported } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const videoRef = useRef(null);
   const transitionTimeoutRef = useRef(null);
 
-  // ⭐ If user is already signed in (and hasn't just signed up), redirect away
   useEffect(() => {
     if (authLoading) return;
     if (user && phase === 'form') {
@@ -856,8 +813,6 @@ const { user, loading: authLoading, signUp, signInWithGoogle, signInWithGitHub, 
       if (error) { setError(error); setErrorType('auth_error'); }
       else {
         setSuccess('Account created! Now let\'s secure it with a passkey.');
-
-        /* ⭐ Move to passkey setup phase */
         setTimeout(() => {
           setPhase('passkey');
         }, 600);
@@ -869,7 +824,6 @@ const { user, loading: authLoading, signUp, signInWithGoogle, signInWithGitHub, 
     setLoading(false);
   };
 
-  /* ⭐ Register passkey (called from PasskeySetupScreen) */
   const handleRegisterPasskey = async () => {
     setPasskeyError('');
     setPasskeyLoading(true);
@@ -926,22 +880,22 @@ const { user, loading: authLoading, signUp, signInWithGoogle, signInWithGitHub, 
   const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0 } };
 
   const currentVideo = BRAND_VIDEOS[currentVideoIndex];
-// ⭐ Guard — spinner while checking auth OR redirect signed-in users on the form phase
-if (authLoading || (user && phase === 'form')) {
-  return (
-    <div
-      className={`fixed inset-0 w-screen h-screen flex items-center justify-center theme-${theme} auth-font`}
-      style={{ background: "var(--hf-shell)" }}
-    >
-      <FontStyles />
-      <FaSpinner
-        className="animate-spin text-xl"
-        style={{ color: "#ED6E1F" }}
-      />
-    </div>
-  );
-}
-  /* ⭐ DONE PHASE — success confirmation */
+
+  if (authLoading || (user && phase === 'form')) {
+    return (
+      <div
+        className={`fixed inset-0 w-screen h-screen flex items-center justify-center theme-${theme} auth-font`}
+        style={{ background: "var(--hf-shell)" }}
+      >
+        <FontStyles />
+        <FaSpinner
+          className="animate-spin text-xl"
+          style={{ color: "#ED6E1F" }}
+        />
+      </div>
+    );
+  }
+
   if (phase === 'done') {
     return (
       <>
@@ -983,7 +937,6 @@ if (authLoading || (user && phase === 'form')) {
     );
   }
 
-  /* ⭐ PASSKEY PHASE — animated setup screen */
   if (phase === 'passkey') {
     return (
       <>
@@ -1015,7 +968,7 @@ if (authLoading || (user && phase === 'form')) {
         style={{ background: "var(--hf-shell)" }}
       >
         {/* ═══════════════════════════════════════════════════
-            DESKTOP — Split panel
+            DESKTOP — Split panel (with video)
            ═══════════════════════════════════════════════════ */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-shrink-0"
           style={{ background: "#0A0A12" }}
@@ -1159,8 +1112,7 @@ if (authLoading || (user && phase === 'form')) {
               <motion.div variants={itemVariants} initial="hidden" animate="visible"
                 className="flex justify-center mb-2"
               >
-                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden"
-                >
+                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden">
                   <LogoImage />
                 </div>
               </motion.div>
@@ -1171,7 +1123,7 @@ if (authLoading || (user && phase === 'form')) {
                 <h2 className="font-black tracking-tight mb-1.5"
                   style={{ color: "var(--hf-txt)", fontSize: "clamp(22px, 2.5vw, 30px)", letterSpacing: "-0.02em" }}
                 >
-                  Sign Up 
+                  Sign Up
                 </h2>
                 <p className="text-[12.5px] font-medium" style={{ color: "var(--hf-txt-soft)" }}>
                   Start buying and selling in seconds
@@ -1215,7 +1167,6 @@ if (authLoading || (user && phase === 'form')) {
                 )}
               </AnimatePresence>
 
-              {/* Auth buttons */}
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -1269,7 +1220,6 @@ if (authLoading || (user && phase === 'form')) {
 
               <div className="my-4 h-px" style={{ background: "var(--hf-line)" }} />
 
-              {/* Form */}
               <motion.form
                 variants={containerVariants}
                 initial="hidden"
@@ -1277,7 +1227,6 @@ if (authLoading || (user && phase === 'form')) {
                 onSubmit={handleSubmit}
                 className="flex flex-col gap-2.5"
               >
-                {/* Full Name */}
                 <motion.div variants={itemVariants} className="relative">
                   <FaUser
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none z-10"
@@ -1294,7 +1243,6 @@ if (authLoading || (user && phase === 'form')) {
                   />
                 </motion.div>
 
-                {/* Email */}
                 <motion.div variants={itemVariants} className="relative">
                   <FaEnvelope
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none z-10"
@@ -1312,7 +1260,6 @@ if (authLoading || (user && phase === 'form')) {
                   />
                 </motion.div>
 
-                {/* Password */}
                 <motion.div variants={itemVariants} className="relative">
                   <FaLock
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none z-10"
@@ -1339,7 +1286,6 @@ if (authLoading || (user && phase === 'form')) {
                   </button>
                 </motion.div>
 
-                {/* Password strength */}
                 <AnimatePresence>
                   {password && (
                     <motion.div
@@ -1395,7 +1341,6 @@ if (authLoading || (user && phase === 'form')) {
                   )}
                 </AnimatePresence>
 
-                {/* Confirm Password */}
                 <motion.div variants={itemVariants} className="relative">
                   <FaLock
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] pointer-events-none z-10"
@@ -1442,7 +1387,6 @@ if (authLoading || (user && phase === 'form')) {
                   )}
                 </AnimatePresence>
 
-                {/* Terms */}
                 <motion.label variants={itemVariants} className="flex items-start gap-2 mt-0.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1469,7 +1413,6 @@ if (authLoading || (user && phase === 'form')) {
                   </span>
                 </motion.label>
 
-                {/* Submit */}
                 <motion.button
                   variants={itemVariants}
                   type="submit"
@@ -1529,43 +1472,12 @@ if (authLoading || (user && phase === 'form')) {
         </div>
 
         {/* ═══════════════════════════════════════════════════
-            MOBILE — Video + black backdrop blur + form
+            MOBILE — Clean solid background (NO VIDEO)
            ═══════════════════════════════════════════════════ */}
-        <div className="lg:hidden absolute inset-0 flex flex-col" style={{ background: "#0A0A12" }}>
-
-          {/* Background video */}
-          <AnimatePresence mode="wait">
-            {!videoError ? (
-              <motion.video
-                key={`mob-${currentVideoIndex}`}
-                className="absolute inset-0 w-full h-full object-cover"
-                src={currentVideo.src}
-                autoPlay muted playsInline preload="auto"
-                onEnded={handleVideoEnd}
-                onError={handleVideoError}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.5, ease: 'easeInOut' }}
-              />
-            ) : (
-              <motion.div
-                key="mob-fallback"
-                className="absolute inset-0"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                style={{
-                  background:
-                    "radial-gradient(700px 500px at 20% 0%, rgba(237,110,31,0.22), transparent 60%), linear-gradient(180deg, #0A0A12 0%, #1A0A2E 100%)",
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Black backdrop blur overlay */}
-          <div className="hf-mob-backdrop" aria-hidden="true" />
-
-          {/* Close (X) button top-right — respects safe area */}
+        <div
+          className="lg:hidden absolute inset-0 flex flex-col hf-mob-scroll overflow-y-auto"
+          style={{ background: "var(--hf-shell)" }}
+        >
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -1573,20 +1485,17 @@ if (authLoading || (user && phase === 'form')) {
             style={{
               top: 12,
               right: 12,
-              background: "rgba(20,20,22,0.6)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#FFFFFF",
-              backdropFilter: "blur(12px) saturate(120%)",
-              WebkitBackdropFilter: "blur(12px) saturate(120%)",
+              background: "var(--hf-close-bg)",
+              color: "var(--hf-txt)",
+              border: "1px solid var(--hf-line)",
             }}
             aria-label="Close"
           >
             <FaTimes className="text-[13px]" />
           </button>
 
-          {/* Content — single scroll container */}
           <div
-            className="relative z-20 flex-1 overflow-y-auto hf-mob-scroll hf-mob-content"
+            className="relative z-20 flex-1 hf-mob-content"
             style={{
               paddingTop: 64,
               paddingBottom: 70,
@@ -1595,20 +1504,17 @@ if (authLoading || (user && phase === 'form')) {
             }}
           >
             <div className="flex flex-col justify-center min-h-full py-4">
-              {/* Logo */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
                 className="flex justify-center mb-4"
               >
-                <div className="h-16 w-16 sm:h-16 sm:w-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
-                >
+                <div className="h-16 w-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
                   <LogoImage />
                 </div>
               </motion.div>
 
-              {/* Heading */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1620,12 +1526,11 @@ if (authLoading || (user && phase === 'form')) {
                   style={{
                     fontSize: "clamp(22px, 7vw, 32px)",
                     letterSpacing: "-0.03em",
-                    background: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 55%, #ED6E1F 100%)",
+                    backgroundImage: `linear-gradient(135deg, var(--hf-txt) 0%, var(--hf-txt) 55%, #ED6E1F 100%)`,
                     WebkitBackgroundClip: "text",
                     backgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     color: "transparent",
-                    filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.55))",
                   }}
                 >
                   Sign Up
@@ -1633,16 +1538,12 @@ if (authLoading || (user && phase === 'form')) {
 
                 <p
                   className="mt-1.5 text-[12px] font-medium"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    textShadow: "0 1px 8px rgba(0,0,0,0.5)",
-                  }}
+                  style={{ color: "var(--hf-txt-soft)" }}
                 >
-                  Join APNa Deal in just a few seconds
+                  Join Dealora in just a few seconds
                 </p>
               </motion.div>
 
-              {/* Error / success */}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -1651,11 +1552,9 @@ if (authLoading || (user && phase === 'form')) {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-start gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(255,107,107,0.18)",
-                      color: "#FFB4B4",
-                      border: "1px solid rgba(255,107,107,0.35)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-danger-soft)",
+                      color: "var(--hf-danger)",
+                      border: "1px solid var(--hf-danger-soft)",
                     }}
                   >
                     {getErrorIcon(errorType)}
@@ -1675,11 +1574,9 @@ if (authLoading || (user && phase === 'form')) {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-center gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(74,222,128,0.15)",
-                      color: "#8CFFB8",
-                      border: "1px solid rgba(74,222,128,0.3)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-success-soft)",
+                      color: "var(--hf-success)",
+                      border: "1px solid var(--hf-success-soft)",
                     }}
                   >
                     <FaCheckCircle className="flex-shrink-0" />
@@ -1688,14 +1585,12 @@ if (authLoading || (user && phase === 'form')) {
                 )}
               </AnimatePresence>
 
-              {/* Auth buttons */}
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
                 className="flex flex-col gap-2.5"
               >
-                {/* Google */}
                 <motion.button
                   variants={itemVariants}
                   type="button"
@@ -1712,7 +1607,6 @@ if (authLoading || (user && phase === 'form')) {
                   Continue with Google
                 </motion.button>
 
-                {/* GitHub */}
                 <motion.button
                   variants={itemVariants}
                   type="button"
@@ -1724,7 +1618,6 @@ if (authLoading || (user && phase === 'form')) {
                   Continue with GitHub
                 </motion.button>
 
-                {/* Continue with email — ghost pill */}
                 {!showForm && (
                   <motion.button
                     variants={itemVariants}
@@ -1736,7 +1629,6 @@ if (authLoading || (user && phase === 'form')) {
                   </motion.button>
                 )}
 
-                {/* Email form (expands inline) */}
                 <AnimatePresence>
                   {showForm && (
                     <motion.form
@@ -1747,12 +1639,11 @@ if (authLoading || (user && phase === 'form')) {
                       onSubmit={handleSubmit}
                       className="flex flex-col gap-2.5 overflow-hidden"
                     >
-                      {/* Full Name */}
                       <div style={{ position: "relative", width: "100%" }}>
                         <span style={{
                           position: "absolute", left: 14, top: "50%",
                           transform: "translateY(-50%)", zIndex: 10,
-                          color: "rgba(255,255,255,0.7)", pointerEvents: "none",
+                          color: "var(--hf-txt-faint)", pointerEvents: "none",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 12,
                         }}>
@@ -1769,12 +1660,11 @@ if (authLoading || (user && phase === 'form')) {
                         />
                       </div>
 
-                      {/* Email */}
                       <div style={{ position: "relative", width: "100%" }}>
                         <span style={{
                           position: "absolute", left: 14, top: "50%",
                           transform: "translateY(-50%)", zIndex: 10,
-                          color: "rgba(255,255,255,0.7)", pointerEvents: "none",
+                          color: "var(--hf-txt-faint)", pointerEvents: "none",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 12,
                         }}>
@@ -1792,12 +1682,11 @@ if (authLoading || (user && phase === 'form')) {
                         />
                       </div>
 
-                      {/* Password */}
                       <div style={{ position: "relative", width: "100%" }}>
                         <span style={{
                           position: "absolute", left: 14, top: "50%",
                           transform: "translateY(-50%)", zIndex: 10,
-                          color: "rgba(255,255,255,0.7)", pointerEvents: "none",
+                          color: "var(--hf-txt-faint)", pointerEvents: "none",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 12,
                         }}>
@@ -1819,7 +1708,7 @@ if (authLoading || (user && phase === 'form')) {
                           style={{
                             position: "absolute", right: 14, top: "50%",
                             transform: "translateY(-50%)", zIndex: 10,
-                            color: "rgba(255,255,255,0.7)", background: "transparent",
+                            color: "var(--hf-txt-faint)", background: "transparent",
                             border: "none", cursor: "pointer", padding: 0,
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
@@ -1829,7 +1718,6 @@ if (authLoading || (user && phase === 'form')) {
                         </button>
                       </div>
 
-                      {/* Password strength */}
                       <AnimatePresence>
                         {password && (
                           <motion.div
@@ -1840,7 +1728,7 @@ if (authLoading || (user && phase === 'form')) {
                           >
                             <div className="flex items-center gap-2.5">
                               <div className="flex-1 h-1.5 rounded-full overflow-hidden"
-                                style={{ background: "rgba(255,255,255,0.1)" }}>
+                                style={{ background: "var(--hf-panel-soft)" }}>
                                 <motion.div
                                   initial={{ width: 0 }}
                                   animate={{ width: `${passwordStrength.percent}%` }}
@@ -1864,9 +1752,9 @@ if (authLoading || (user && phase === 'form')) {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.05 }}
                                     className="flex items-center gap-1.5 text-[9.5px]"
-                                    style={{ color: "rgba(255,255,255,0.6)" }}
+                                    style={{ color: "var(--hf-txt-faint)" }}
                                   >
-                                    <span style={{ color: "#ED6E1F" }}>•</span>
+                                    <span style={{ color: "var(--hf-amber-txt)" }}>•</span>
                                     {msg}
                                   </motion.div>
                                 ))}
@@ -1876,12 +1764,11 @@ if (authLoading || (user && phase === 'form')) {
                         )}
                       </AnimatePresence>
 
-                      {/* Confirm Password */}
                       <div style={{ position: "relative", width: "100%" }}>
                         <span style={{
                           position: "absolute", left: 14, top: "50%",
                           transform: "translateY(-50%)", zIndex: 10,
-                          color: "rgba(255,255,255,0.7)", pointerEvents: "none",
+                          color: "var(--hf-txt-faint)", pointerEvents: "none",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 12,
                         }}>
@@ -1903,7 +1790,7 @@ if (authLoading || (user && phase === 'form')) {
                           style={{
                             position: "absolute", right: 14, top: "50%",
                             transform: "translateY(-50%)", zIndex: 10,
-                            color: "rgba(255,255,255,0.7)", background: "transparent",
+                            color: "var(--hf-txt-faint)", background: "transparent",
                             border: "none", cursor: "pointer", padding: 0,
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
@@ -1921,7 +1808,7 @@ if (authLoading || (user && phase === 'form')) {
                             exit={{ opacity: 0, y: -4 }}
                             className="flex items-center gap-1.5 text-[9.5px] font-bold px-1"
                             style={{
-                              color: password === confirmPassword ? "#4ADE80" : "#FF6B6B",
+                              color: password === confirmPassword ? "var(--hf-success)" : "var(--hf-danger)",
                             }}
                           >
                             {password === confirmPassword ? (
@@ -1933,7 +1820,6 @@ if (authLoading || (user && phase === 'form')) {
                         )}
                       </AnimatePresence>
 
-                      {/* Terms */}
                       <label className="flex items-start gap-2.5 px-1 cursor-pointer">
                         <input
                           type="checkbox"
@@ -1941,20 +1827,19 @@ if (authLoading || (user && phase === 'form')) {
                           checked={agreed}
                           onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }}
                         />
-                        <span className="text-[11.5px] leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>
+                        <span className="text-[11.5px] leading-relaxed" style={{ color: "var(--hf-txt-soft)" }}>
                           I agree to the{' '}
-                          <Link to="/terms" className="font-semibold underline underline-offset-2" style={{ color: "#ED6E1F" }}>
+                          <Link to="/terms" className="font-semibold underline underline-offset-2" style={{ color: "var(--hf-amber-txt)" }}>
                             Terms
                           </Link>
                           {' '}and{' '}
-                          <Link to="/privacy" className="font-semibold underline underline-offset-2" style={{ color: "#ED6E1F" }}>
+                          <Link to="/privacy" className="font-semibold underline underline-offset-2" style={{ color: "var(--hf-amber-txt)" }}>
                             Privacy Policy
                           </Link>
                           .
                         </span>
                       </label>
 
-                      {/* Submit */}
                       <button
                         type="submit"
                         disabled={loading || !agreed}
@@ -1970,12 +1855,11 @@ if (authLoading || (user && phase === 'form')) {
                         )}
                       </button>
 
-                      {/* Back to options */}
                       <button
                         type="button"
                         onClick={() => setShowForm(false)}
                         className="text-center text-[12px] font-semibold mt-0.5 py-1.5"
-                        style={{ color: "rgba(255,255,255,0.7)" }}
+                        style={{ color: "var(--hf-txt-soft)" }}
                       >
                         ← Back to other options
                       </button>
@@ -1983,7 +1867,6 @@ if (authLoading || (user && phase === 'form')) {
                   )}
                 </AnimatePresence>
 
-                {/* Business email promo pill */}
                 {!showForm && (
                   <motion.button
                     variants={itemVariants}
@@ -1991,9 +1874,9 @@ if (authLoading || (user && phase === 'form')) {
                     onClick={() => setShowForm(true)}
                     className="hf-mob-btn hf-mob-btn--ghost"
                     style={{
-                      background: "rgba(237,110,31,0.18)",
-                      borderColor: "rgba(237,110,31,0.45)",
-                      color: "#ED6E1F",
+                      background: "linear-gradient(135deg, rgba(247,148,29,0.14) 0%, rgba(212,82,26,0.14) 100%)",
+                      borderColor: "rgba(237,110,31,0.42)",
+                      color: "var(--hf-amber-txt)",
                       fontWeight: 700,
                       height: "auto",
                       minHeight: 44,
@@ -2008,66 +1891,33 @@ if (authLoading || (user && phase === 'form')) {
                   </motion.button>
                 )}
 
-                {/* Footer links */}
                 <motion.div
                   variants={itemVariants}
                   className="flex items-center justify-center gap-3 mt-4 text-[11.5px]"
                 >
                   <Link to="/privacy" className="font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    style={{ color: "var(--hf-txt-soft)" }}
                   >
                     Privacy policy
                   </Link>
-                  <span style={{ color: "rgba(255,255,255,0.35)" }}>|</span>
+                  <span style={{ color: "var(--hf-txt-faint)" }}>|</span>
                   <Link to="/terms" className="font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    style={{ color: "var(--hf-txt-soft)" }}
                   >
                     Terms of service
                   </Link>
                 </motion.div>
 
-                {/* Sign in link */}
                 <motion.p
                   variants={itemVariants}
                   className="text-center text-[12px] mt-2.5"
-                  style={{ color: "rgba(255,255,255,0.65)" }}
+                  style={{ color: "var(--hf-txt-soft)" }}
                 >
                   Already have an account?{' '}
-                  <Link to="/signin" className="font-bold" style={{ color: "#ED6E1F" }}>
+                  <Link to="/signin" className="font-bold" style={{ color: "var(--hf-amber-txt)" }}>
                     Sign in
                   </Link>
                 </motion.p>
-
-                {/* Video dots */}
-                <motion.div
-                  variants={itemVariants}
-                  className="flex items-center justify-center gap-2.5 mt-4 mb-1"
-                >
-                  {BRAND_VIDEOS.map((v, i) => {
-                    const isActive = i === currentVideoIndex;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          if (i === currentVideoIndex || isTransitioning) return;
-                          setIsTransitioning(true);
-                          setVideoError(false);
-                          setTimeout(() => {
-                            setCurrentVideoIndex(i);
-                            setTimeout(() => setIsTransitioning(false), 300);
-                          }, 250);
-                        }}
-                        className="h-1.5 rounded-full transition-all duration-300 ease-out"
-                        style={{
-                          width: isActive ? 24 : 7,
-                          background: isActive ? "#FFFFFF" : "rgba(255,255,255,0.35)",
-                          transform: isActive ? "scaleY(1.15)" : "scaleY(1)",
-                        }}
-                        aria-label={`Go to slide ${i + 1}`}
-                      />
-                    );
-                  })}
-                </motion.div>
               </motion.div>
             </div>
           </div>

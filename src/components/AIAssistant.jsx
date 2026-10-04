@@ -5,11 +5,13 @@ import { generateWithChat } from "../lib/pollinations";
 /* ═══════════════════════════════════════════════════════════════
    AI ASSISTANT — Modern, glassmorphic, theme-aware
    - 100% FREE for everyone — NO sign-in / login required
-   - Launcher uses 💬 message icon (gradient bg)
+   - Launcher uses message icon (gradient bg)
    - Header uses logo (transparent)
    - AI replies show with a smooth fade-in (no typewriter)
    - System prompt teaches the AI ONLY about this project
-   - Launcher lifts higher on mobile so it clears the bottom nav
+   - Auto-links to category pages when user asks about
+     vehicles / mobiles / property / toys / electronics
+   - Simple text links (no emoji, no buttons)
    Logo: /logo.png
    ═══════════════════════════════════════════════════════════════ */
 
@@ -49,20 +51,208 @@ const SUGGESTIONS = [
   "What can I sell here?",
   "How do I boost my ad?",
   "What are the plans?",
-  "How do credits work?",
+  "Show me vehicles",
 ];
+
+/* ═══════════════════════════════════════════════════════════════
+   ⭐ CATEGORY ICONS — small SVGs used in links
+   ═══════════════════════════════════════════════════════════════ */
+const CarIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 17h14M5 17a2 2 0 1 1 0-4h14a2 2 0 1 1 0 4M5 17v-3l2-5h10l2 5v3" />
+    <circle cx="7.5" cy="17" r="1.5" />
+    <circle cx="16.5" cy="17" r="1.5" />
+  </svg>
+);
+
+const PhoneIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+  </svg>
+);
+
+const HomeIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+const ToyIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+);
+
+const LaptopIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <line x1="2" y1="20" x2="22" y2="20" />
+  </svg>
+);
+
+const ArrowRightIcon = ({ size = 12 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M5 12h14M13 5l7 7-7 7" />
+  </svg>
+);
+
+/* Map category id → icon component */
+const CATEGORY_ICONS = {
+  vehicles: CarIcon,
+  mobiles: PhoneIcon,
+  property: HomeIcon,
+  toys: ToyIcon,
+  electronics: LaptopIcon,
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   ⭐ CATEGORY LINK RULES
+   When the user's message mentions a category keyword, we attach
+   a "Visit" link to the AI reply that navigates to that category.
+   ═══════════════════════════════════════════════════════════════ */
+const CATEGORY_LINKS = [
+  {
+    id: "vehicles",
+    path: "/vehicles",
+    label: "Visit Vehicles",
+    keywords: [
+      "vehicle", "vehicles", "car", "cars", "bike", "bikes",
+      "motorcycle", "motorcycles", "truck", "trucks", "auto",
+      "suzuki", "toyota", "honda civic", "corolla", "cultus",
+      "civic", "fortuner", "sportage",
+    ],
+  },
+  {
+    id: "mobiles",
+    path: "/mobiles",
+    label: "Visit Mobiles",
+    keywords: [
+      "mobile", "mobiles", "phone", "phones", "iphone", "samsung",
+      "xiaomi", "oppo", "vivo", "tablet", "tablets", "smartphone",
+      "android", "pixel", "oneplus", "realme",
+    ],
+  },
+  {
+    id: "property",
+    path: "/property",
+    label: "Visit Property",
+    keywords: [
+      "property", "properties", "house", "houses", "home", "homes",
+      "plot", "plots", "flat", "flats", "apartment", "apartments",
+      "land", "marla", "kanal", "commercial", "shop", "office",
+    ],
+  },
+  {
+    id: "toys",
+    path: "/toys",
+    label: "Visit Toys",
+    keywords: [
+      "toy", "toys", "lego", "doll", "dolls", "puzzle", "game",
+      "games", "kids", "children", "baby", "playstation", "xbox",
+      "nintendo", "controller",
+    ],
+  },
+  {
+    id: "electronics",
+    path: "/electronics",
+    label: "Visit Electronics",
+    keywords: [
+      "electronic", "electronics", "laptop", "laptops", "tv", "television",
+      "camera", "cameras", "audio", "speaker", "speakers", "headphone",
+      "headphones", "monitor", "printer", "router", "macbook", "dell",
+      "hp", "lenovo", "asus", "acer", "console",
+    ],
+  },
+];
+
+/* ⭐ Detect categories mentioned in the user's message */
+const detectCategories = (text) => {
+  if (!text) return [];
+  const lower = String(text).toLowerCase();
+  const found = [];
+  for (const cat of CATEGORY_LINKS) {
+    for (const kw of cat.keywords) {
+      // Word-boundary-ish match
+      const rx = new RegExp(`(^|[^a-z])${kw}([^a-z]|$)`, "i");
+      if (rx.test(lower)) {
+        if (!found.includes(cat.id)) found.push(cat.id);
+        break;
+      }
+    }
+  }
+  return found;
+};
 
 /* ═══════════════════════════════════════════════════════════════
    SYSTEM PROMPT — trains the AI on THIS project only
    ═══════════════════════════════════════════════════════════════ */
 const SYSTEM_PROMPT = `
-You are the friendly in-app helper for our Pakistani marketplace app "Apna Deal".
+You are the friendly in-app helper for our Pakistani marketplace app "ApexDeal".
 Your job is ONLY to help users understand and use OUR app. Never invent features we don't have.
 
 ═══════════════════════════════════════════
 WHAT OUR APP IS
 ═══════════════════════════════════════════
-Apna Deal is Pakistan's number-one local marketplace platform — homegrown, made in Pakistan,
+ApexDeal is Pakistan's number-one local marketplace platform — homegrown, made in Pakistan,
 built to help people buy and sell items locally across every city in Pakistan.
 Owner & founder: Hasnain Khan.
 Support (WhatsApp & calls): 03140972575.
@@ -74,7 +264,7 @@ Main sections:
 4) Chat — real-time buyer/seller chat, incoming requests, connect instantly.
 5) Dashboard — analytics, item reviews, credits.
 
-Every seller on Apna Deal is a VERIFIED SELLER — we manually verify identity so buyers can trust every listing.
+Every seller on ApexDeal is a VERIFIED SELLER — we manually verify identity so buyers can trust every listing.
 
 ═══════════════════════════════════════════
 HOW POSTING AN ITEM WORKS (4 STEPS)
@@ -90,7 +280,7 @@ Free users can post only 1 active listing at a time.
 ═══════════════════════════════════════════
 WHAT YOU CAN SELL
 ═══════════════════════════════════════════
-Vehicles, bikes, laptops, phones, property, electronics, and more.
+Vehicles, bikes, laptops, phones, property, electronics, toys, and more.
 Payments are handled safely with Escrow Checkout — money is held until both sides confirm.
 
 ═══════════════════════════════════════════
@@ -146,13 +336,55 @@ HOW TO ANSWER
 - Use plain words. Avoid jargon. You may reply in English or Roman Urdu — match the user's language.
 - Prefer step-by-step answers when explaining "how to do X".
 - If a question is NOT about our app (e.g. general trivia, coding, math, weather),
-  politely say you only help with Apna Deal and offer the closest useful topic.
+  politely say you only help with ApexDeal and offer the closest useful topic.
 - If you don't know a detail, say: "Please message us on WhatsApp at 03140972575 — we'll help you right away."
 - Never invent features, prices, or timelines we haven't listed above.
-- Never say Apna Deal is an Indian app — we are proudly Pakistani, based in Pakistan, made for Pakistan.
+- Never say ApexDeal is an Indian app — we are proudly Pakistani, based in Pakistan, made for Pakistan.
 - Keep answers under ~90 words unless the user asks for a full breakdown.
 - You can use short emojis occasionally (✨ ✅ 💬 🇵🇰) but don't overdo it.
 `.trim();
+
+/* ═══════════════════════════════════════════════════════════════
+   ⭐ CATEGORY LINK — simple underlined text link (no button, no emoji)
+   ═══════════════════════════════════════════════════════════════ */
+const CategoryLinkChip = ({ category, onNavigate }) => {
+  const Icon = CATEGORY_ICONS[category.id] || CarIcon;
+  const label = category.label.replace("Visit ", "");
+
+  return (
+    <a
+      href={category.path}
+      onClick={(e) => {
+        e.preventDefault();
+        onNavigate(category.path);
+      }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        marginTop: 8,
+        padding: "2px 0",
+        color: "var(--nav-primary, #eb7d34)",
+        fontSize: 13.5,
+        fontWeight: 600,
+        fontFamily: "inherit",
+        textDecoration: "underline",
+        textUnderlineOffset: "3px",
+        textDecorationThickness: "1.5px",
+        cursor: "pointer",
+        background: "transparent",
+        border: "none",
+        transition: "opacity 0.15s ease",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+    >
+      <Icon size={13} />
+      <span>Visit {label}</span>
+      <ArrowRightIcon size={11} />
+    </a>
+  );
+};
 
 const AIAssistant = () => {
   const isMobile = useIsMobile();
@@ -162,7 +394,7 @@ const AIAssistant = () => {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi 👋 I'm your Apna Deal assistant — completely free, no login needed. Ask me anything about posting items, AI Studio, plans, credits, or our social feed!",
+        "Hi 👋 I'm your ApexDeal assistant — completely free, no login needed. Ask me anything about posting items, AI Studio, plans, credits, or our social feed!",
     },
   ]);
   const [input, setInput] = useState("");
@@ -170,6 +402,19 @@ const AIAssistant = () => {
   const [isHoveringLauncher, setIsHoveringLauncher] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  /* ── navigation helper (works with or without react-router) ── */
+  const navigate = useCallback((path) => {
+    try {
+      // If we're inside a Router, use history API (react-router listens to popstate)
+      window.history.pushState({}, "", path);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      // Also close the assistant panel
+      setIsOpen(false);
+    } catch {
+      window.location.href = path;
+    }
+  }, []);
 
   /* ── smooth scroll helper ────────────────────────────────── */
   const scrollToBottom = useCallback((behavior = "smooth") => {
@@ -218,12 +463,19 @@ const AIAssistant = () => {
           system: SYSTEM_PROMPT, // 👈 our trained prompt
         });
 
+        // ⭐ Detect categories in the user's question
+        const matchedCats = detectCategories(text);
+        const categoryChips = matchedCats
+          .map((id) => CATEGORY_LINKS.find((c) => c.id === id))
+          .filter(Boolean);
+
         setMessages((prev) => [
           ...prev,
           {
             id: `a-${Date.now()}`,
             role: "assistant",
             content: reply,
+            categories: categoryChips, // ⭐ attach for rendering
           },
         ]);
       } catch (err) {
@@ -389,15 +641,32 @@ const AIAssistant = () => {
                     </div>
                   )}
 
-                  <div
-                    style={{
-                      ...styles.bubble,
-                      ...(msg.role === "user"
-                        ? styles.userBubble
-                        : styles.assistantBubble),
-                    }}
-                  >
-                    {msg.content}
+                  <div style={styles.bubbleWrap}>
+                    <div
+                      style={{
+                        ...styles.bubble,
+                        ...(msg.role === "user"
+                          ? styles.userBubble
+                          : styles.assistantBubble),
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+
+                    {/* ⭐ Category links — appear under the AI reply */}
+                    {msg.role === "assistant" &&
+                      Array.isArray(msg.categories) &&
+                      msg.categories.length > 0 && (
+                        <div style={styles.categoryRow}>
+                          {msg.categories.map((cat) => (
+                            <CategoryLinkChip
+                              key={cat.id}
+                              category={cat}
+                              onNavigate={navigate}
+                            />
+                          ))}
+                        </div>
+                      )}
                   </div>
                 </div>
               ))}
@@ -591,12 +860,12 @@ const styles = {
     position: "relative",
     width: 42,
     height: 42,
-    borderRadius: "50%",              /* ⭐ circle */
-    background: "#e67f00",            /* ⭐ NEW orange circle background */
+    borderRadius: "50%",
+    background: "#e67f00",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",               /* keeps logo inside the circle */
+    overflow: "hidden",
     flexShrink: 0,
     boxShadow: "0 4px 12px -4px rgba(230,127,0,0.6)",
   },
@@ -606,7 +875,7 @@ const styles = {
     objectFit: "contain",
     display: "block",
     pointerEvents: "none",
-    filter: "brightness(0) invert(1)", /* ⭐ white logo on orange */
+    filter: "brightness(0) invert(1)",
   },
   headerTitle: {
     fontSize: 15,
@@ -652,6 +921,14 @@ const styles = {
     scrollbarWidth: "thin",
   },
   row: { display: "flex", alignItems: "flex-end", gap: 8 },
+  /* ⭐ Bubble wrapper holds the bubble + category links */
+  bubbleWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    maxWidth: "78%",
+    minWidth: 0,
+  },
   messageBadge: {
     width: 28,
     height: 28,
@@ -665,7 +942,7 @@ const styles = {
     color: "var(--nav-primary, #eb7d34)",
   },
   bubble: {
-    maxWidth: "78%",
+    maxWidth: "100%",
     padding: "11px 15px",
     borderRadius: 18,
     fontSize: 14,
@@ -687,6 +964,14 @@ const styles = {
     color: "var(--nav-txt, #FFFFFF)",
     border: "1px solid var(--nav-line, rgba(255,255,255,0.08))",
     borderBottomLeftRadius: 6,
+  },
+  /* ⭐ Column of category links under an AI reply */
+  categoryRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    marginTop: 2,
+    paddingLeft: 2,
   },
   dot: {
     width: 7,

@@ -28,7 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
 /* ═══════════════════════════════════════════════════════════════
-   3 VIDEO URLS + FEATURE LABELS
+   3 VIDEO URLS + FEATURE LABELS (DESKTOP ONLY)
    ═══════════════════════════════════════════════════════════════ */
 const BRAND_VIDEOS = [
   {
@@ -91,23 +91,19 @@ const FontStyles = () => (
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     .auth-font { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
-    /* ══════════════════════════════════════════════════════════
-       LOGO GRADIENT — the actual direction is 135deg
-       (top-left light amber → bottom-right deep burnt orange)
-       ══════════════════════════════════════════════════════════ */
     :root {
-      --brand-grad-start: #F7941D;  /* light amber — top-left */
-      --brand-grad-mid:   #ED6E1F;  /* mid orange — center     */
-      --brand-grad-end:   #D4521A;  /* deep burnt — bottom-right */
+      --brand-grad-start: #F7941D;
+      --brand-grad-mid:   #ED6E1F;
+      --brand-grad-end:   #D4521A;
     }
 
     /* ── DARK THEME ── */
     html.theme-dark, .theme-dark {
       --hf-backdrop:      rgba(0,0,0,0.65);
-      --hf-shell:         #1A1A1E;
-      --hf-shell-2:       #212127;
-      --hf-panel:         #23232A;
-      --hf-panel-soft:    #26262E;
+      --hf-shell:         #0F0F14;
+      --hf-shell-2:       #16161C;
+      --hf-panel:         #1A1A20;
+      --hf-panel-soft:    #212127;
       --hf-line:          rgba(255,255,255,0.06);
       --hf-line-str:      rgba(255,255,255,0.10);
       --hf-txt:           #FFFFFF;
@@ -118,7 +114,6 @@ const FontStyles = () => (
       --hf-btn-border:    rgba(255,255,255,0.14);
       --hf-btn-border-hover: rgba(255,255,255,0.32);
 
-      /* Solid brand color for text/tint (mid of the gradient) */
       --hf-amber:         #ED6E1F;
       --hf-amber-soft:    rgba(237,110,31,0.14);
       --hf-amber-border:  rgba(237,110,31,0.42);
@@ -202,7 +197,6 @@ const FontStyles = () => (
     .hf-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .hf-btn svg { flex-shrink: 0; }
 
-    /* ⭐ Passkey button — logo gradient accent */
     .hf-btn--passkey {
       background: linear-gradient(135deg, rgba(247,148,29,0.14) 0%, rgba(212,82,26,0.14) 100%);
       border-color: rgba(237,110,31,0.42);
@@ -215,7 +209,6 @@ const FontStyles = () => (
       box-shadow: 0 6px 20px -8px var(--hf-amber-glow);
     }
 
-    /* ⭐ Business email — logo gradient fill */
     .hf-btn--amber {
       background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
       border-color: transparent;
@@ -228,7 +221,6 @@ const FontStyles = () => (
       box-shadow: 0 8px 26px -8px rgba(237,110,31,0.55);
     }
 
-    /* ⭐ Primary submit — full logo gradient */
     .hf-btn--primary {
       background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
       border-color: transparent;
@@ -241,7 +233,7 @@ const FontStyles = () => (
       box-shadow: 0 8px 26px -8px rgba(237,110,31,0.55);
     }
 
-    /* ═══════ MOBILE PILL BUTTONS ═══════ */
+    /* ═══════ MOBILE PILL BUTTONS — now theme-aware ═══════ */
     .hf-mob-btn {
       width: 100%;
       display: flex;
@@ -256,7 +248,7 @@ const FontStyles = () => (
       letter-spacing: -0.005em;
       cursor: pointer;
       border: 1px solid transparent;
-      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease;
+      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       line-height: 1.25;
       text-align: center;
       white-space: normal;
@@ -268,44 +260,44 @@ const FontStyles = () => (
     .hf-mob-btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .hf-mob-btn svg { flex-shrink: 0; }
 
+    /* White/solid button — theme aware */
     .hf-mob-btn--white {
-      background: #FFFFFF;
-      color: #0A0A12;
-      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.45);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
+      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.25);
     }
     .hf-mob-btn--white:hover:not(:disabled) {
-      filter: brightness(0.97);
+      background: var(--hf-panel-soft);
+      border-color: var(--hf-line-str);
     }
 
+    /* Ghost/outline — theme aware */
     .hf-mob-btn--ghost {
-      background: rgba(20,20,22,0.55);
-      color: #FFFFFF;
-      border: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
       font-weight: 600;
-      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.4);
     }
     .hf-mob-btn--ghost:hover:not(:disabled) {
-      background: rgba(20,20,22,0.7);
+      background: var(--hf-panel-soft);
+      border-color: var(--hf-line-str);
     }
 
-    /* ⭐ Mobile passkey pill — logo gradient tint */
+    /* Passkey pill */
     .hf-mob-btn--passkey {
-      background: linear-gradient(135deg, rgba(247,148,29,0.22) 0%, rgba(212,82,26,0.22) 100%);
-      color: #F7941D;
-      border: 1px solid rgba(237,110,31,0.45);
+      background: linear-gradient(135deg, rgba(247,148,29,0.14) 0%, rgba(212,82,26,0.14) 100%);
+      color: var(--hf-amber-txt);
+      border: 1px solid rgba(237,110,31,0.42);
       font-weight: 700;
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
-      box-shadow: 0 6px 20px -10px rgba(237,110,31,0.4);
+      box-shadow: 0 6px 20px -10px rgba(237,110,31,0.35);
     }
     .hf-mob-btn--passkey:hover:not(:disabled) {
-      background: linear-gradient(135deg, rgba(247,148,29,0.32) 0%, rgba(212,82,26,0.32) 100%);
+      background: linear-gradient(135deg, rgba(247,148,29,0.22) 0%, rgba(212,82,26,0.22) 100%);
       border-color: #ED6E1F;
     }
 
-    /* ⭐ Mobile amber CTA — full gradient */
+    /* Amber CTA */
     .hf-mob-btn--amber {
       background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
       color: #FFFFFF;
@@ -334,26 +326,25 @@ const FontStyles = () => (
       box-shadow: 0 0 0 3px rgba(237,110,31,0.18);
     }
 
+    /* Mobile input — theme aware, no blur */
     .hf-input-mob {
       width: 100%;
       padding: 12px 14px 12px 40px;
       border-radius: 12px;
-      background: rgba(20,20,22,0.55);
-      color: #FFFFFF;
-      border: 1px solid rgba(255,255,255,0.16);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
       font-family: 'Inter', system-ui, sans-serif;
       font-size: 16px;
       outline: none;
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
       transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
       line-height: 1.3;
     }
-    .hf-input-mob::placeholder { color: rgba(255,255,255,0.5); }
+    .hf-input-mob::placeholder { color: var(--hf-txt-faint); }
     .hf-input-mob:focus {
       border-color: #ED6E1F;
-      background: rgba(20,20,22,0.7);
-      box-shadow: 0 0 0 3px rgba(237,110,31,0.28);
+      background: var(--hf-panel-soft);
+      box-shadow: 0 0 0 3px rgba(237,110,31,0.22);
     }
 
     .hf-checkbox {
@@ -363,13 +354,11 @@ const FontStyles = () => (
       height: 18px;
       border-radius: 5px;
       border: 1.5px solid var(--hf-line-str);
-      background: rgba(255,255,255,0.06);
+      background: var(--hf-panel-soft);
       cursor: pointer;
       position: relative;
       transition: all 0.15s ease;
       flex-shrink: 0;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
     .hf-checkbox:checked {
       background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
@@ -399,23 +388,6 @@ const FontStyles = () => (
     @keyframes hf-shimmer {
       0% { transform: translateX(-150%) skewX(-16deg); }
       100% { transform: translateX(450%) skewX(-16deg); }
-    }
-
-    /* ═══════ BLACK BACKDROP BLUR OVERLAY (mobile) ═══════ */
-    .hf-mob-backdrop {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        180deg,
-        rgba(0,0,0,0.55) 0%,
-        rgba(0,0,0,0.65) 30%,
-        rgba(0,0,0,0.78) 60%,
-        rgba(0,0,0,0.92) 100%
-      );
-      backdrop-filter: blur(14px) saturate(115%);
-      -webkit-backdrop-filter: blur(14px) saturate(115%);
-      z-index: 8;
-      pointer-events: none;
     }
 
     /* ═══════ MOBILE RESPONSIVE HELPERS ═══════ */
@@ -459,11 +431,7 @@ const FontStyles = () => (
       }
     }
 
-    /* ═══════════════════════════════════════════════════════════════
-       ⭐⭐ BULLETPROOF FIX — lock brand-gradient buttons
-       (highest specificity + !important so nothing can override)
-       Placed at the very end so it always wins.
-       ═══════════════════════════════════════════════════════════════ */
+    /* ⭐ Lock brand-gradient buttons */
     .hf-btn.hf-btn--amber,
     .hf-btn.hf-btn--amber:hover,
     .hf-btn.hf-btn--amber:focus,
@@ -506,16 +474,16 @@ const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1"
   const [failed, setFailed] = React.useState(false);
   if (failed) {
     return (
-      <div className="h-full w-full flex items-center  justify-center font-black text-base rounded-lg"
+      <div className="h-full w-full flex items-center justify-center font-black text-base rounded-lg"
         style={{ background: "linear-gradient(135deg, #F7941D 0%, #D4521A 100%)", color: "#FFFFFF" }}>
-        A
+        D
       </div>
     );
   }
   return (
     <img
       src={sources[idx]}
-      alt="APNa Deal"
+      alt="Dealora"
       className={className}
       onError={() => {
         if (idx < sources.length - 1) setIdx(idx + 1);
@@ -795,7 +763,7 @@ const SignIn = () => {
         style={{ background: "var(--hf-shell)" }}
       >
         {/* ═══════════════════════════════════════════════════
-            DESKTOP — Split panel
+            DESKTOP — Split panel (with video)
            ═══════════════════════════════════════════════════ */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-shrink-0"
           style={{ background: "#0A0A12" }}
@@ -944,8 +912,7 @@ const SignIn = () => {
               <motion.div variants={itemVariants} initial="hidden" animate="visible"
                 className="flex justify-center mb-4"
               >
-                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden"
-                >
+                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden">
                   <LogoImage />
                 </div>
               </motion.div>
@@ -953,25 +920,25 @@ const SignIn = () => {
               <motion.div variants={itemVariants} initial="hidden" animate="visible"
                 className="text-center mb-2"
               >
-             <div className="mb-1">
-  <h2
-    className="font-black tracking-tight mb-1 bg-clip-text text-transparent"
-    style={{
-      backgroundImage: "linear-gradient(135deg, var(--hf-txt) 0%, var(--hf-txt) 60%, #ED6E1F 100%)",
-      fontSize: "clamp(22px, 2.5vw, 30px)",
-      letterSpacing: "-0.03em",
-      lineHeight: 1.1,
-    }}
-  >
-    Sign in
-  </h2>
-  <p
-    className="text-[12.5px] font-medium"
-    style={{ color: "var(--hf-muted, var(--hf-txt))", opacity: 0.6 }}
-  >
-    Welcome back. Let's get you in.
-  </p>
-</div>
+                <div className="mb-1">
+                  <h2
+                    className="font-black tracking-tight mb-1 bg-clip-text text-transparent"
+                    style={{
+                      backgroundImage: "linear-gradient(135deg, var(--hf-txt) 0%, var(--hf-txt) 60%, #ED6E1F 100%)",
+                      fontSize: "clamp(22px, 2.5vw, 30px)",
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    Sign in
+                  </h2>
+                  <p
+                    className="text-[12.5px] font-medium"
+                    style={{ color: "var(--hf-txt-soft)" }}
+                  >
+                    Welcome back. Let's get you in.
+                  </p>
+                </div>
               </motion.div>
 
               <AnimatePresence>
@@ -1305,40 +1272,13 @@ const SignIn = () => {
         </div>
 
         {/* ═══════════════════════════════════════════════════
-            MOBILE — Video + black backdrop blur + form
+            MOBILE — Clean solid background (NO VIDEO)
+            Just dark/light theme-aware shell
            ═══════════════════════════════════════════════════ */}
-        <div className="lg:hidden absolute inset-0 flex flex-col" style={{ background: "#0A0A12" }}>
-
-          <AnimatePresence mode="wait">
-            {!videoError ? (
-              <motion.video
-                key={`mob-${currentVideoIndex}`}
-                className="absolute inset-0 w-full h-full object-cover"
-                src={currentVideo.src}
-                autoPlay muted playsInline preload="auto"
-                onEnded={handleVideoEnd}
-                onError={handleVideoError}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.5, ease: 'easeInOut' }}
-              />
-            ) : (
-              <motion.div
-                key="mob-fallback"
-                className="absolute inset-0"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                style={{
-                  background:
-                    "radial-gradient(700px 500px at 20% 0%, rgba(237,110,31,0.22), transparent 60%), linear-gradient(180deg, #0A0A12 0%, #1A0A2E 100%)",
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          <div className="hf-mob-backdrop" aria-hidden="true" />
-
+        <div
+          className="lg:hidden absolute inset-0 flex flex-col hf-scroll overflow-y-auto"
+          style={{ background: "var(--hf-shell)" }}
+        >
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -1346,11 +1286,9 @@ const SignIn = () => {
             style={{
               top: 12,
               right: 12,
-              background: "rgba(20,20,22,0.6)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#FFFFFF",
-              backdropFilter: "blur(12px) saturate(120%)",
-              WebkitBackdropFilter: "blur(12px) saturate(120%)",
+              background: "var(--hf-close-bg)",
+              color: "var(--hf-txt)",
+              border: "1px solid var(--hf-line)",
             }}
             aria-label="Close"
           >
@@ -1358,7 +1296,7 @@ const SignIn = () => {
           </button>
 
           <div
-            className="relative z-20 flex-1 overflow-y-auto hf-mob-content"
+            className="relative z-20 flex-1 hf-mob-content"
             style={{
               paddingTop: 64,
               paddingBottom: 30,
@@ -1373,8 +1311,7 @@ const SignIn = () => {
                 transition={{ duration: 0.4 }}
                 className="flex justify-center mb-4"
               >
-                <div className="h-16 w-16 sm:h-16 sm:w-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
-                >
+                <div className="h-16 w-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
                   <LogoImage />
                 </div>
               </motion.div>
@@ -1390,12 +1327,11 @@ const SignIn = () => {
                   style={{
                     fontSize: "clamp(22px, 7vw, 32px)",
                     letterSpacing: "-0.03em",
-                    background: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 55%, #ED6E1F 100%)",
+                    backgroundImage: `linear-gradient(135deg, var(--hf-txt) 0%, var(--hf-txt) 55%, #ED6E1F 100%)`,
                     WebkitBackgroundClip: "text",
                     backgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     color: "transparent",
-                    filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.55))",
                   }}
                 >
                   Sign In
@@ -1403,12 +1339,9 @@ const SignIn = () => {
 
                 <p
                   className="mt-1.5 text-[12px] font-medium"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    textShadow: "0 1px 8px rgba(0,0,0,0.5)",
-                  }}
+                  style={{ color: "var(--hf-txt-soft)" }}
                 >
-                  Continue your journey with APNa Deal
+                  Continue your journey with ApexDeal
                 </p>
               </motion.div>
 
@@ -1420,11 +1353,9 @@ const SignIn = () => {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-start gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(255,107,107,0.18)",
-                      color: "#FFB4B4",
-                      border: "1px solid rgba(255,107,107,0.35)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-danger-soft)",
+                      color: "var(--hf-danger)",
+                      border: "1px solid var(--hf-danger-soft)",
                     }}
                   >
                     {getErrorIcon(errorType)}
@@ -1444,11 +1375,9 @@ const SignIn = () => {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-center gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(74,222,128,0.15)",
-                      color: "#8CFFB8",
-                      border: "1px solid rgba(74,222,128,0.3)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-success-soft)",
+                      color: "var(--hf-success)",
+                      border: "1px solid var(--hf-success-soft)",
                     }}
                   >
                     <FaUserCheck className="flex-shrink-0" />
@@ -1539,7 +1468,7 @@ const SignIn = () => {
                             top: "50%",
                             transform: "translateY(-50%)",
                             zIndex: 10,
-                            color: "rgba(255,255,255,0.7)",
+                            color: "var(--hf-txt-faint)",
                             pointerEvents: "none",
                             display: "flex",
                             alignItems: "center",
@@ -1569,7 +1498,7 @@ const SignIn = () => {
                             top: "50%",
                             transform: "translateY(-50%)",
                             zIndex: 10,
-                            color: "rgba(255,255,255,0.7)",
+                            color: "var(--hf-txt-faint)",
                             pointerEvents: "none",
                             display: "flex",
                             alignItems: "center",
@@ -1598,7 +1527,7 @@ const SignIn = () => {
                             top: "50%",
                             transform: "translateY(-50%)",
                             zIndex: 10,
-                            color: "rgba(255,255,255,0.7)",
+                            color: "var(--hf-txt-faint)",
                             background: "transparent",
                             border: "none",
                             cursor: "pointer",
@@ -1621,14 +1550,14 @@ const SignIn = () => {
                             checked={rememberMe}
                             onChange={(e) => setRememberMe(e.target.checked)}
                           />
-                          <span className="text-[12px] font-medium" style={{ color: "rgba(255,255,255,0.9)" }}>
+                          <span className="text-[12px] font-medium" style={{ color: "var(--hf-txt-soft)" }}>
                             Remember me
                           </span>
                         </label>
                         <Link
                           to="/reset-password"
                           className="text-[12px] font-semibold"
-                          style={{ color: "#ED6E1F" }}
+                          style={{ color: "var(--hf-amber-txt)" }}
                         >
                           Forgot?
                         </Link>
@@ -1641,13 +1570,13 @@ const SignIn = () => {
                           checked={agreedToTerms}
                           onChange={(e) => { setAgreedToTerms(e.target.checked); if (e.target.checked) setError(''); }}
                         />
-                        <span className="text-[11.5px] leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>
+                        <span className="text-[11.5px] leading-relaxed" style={{ color: "var(--hf-txt-soft)" }}>
                           I agree to the{' '}
-                          <Link to="/terms" className="font-semibold underline underline-offset-2" style={{ color: "#ED6E1F" }}>
+                          <Link to="/terms" className="font-semibold underline underline-offset-2" style={{ color: "var(--hf-amber-txt)" }}>
                             Terms
                           </Link>
                           {' '}and{' '}
-                          <Link to="/privacy" className="font-semibold underline underline-offset-2" style={{ color: "#ED6E1F" }}>
+                          <Link to="/privacy" className="font-semibold underline underline-offset-2" style={{ color: "var(--hf-amber-txt)" }}>
                             Privacy Policy
                           </Link>
                           , and I'm 18+.
@@ -1657,15 +1586,13 @@ const SignIn = () => {
                       {isHumanVerified ? (
                         <div className="flex items-center gap-3 p-2.5 rounded-2xl"
                           style={{
-                            background: "rgba(74,222,128,0.15)",
-                            border: "1px solid rgba(74,222,128,0.3)",
-                            backdropFilter: "blur(10px)",
-                            WebkitBackdropFilter: "blur(10px)",
+                            background: "var(--hf-success-soft)",
+                            border: "1px solid var(--hf-success-soft)",
                           }}
                         >
-                          <FaCheckCircle className="text-[14px] flex-shrink-0" style={{ color: "#4ADE80" }} />
+                          <FaCheckCircle className="text-[14px] flex-shrink-0" style={{ color: "var(--hf-success)" }} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-bold" style={{ color: "#4ADE80" }}>
+                            <p className="text-[12px] font-bold" style={{ color: "var(--hf-success)" }}>
                               Human verified
                             </p>
                           </div>
@@ -1676,28 +1603,26 @@ const SignIn = () => {
                           onClick={openCaptchaDialog}
                           className="w-full flex items-center justify-between p-3 rounded-2xl"
                           style={{
-                            background: "rgba(20,20,22,0.55)",
-                            border: "1px solid rgba(255,255,255,0.16)",
-                            backdropFilter: "blur(12px) saturate(120%)",
-                            WebkitBackdropFilter: "blur(12px) saturate(120%)",
+                            background: "var(--hf-panel)",
+                            border: "1px solid var(--hf-line)",
                           }}
                         >
                           <div className="flex items-center gap-2.5">
                             <span className="h-4 w-4 rounded-[5px] flex items-center justify-center flex-shrink-0"
-                              style={{ border: "1.5px solid rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.06)" }}
+                              style={{ border: "1.5px solid var(--hf-line-str)", background: "var(--hf-panel-soft)" }}
                             />
                             <div className="text-left">
-                              <p className="text-[12px] font-semibold text-white">
+                              <p className="text-[12px] font-semibold" style={{ color: "var(--hf-txt)" }}>
                                 I'm not a robot
                               </p>
-                              <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.55)" }}>
+                              <p className="text-[10px]" style={{ color: "var(--hf-txt-faint)" }}>
                                 {captchaRequired ? 'Click to verify' : 'Verification skipped'}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <FaRobot className="text-[10px]" style={{ color: "rgba(255,255,255,0.55)" }} />
-                            <span className="text-[8.5px] font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>
+                            <FaRobot className="text-[10px]" style={{ color: "var(--hf-txt-faint)" }} />
+                            <span className="text-[8.5px] font-bold" style={{ color: "var(--hf-txt-faint)" }}>
                               reCAPTCHA
                             </span>
                           </div>
@@ -1723,7 +1648,7 @@ const SignIn = () => {
                         type="button"
                         onClick={() => setShowEmailForm(false)}
                         className="text-center text-[12px] font-semibold mt-0.5 py-1.5"
-                        style={{ color: "rgba(255,255,255,0.7)" }}
+                        style={{ color: "var(--hf-txt-soft)" }}
                       >
                         ← Back to other options
                       </button>
@@ -1738,15 +1663,15 @@ const SignIn = () => {
                     onClick={() => setShowEmailForm(true)}
                     className="hf-mob-btn hf-mob-btn--ghost"
                     style={{
-                      background: "linear-gradient(135deg, rgba(247,148,29,0.22) 0%, rgba(212,82,26,0.22) 100%)",
-                      borderColor: "rgba(237,110,31,0.45)",
-                      color: "#F7941D",
+                      background: "linear-gradient(135deg, rgba(247,148,29,0.14) 0%, rgba(212,82,26,0.14) 100%)",
+                      borderColor: "rgba(237,110,31,0.42)",
+                      color: "var(--hf-amber-txt)",
                       fontWeight: 700,
                     }}
                   >
                     <FaGift className="text-[12px] flex-shrink-0" />
                     <span>
-                      Sign up with email{" "}
+                      Sign in with email{" "}
                       <span className="hidden sm:inline">&amp;</span>
                       <span className="sm:hidden">+</span>{" "}
                       Get 50 credits
@@ -1761,15 +1686,15 @@ const SignIn = () => {
                   <Link
                     to="/privacy"
                     className="font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    style={{ color: "var(--hf-txt-soft)" }}
                   >
                     Privacy policy
                   </Link>
-                  <span style={{ color: "rgba(255,255,255,0.35)" }}>|</span>
+                  <span style={{ color: "var(--hf-txt-faint)" }}>|</span>
                   <Link
                     to="/terms"
                     className="font-medium transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(255,255,255,0.7)" }}
+                    style={{ color: "var(--hf-txt-soft)" }}
                   >
                     Terms of service
                   </Link>
@@ -1778,43 +1703,13 @@ const SignIn = () => {
                 <motion.p
                   variants={itemVariants}
                   className="text-center text-[12px] mt-2.5"
-                  style={{ color: "rgba(255,255,255,0.65)" }}
+                  style={{ color: "var(--hf-txt-soft)" }}
                 >
                   Don't have an account?{' '}
-                  <Link to="/signup" className="font-bold" style={{ color: "#ED6E1F" }}>
+                  <Link to="/signup" className="font-bold" style={{ color: "var(--hf-amber-txt)" }}>
                     Sign up
                   </Link>
                 </motion.p>
-
-                <motion.div
-                  variants={itemVariants}
-                  className="flex items-center justify-center gap-2.5 mt-4 mb-1"
-                >
-                  {BRAND_VIDEOS.map((v, i) => {
-                    const isActive = i === currentVideoIndex;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          if (i === currentVideoIndex || isTransitioning) return;
-                          setIsTransitioning(true);
-                          setVideoError(false);
-                          setTimeout(() => {
-                            setCurrentVideoIndex(i);
-                            setTimeout(() => setIsTransitioning(false), 300);
-                          }, 250);
-                        }}
-                        className="h-1.5 rounded-full transition-all duration-300 ease-out"
-                        style={{
-                          width: isActive ? 24 : 7,
-                          background: isActive ? "#FFFFFF" : "rgba(255,255,255,0.35)",
-                          transform: isActive ? "scaleY(1.15)" : "scaleY(1)",
-                        }}
-                        aria-label={`Go to slide ${i + 1}`}
-                      />
-                    );
-                  })}
-                </motion.div>
               </motion.div>
             </div>
           </div>
@@ -1822,7 +1717,7 @@ const SignIn = () => {
       </div>
 
       {/* ═══════════════════════════════════════════════════
-          CAPTCHA DIALOG (shared) — scroll-safe on short screens
+          CAPTCHA DIALOG (shared)
          ═══════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showCaptchaDialog && captchaRequired && (

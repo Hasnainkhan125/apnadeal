@@ -20,7 +20,7 @@ const OTP_LENGTH = 8;
 const RESEND_COOLDOWN = 60;
 
 /* ═══════════════════════════════════════════════════════════════
-   3 VIDEO URLS
+   3 VIDEO URLS (DESKTOP ONLY)
    ═══════════════════════════════════════════════════════════════ */
 const BRAND_VIDEOS = [
   {
@@ -76,16 +76,13 @@ const useTheme = () => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   FONTS + TOKENS — logo gradient (#F7941D → #ED6E1F → #D4521A)
+   FONTS + TOKENS
    ═══════════════════════════════════════════════════════════════ */
 const FontStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     .auth-font { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
-    /* ══════════════════════════════════════════════════════════
-       LOGO GRADIENT — signature diagonal (135deg)
-       ══════════════════════════════════════════════════════════ */
     :root {
       --brand-grad-start: #F7941D;
       --brand-grad-mid:   #ED6E1F;
@@ -96,10 +93,10 @@ const FontStyles = () => (
     /* ── DARK THEME ── */
     html.theme-dark, .theme-dark {
       --hf-backdrop:      rgba(0,0,0,0.65);
-      --hf-shell:         #1A1A1E;
-      --hf-shell-2:       #212127;
-      --hf-panel:         #23232A;
-      --hf-panel-soft:    #26262E;
+      --hf-shell:         #0F0F14;
+      --hf-shell-2:       #16161C;
+      --hf-panel:         #1A1A20;
+      --hf-panel-soft:    #212127;
       --hf-line:          rgba(255,255,255,0.06);
       --hf-line-str:      rgba(255,255,255,0.10);
       --hf-txt:           #FFFFFF;
@@ -161,7 +158,7 @@ const FontStyles = () => (
       --hf-close-bg-hov:  rgba(20,20,30,0.12);
     }
 
-    /* ═══════ DESKTOP BUTTONS (smaller, matching SignIn/SignUp) ═══════ */
+    /* ═══════ DESKTOP BUTTONS ═══════ */
     .hf-btn {
       width: 100%;
       display: flex;
@@ -194,20 +191,31 @@ const FontStyles = () => (
     .hf-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .hf-btn svg { flex-shrink: 0; }
 
-    /* ⭐ Primary submit — full logo gradient */
     .hf-btn--primary {
-      background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
-      border-color: transparent;
-      color: #FFFFFF;
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      border-color: transparent !important;
+      color: #FFFFFF !important;
       font-weight: 800;
       box-shadow: 0 6px 20px -8px rgba(237,110,31,0.45);
     }
     .hf-btn--primary:hover:not(:disabled) {
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      color: #FFFFFF !important;
+      border-color: transparent !important;
       filter: brightness(1.06);
       box-shadow: 0 8px 26px -8px rgba(237,110,31,0.55);
     }
+    .hf-btn--primary:focus,
+    .hf-btn--primary:focus-visible {
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      color: #FFFFFF !important;
+      border-color: transparent !important;
+    }
 
-    /* ═══════ MOBILE PILL BUTTONS (smaller) ═══════ */
+    /* ═══════ MOBILE PILL BUTTONS — theme-aware ═══════ */
     .hf-mob-btn {
       width: 100%;
       display: flex;
@@ -222,39 +230,48 @@ const FontStyles = () => (
       letter-spacing: -0.005em;
       cursor: pointer;
       border: 1px solid transparent;
-      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease;
+      transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       line-height: 1.25;
       text-align: center;
       white-space: normal;
       word-break: break-word;
       height: auto;
       min-height: 44px;
+      text-decoration: none;
     }
     .hf-mob-btn:active:not(:disabled) { transform: scale(0.98); }
     .hf-mob-btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .hf-mob-btn svg { flex-shrink: 0; }
 
     .hf-mob-btn--amber {
-      background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
-      color: #FFFFFF;
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      color: #FFFFFF !important;
       font-weight: 800;
       box-shadow: 0 8px 22px -10px rgba(237,110,31,0.55);
     }
     .hf-mob-btn--amber:hover:not(:disabled) {
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      color: #FFFFFF !important;
       filter: brightness(1.06);
+    }
+    .hf-mob-btn--amber:focus,
+    .hf-mob-btn--amber:focus-visible {
+      background: var(--brand-grad) !important;
+      background-image: var(--brand-grad) !important;
+      color: #FFFFFF !important;
     }
 
     .hf-mob-btn--ghost {
-      background: rgba(20,20,22,0.55);
-      color: #FFFFFF;
-      border: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(12px) saturate(120%);
-      -webkit-backdrop-filter: blur(12px) saturate(120%);
+      background: var(--hf-panel);
+      color: var(--hf-txt);
+      border: 1px solid var(--hf-line);
       font-weight: 600;
-      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.4);
     }
     .hf-mob-btn--ghost:hover:not(:disabled) {
-      background: rgba(20,20,22,0.7);
+      background: var(--hf-panel-soft);
+      border-color: var(--hf-line-str);
     }
 
     .hf-input {
@@ -275,7 +292,7 @@ const FontStyles = () => (
       box-shadow: 0 0 0 3px rgba(237,110,31,0.18);
     }
 
-    /* ═══════ OTP INPUT ═══════ */
+    /* ═══════ OTP INPUT — theme aware ═══════ */
     .hf-otp-input {
       font-family: 'Inter', system-ui, sans-serif;
       text-align: center;
@@ -283,6 +300,8 @@ const FontStyles = () => (
       border-radius: 10px;
       outline: none;
       caret-color: #ED6E1F;
+      background: var(--hf-panel-soft);
+      color: var(--hf-txt);
       transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
@@ -292,17 +311,15 @@ const FontStyles = () => (
       width: 18px;
       height: 18px;
       border-radius: 5px;
-      border: 1.5px solid rgba(255,255,255,0.45);
-      background: rgba(255,255,255,0.06);
+      border: 1.5px solid var(--hf-line-str);
+      background: var(--hf-panel-soft);
       cursor: pointer;
       position: relative;
       transition: all 0.15s ease;
       flex-shrink: 0;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
     .hf-checkbox:checked {
-      background: linear-gradient(135deg, #F7941D 0%, #ED6E1F 50%, #D4521A 100%);
+      background: var(--brand-grad);
       border-color: transparent;
     }
     .hf-checkbox:checked::after {
@@ -325,32 +342,19 @@ const FontStyles = () => (
     .hf-noscroll::-webkit-scrollbar { display: none; }
     .hf-noscroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* ═══════ BLACK BACKDROP BLUR OVERLAY (mobile) ═══════ */
-    .hf-mob-backdrop {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        180deg,
-        rgba(0,0,0,0.55) 0%,
-        rgba(0,0,0,0.65) 30%,
-        rgba(0,0,0,0.78) 60%,
-        rgba(0,0,0,0.92) 100%
-      );
-      backdrop-filter: blur(14px) saturate(115%);
-      -webkit-backdrop-filter: blur(14px) saturate(115%);
-      z-index: 8;
-      pointer-events: none;
-    }
-
-    /* ═══════ MOBILE SAFE-AREA ═══════ */
+    /* ═══════ MOBILE SAFE-AREA + SCROLL ═══════ */
     @media (max-width: 1023px) {
+      .hf-mob-scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        touch-action: pan-y;
+      }
       .hf-mob-close {
         top: max(12px, env(safe-area-inset-top, 0px)) !important;
         right: max(12px, env(safe-area-inset-right, 0px)) !important;
       }
     }
 
-    /* Tiny phones */
     @media (max-width: 360px) {
       .hf-mob-btn {
         padding: 10px 14px;
@@ -362,11 +366,21 @@ const FontStyles = () => (
         font-size: 12px;
         min-height: 38px;
       }
+      .hf-otp-input {
+        width: 30px !important;
+        height: 42px !important;
+        font-size: 15px !important;
+      }
     }
 
-    /* ═══════════════════════════════════════════════════════════════
-       ⭐⭐ BULLETPROOF FIX — lock brand-gradient buttons
-       ═══════════════════════════════════════════════════════════════ */
+    @media (max-height: 500px) and (max-width: 1023px) {
+      .hf-mob-content-tight {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 44px) !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
+      }
+    }
+
+    /* ⭐ Lock brand-gradient buttons */
     .hf-btn.hf-btn--primary,
     .hf-btn.hf-btn--primary:hover,
     .hf-btn.hf-btn--primary:focus,
@@ -400,12 +414,12 @@ const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1"
     return (
       <div className="h-full w-full flex items-center justify-center font-black text-base rounded-lg"
         style={{ background: "var(--brand-grad)", color: "#FFFFFF" }}>
-        A
+        D
       </div>
     );
   }
   return (
-    <img src={sources[idx]} alt="APNa Deal" className={className}
+    <img src={sources[idx]} alt="Dealora" className={className}
       onError={() => { if (idx < sources.length - 1) setIdx(idx + 1); else setFailed(true); }} />
   );
 };
@@ -431,31 +445,27 @@ const ResetPasswordVerify = () => {
   const email = location.state?.email || '';
   const theme = useTheme();
 
-  // Redirect if no email
   useEffect(() => {
     if (!email) navigate('/reset-password');
   }, [email, navigate]);
 
-  // Resend cooldown
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setInterval(() => setResendTimer((s) => s - 1), 1000);
     return () => clearInterval(t);
   }, [resendTimer]);
 
-  // Focus first input
   useEffect(() => {
     setTimeout(() => inputsRef.current[0]?.focus(), 300);
   }, []);
 
-  // Lock scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // ── Video logic ──
+  // Video logic (desktop only uses it, but harmless to keep)
   useEffect(() => { setVideoError(false); }, [currentVideoIndex]);
   useEffect(() => {
     return () => { if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current); };
@@ -480,7 +490,6 @@ const ResetPasswordVerify = () => {
   const goToNextVideo = () => navigateVideo('next');
   const goToPrevVideo = () => navigateVideo('prev');
 
-  // ── OTP input handlers ──
   const handleChange = (value, index) => {
     if (!/^\d*$/.test(value)) return;
     const newOtp = [...otp];
@@ -578,7 +587,7 @@ const ResetPasswordVerify = () => {
         style={{ background: "var(--hf-shell)" }}
       >
         {/* ═══════════════════════════════════════════════════
-            DESKTOP — Split panel (video left, OTP right)
+            DESKTOP — Split panel (with video)
            ═══════════════════════════════════════════════════ */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-shrink-0"
           style={{ background: "#0A0A12" }}
@@ -619,12 +628,10 @@ const ResetPasswordVerify = () => {
             }}
           />
 
-          {/* Dots pattern */}
           <div className="pointer-events-none absolute inset-0 opacity-[0.15]"
             style={{ backgroundImage: 'radial-gradient(#ED6E1F 0.6px, transparent 0.6px)', backgroundSize: '18px 18px' }}
             aria-hidden="true" />
 
-          {/* Prev / Next arrows */}
           <motion.button
             onClick={goToPrevVideo}
             disabled={isTransitioning}
@@ -656,7 +663,6 @@ const ResetPasswordVerify = () => {
             <FaChevronRight className="text-[10px]" />
           </motion.button>
 
-          {/* Bottom info */}
           <div className="absolute inset-x-0 bottom-0 z-10 p-8 lg:p-12">
             <div className="inline-flex items-center gap-1.5 mb-4 px-2.5 py-1 rounded-full text-[10px] font-semibold"
               style={{
@@ -719,8 +725,7 @@ const ResetPasswordVerify = () => {
               <motion.div variants={itemVariants} initial="hidden" animate="visible"
                 className="flex justify-center mb-3"
               >
-                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden"
-                >
+                <div className="h-16 w-16 rounded-lg flex items-center justify-center overflow-hidden">
                   <LogoImage />
                 </div>
               </motion.div>
@@ -808,8 +813,6 @@ const ResetPasswordVerify = () => {
                         width: 36,
                         height: 46,
                         fontSize: 17,
-                        background: "var(--hf-panel-soft)",
-                        color: "var(--hf-txt)",
                         border: digit ? "1.5px solid #ED6E1F" : "1px solid var(--hf-line)",
                       }}
                       onFocus={(e) => {
@@ -869,81 +872,41 @@ const ResetPasswordVerify = () => {
         </div>
 
         {/* ═══════════════════════════════════════════════════
-            MOBILE — Video bg + black backdrop + OTP form
+            MOBILE — Clean solid background (NO VIDEO)
            ═══════════════════════════════════════════════════ */}
-        <div className="lg:hidden absolute inset-0 flex flex-col" style={{ background: "#0A0A12" }}>
-
-          <AnimatePresence mode="wait">
-            {!videoError ? (
-              <motion.video
-                key={`mob-${currentVideoIndex}`}
-                className="absolute inset-0 w-full h-full object-cover"
-                src={currentVideo.src}
-                autoPlay muted playsInline preload="auto"
-                onEnded={handleVideoEnd}
-                onError={handleVideoError}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.5, ease: 'easeInOut' }}
-              />
-            ) : (
-              <motion.div
-                key="mob-fallback"
-                className="absolute inset-0"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                style={{
-                  background:
-                    "radial-gradient(700px 500px at 20% 0%, rgba(237,110,31,0.22), transparent 60%), linear-gradient(180deg, #0A0A12 0%, #1A0A2E 100%)",
-                }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Backdrop blur */}
-          <div className="hf-mob-backdrop" aria-hidden="true" />
-
-          {/* Close (X) top-right */}
+        <div
+          className="lg:hidden absolute inset-0 flex flex-col hf-mob-scroll overflow-y-auto"
+          style={{ background: "var(--hf-shell)" }}
+        >
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="absolute top-3 right-3 z-30 h-9 w-9 rounded-full flex items-center justify-center"
+            className="absolute z-30 h-9 w-9 rounded-full flex items-center justify-center hf-mob-close"
             style={{
-              background: "rgba(20,20,22,0.6)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#FFFFFF",
-              backdropFilter: "blur(12px) saturate(120%)",
-              WebkitBackdropFilter: "blur(12px) saturate(120%)",
+              top: 12,
+              right: 12,
+              background: "var(--hf-close-bg)",
+              color: "var(--hf-txt)",
+              border: "1px solid var(--hf-line)",
             }}
             aria-label="Close"
           >
             <FaTimesCircle className="text-[13px]" />
           </button>
 
-          <div
-            className="relative z-20 flex-1 overflow-y-auto px-4 pt-16 pb-20"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              overscrollBehaviorY: "contain",
-              touchAction: "pan-y",
-            }}
-          >
-            <div className="flex flex-col justify-end min-h-full">
-              {/* Logo (centered) */}
+          <div className="relative z-20 flex-1 flex flex-col px-4 pt-16 pb-8 hf-mob-content-tight">
+<div className="flex flex-col justify-center min-h-full">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
                 className="flex justify-center mb-4"
               >
-                <div className="h-14 w-14 rounded-xl flex items-center justify-center overflow-hidden"
-                >
+                <div className="h-14 w-14 rounded-xl flex items-center justify-center overflow-hidden">
                   <LogoImage />
                 </div>
               </motion.div>
 
-              {/* Shield icon + heading */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -951,9 +914,9 @@ const ResetPasswordVerify = () => {
                 className="text-center mb-5 flex flex-col items-center"
               >
                 <div className="h-12 w-12 rounded-full flex items-center justify-center mb-3"
-                  style={{ background: "rgba(237,110,31,0.18)", border: "1px solid rgba(237,110,31,0.4)" }}
+                  style={{ background: "var(--hf-amber-soft)", border: "1px solid var(--hf-amber-border)" }}
                 >
-                  <FaShieldAlt className="text-lg" style={{ color: "#ED6E1F" }} />
+                  <FaShieldAlt className="text-lg" style={{ color: "var(--hf-amber-txt)" }} />
                 </div>
 
                 <h1
@@ -961,33 +924,28 @@ const ResetPasswordVerify = () => {
                   style={{
                     fontSize: "clamp(22px, 7vw, 32px)",
                     letterSpacing: "-0.03em",
-                    background: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 55%, #ED6E1F 100%)",
+                    backgroundImage: `linear-gradient(135deg, var(--hf-txt) 0%, var(--hf-txt) 55%, #ED6E1F 100%)`,
                     WebkitBackgroundClip: "text",
                     backgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     color: "transparent",
-                    filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.55))",
                   }}
                 >
                   Enter Reset Code
                 </h1>
 
                 <p className="mt-1.5 text-[12px] font-medium"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    textShadow: "0 1px 8px rgba(0,0,0,0.5)",
-                  }}
+                  style={{ color: "var(--hf-txt-soft)" }}
                 >
                   We sent a {OTP_LENGTH}-digit code to
                 </p>
                 <p className="mt-0.5 text-[12px] font-bold"
-                  style={{ color: "#ED6E1F" }}
+                  style={{ color: "var(--hf-amber-txt)" }}
                 >
                   {email}
                 </p>
               </motion.div>
 
-              {/* Error / success */}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -996,11 +954,9 @@ const ResetPasswordVerify = () => {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-start gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(255,107,107,0.18)",
-                      color: "#FFB4B4",
-                      border: "1px solid rgba(255,107,107,0.35)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-danger-soft)",
+                      color: "var(--hf-danger)",
+                      border: "1px solid var(--hf-danger-soft)",
                     }}
                   >
                     <FaExclamationTriangle className="flex-shrink-0 mt-0.5" />
@@ -1020,11 +976,9 @@ const ResetPasswordVerify = () => {
                     exit={{ opacity: 0, y: -8, height: 0 }}
                     className="mb-2.5 p-2.5 rounded-2xl flex items-center gap-2 overflow-hidden text-[11.5px] font-semibold"
                     style={{
-                      background: "rgba(74,222,128,0.15)",
-                      color: "#8CFFB8",
-                      border: "1px solid rgba(74,222,128,0.3)",
-                      backdropFilter: "blur(10px)",
-                      WebkitBackdropFilter: "blur(10px)",
+                      background: "var(--hf-success-soft)",
+                      color: "var(--hf-success)",
+                      border: "1px solid var(--hf-success-soft)",
                     }}
                   >
                     <FaCheckCircle className="flex-shrink-0" />
@@ -1033,7 +987,6 @@ const ResetPasswordVerify = () => {
                 )}
               </AnimatePresence>
 
-              {/* OTP inputs — mobile */}
               <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
                 <div className="flex items-center justify-center gap-1 flex-wrap">
                   {otp.map((digit, idx) => (
@@ -1053,18 +1006,14 @@ const ResetPasswordVerify = () => {
                         width: 32,
                         height: 44,
                         fontSize: 16,
-                        background: "rgba(20,20,22,0.55)",
-                        color: "#FFFFFF",
-                        border: digit ? "1.5px solid #ED6E1F" : "1px solid rgba(255,255,255,0.16)",
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
+                        border: digit ? "1.5px solid #ED6E1F" : "1px solid var(--hf-line)",
                       }}
                       onFocus={(e) => {
                         e.target.style.borderColor = "#ED6E1F";
-                        e.target.style.boxShadow = "0 0 0 3px rgba(237,110,31,0.28)";
+                        e.target.style.boxShadow = "0 0 0 3px rgba(237,110,31,0.22)";
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = digit ? "#ED6E1F" : "rgba(255,255,255,0.16)";
+                        e.target.style.borderColor = digit ? "#ED6E1F" : "var(--hf-line)";
                         e.target.style.boxShadow = "none";
                       }}
                     />
@@ -1084,13 +1033,12 @@ const ResetPasswordVerify = () => {
                 </button>
               </form>
 
-              {/* Resend */}
-              <p className="text-center text-[12px] mt-4" style={{ color: "rgba(255,255,255,0.7)" }}>
+              <p className="text-center text-[12px] mt-4" style={{ color: "var(--hf-txt-soft)" }}>
                 Didn't receive the code?{' '}
                 <button type="button" onClick={handleResend} disabled={resendTimer > 0 || resending}
                   className="font-bold inline-flex items-center gap-1"
                   style={{
-                    color: resendTimer > 0 ? 'rgba(255,255,255,0.4)' : '#ED6E1F',
+                    color: resendTimer > 0 ? 'var(--hf-txt-faint)' : 'var(--hf-amber-txt)',
                     cursor: resendTimer > 0 ? 'not-allowed' : 'pointer',
                   }}>
                   <FaRedo className="text-[9px]" />
@@ -1098,36 +1046,11 @@ const ResetPasswordVerify = () => {
                 </button>
               </p>
 
-              {/* Back link */}
               <Link to="/reset-password"
                 className="mt-4 text-center text-[12px] inline-flex items-center justify-center gap-1 font-semibold"
-                style={{ color: "rgba(255,255,255,0.7)" }}>
+                style={{ color: "var(--hf-txt-soft)" }}>
                 <FaArrowLeft className="text-[10px]" /> Back
               </Link>
-
-              {/* Video dots (mobile) */}
-              <div className="flex items-center justify-center gap-2 mt-6">
-                {BRAND_VIDEOS.map((v, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      if (i === currentVideoIndex || isTransitioning) return;
-                      setIsTransitioning(true);
-                      setVideoError(false);
-                      setTimeout(() => {
-                        setCurrentVideoIndex(i);
-                        setTimeout(() => setIsTransitioning(false), 300);
-                      }, 250);
-                    }}
-                    className="h-1 rounded-full transition-all"
-                    style={{
-                      width: i === currentVideoIndex ? 22 : 7,
-                      background: i === currentVideoIndex ? "#ED6E1F" : "rgba(255,255,255,0.32)",
-                    }}
-                    aria-label={`Go to slide ${i + 1}`}
-                  />
-                ))}
-              </div>
             </div>
           </div>
         </div>

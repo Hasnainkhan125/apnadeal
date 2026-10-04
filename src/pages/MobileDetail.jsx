@@ -2,7 +2,8 @@
 // + Real seller stats + Rating modal + Follow toggle + Chat + Toast
 // + Pakistani price formatter (Lakh / Crore / Arab / Kharab)
 // + Full spec table (Alibaba style) + Product gallery grid
-import React, { useState, useEffect, useMemo } from "react";
+// + Chat ding (Web Audio API) + Global chat dock integration
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -24,6 +25,55 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { readCart, writeCart } from "../lib/cartStore";
 import { SellerAvatar, PlanLabel } from "../components/SellerAvatar";
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAT DING — Web Audio API (no file needed)
+   Plays a soft 2-tone chime when the chat dock opens.
+   ═══════════════════════════════════════════════════════════════ */
+const playChatDing = () => {
+  try {
+    if (typeof window === "undefined") return;
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    // Two-tone chime: E6 → C6 (bright, subtle)
+    const tones = [
+      { freq: 1318.51, start: 0,    dur: 0.16, gain: 0.16 }, // E6
+      { freq: 1046.50, start: 0.10, dur: 0.22, gain: 0.13 }, // C6
+    ];
+
+    tones.forEach(({ freq, start, dur, gain }) => {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      osc.connect(env);
+      env.connect(ctx.destination);
+
+      const t = now + start;
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(gain, t + 0.015);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    });
+
+    // Close context when finished (avoid leak)
+    setTimeout(() => {
+      try { ctx.close(); } catch {}
+    }, 700);
+  } catch (err) {
+    // Silently ignore — audio is a nice-to-have
+    if (typeof console !== "undefined") {
+      // console.debug("[chat ding] skipped:", err?.message);
+    }
+  }
+};
 
 /* ═══════════════════════════════════════════════════════════════
    STYLES — Alibaba-style light + dark
@@ -684,6 +734,9 @@ const MobileDetail = () => {
   const [cart, setCart] = useState(() => readCart());
   const [showCartModal, setShowCartModal] = useState(false);
 
+  /* ⭐ Chat ding — plays only once per page visit */
+  const hasPlayedDingRef = useRef(false);
+
   const cartCount = cart.reduce((s, c) => s + (c.qty || 1), 0);
   const cartTotal = cart.reduce((s, c) => s + c.price * (c.qty || 1), 0);
 
@@ -699,6 +752,17 @@ const MobileDetail = () => {
     if (!user || !listing) return false;
     return !!listing.user_id && listing.user_id === user.id;
   }, [user, listing]);
+
+  /* ⭐ Listen for global chat dock opened — play ding if not yet played */
+  useEffect(() => {
+    const onDockOpened = () => {
+      if (hasPlayedDingRef.current) return;
+      hasPlayedDingRef.current = true;
+      playChatDing();
+    };
+    window.addEventListener("chat-dock-opened", onDockOpened);
+    return () => window.removeEventListener("chat-dock-opened", onDockOpened);
+  }, []);
 
   /* ── Fetch listing ── */
   useEffect(() => {
@@ -935,15 +999,54 @@ const MobileDetail = () => {
     window.open(`https://wa.me/${whatsappNumber}?text=${text}`, "_blank");
   };
 
+  /* ⭐ Chat with seller — opens global chat dock + plays ding */
   const handleChatWithSeller = () => {
     if (isOwner) return;
-    if (!user) { pushToast("info", "Sign in required", "Please sign in to chat with seller"); navigate("/login"); return; }
-    if (!listing?.user_id) { pushToast("error", "Chat unavailable", "Seller info not available"); return; }
-    const params = new URLSearchParams();
-    params.set("user", listing.user_id);
-    if (listing.id) params.set("listing", listing.id);
-    params.set("text", "Hi! Is this still available?");
-    navigate(`/marketplace-chat?${params.toString()}`);
+    if (!user) {
+      pushToast("info", "Sign in required", "Please sign in to chat with seller");
+      navigate("/login");
+      return;
+    }
+    if (!listing?.user_id) {
+      pushToast("error", "Chat unavailable", "Seller info not available");
+      return;
+    }
+
+    // ⭐ Play ding (only once per page visit)
+    if (!hasPlayedDingRef.current) {
+      hasPlayedDingRef.current = true;
+      playChatDing();
+    }
+
+   const payload = {
+  peerId: listing.user_id,        // ← changed
+  prefill: "Hi! Is this still available?",  // ← changed
+  listingId: listing.id,
+  // keep extras for future use:
+  user: listing.user_id,
+  sellerId: listing.user_id,
+  listing: listing.id,
+  listingTitle: listing.title,
+  text: "Hi! Is this still available?",
+};
+    // ⭐ Try to open the global chat dock
+    let dockHandled = false;
+    try {
+      const evt = new CustomEvent("open-chat-dock", { detail: payload });
+      window.dispatchEvent(evt);
+      dockHandled = true;
+    } catch (err) {
+      console.warn("[chat] dispatch failed:", err);
+    }
+
+    // ⭐ Fallback to the full-page chat if no dock is mounted
+    if (!dockHandled) {
+      const params = new URLSearchParams();
+      params.set("user", listing.user_id);
+      if (listing.id) params.set("listing", listing.id);
+      params.set("text", "Hi! Is this still available?");
+      navigate(`/marketplace-chat?${params.toString()}`);
+    }
   };
 
   const handleFollowToggle = async () => {
@@ -1010,7 +1113,6 @@ const MobileDetail = () => {
     return groups;
   }, [listing]);
 
-  /* Flatten all spec rows for the table */
   const flatSpecs = useMemo(
     () => SECTION_ORDER.flatMap((key) => groupedSpecs[key] || []),
     [groupedSpecs]
@@ -1018,13 +1120,11 @@ const MobileDetail = () => {
 
   const totalSpecFields = flatSpecs.length;
 
-  /* Formatted price */
   const formattedPrice = useMemo(
     () => formatPakistaniPrice(listing?.price),
     [listing?.price]
   );
 
-  /* Attribute chips */
   const attributeChips = useMemo(() => {
     const out = [];
     const s = listing?.specs || {};
@@ -1126,7 +1226,7 @@ const MobileDetail = () => {
         {/* ═══ ALIBABA-STYLE 3-COLUMN GRID ═══ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-          {/* ─────── COLUMN 1: Left — Image + Seller card ─────── */}
+          {/* ─────── COLUMN 1: Left ─────── */}
           <div className="lg:col-span-4 space-y-5">
             <div className="flex gap-3">
               {listing.images.length > 1 && (
@@ -1195,7 +1295,6 @@ const MobileDetail = () => {
               </motion.div>
             </div>
 
-            {/* Edit image */}
             <div className="flex justify-end">
               <EditImageEntry navigate={navigate} imageUrl={listing.images[activeImage]} returnTo={`/mobile/${id}`} compact />
             </div>
@@ -1276,7 +1375,6 @@ const MobileDetail = () => {
               {listing.title}
             </h1>
 
-            {/* Rating row */}
             <div className="flex items-center gap-3 flex-wrap mb-3 text-[12.5px]">
               <StarDisplay rating={sellerStats.rating || 4.9} size="md" showValue count={sellerStats.ratingCount || 0} />
               <span className="pd-txt-soft">·</span>
@@ -1289,7 +1387,6 @@ const MobileDetail = () => {
               </span>
             </div>
 
-            {/* Badges row */}
             <div className="flex items-center gap-2 flex-wrap mb-5 pb-4" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               {listing.verified && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold pd-txt-soft" style={{ border: "1px solid var(--nav-line-str)" }}>
@@ -1306,7 +1403,6 @@ const MobileDetail = () => {
               </span>
             </div>
 
-            {/* ═══ SINGLE PRICE with Lakh/Crore formatting ═══ */}
             <div className="mb-5 pb-5" style={{ borderBottom: "1px solid var(--nav-line)" }}>
               {formattedPrice.unit ? (
                 <>
@@ -1337,7 +1433,6 @@ const MobileDetail = () => {
               </div>
             </div>
 
-            {/* ═══ ATTRIBUTE CHIPS ═══ */}
             {attributeChips.length > 0 && (
               <div className="space-y-3 mb-5">
                 {attributeChips.map((chip) => (
@@ -1349,7 +1444,6 @@ const MobileDetail = () => {
               </div>
             )}
 
-            {/* Quantity selector */}
             {!isSold && !isOwner && (
               <div className="mb-5">
                 <p className="font-ticket-body text-[13px] font-bold pd-txt mb-2">Quantity</p>
@@ -1367,7 +1461,6 @@ const MobileDetail = () => {
               </div>
             )}
 
-            {/* Add to Cart / Buy Now */}
             {isOwner ? (
               <div className="space-y-2 mb-5">
                 <div className="flex items-center justify-center gap-2 w-full py-3 rounded-lg pd-owner-banner font-ticket-body font-bold text-sm"
@@ -1404,7 +1497,6 @@ const MobileDetail = () => {
           {/* ─────── COLUMN 3: Right ─────── */}
           <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 h-fit">
 
-            {/* Delivery card */}
             <div className="rounded-xl pd-info-emerald p-4">
               <div className="flex items-start gap-2.5 mb-3">
                 <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--nav-green-soft)" }}>
@@ -1434,7 +1526,6 @@ const MobileDetail = () => {
               </div>
             </div>
 
-            {/* Return card */}
             <div className="rounded-xl pd-info-emerald p-4">
               <div className="flex items-start gap-2.5 mb-2">
                 <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--nav-green-soft)" }}>
@@ -1447,7 +1538,6 @@ const MobileDetail = () => {
               </div>
             </div>
 
-            {/* Order protection card */}
             <div className="rounded-xl pd-surface p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-ticket-body text-[15px] font-bold pd-txt">APNa Deal order protection</h3>
@@ -1485,7 +1575,6 @@ const MobileDetail = () => {
               </div>
             </div>
 
-            {/* Primary CTAs */}
             {!isOwner && !isSold ? (
               <div className="space-y-2.5">
                 <button onClick={handleWhatsApp}
@@ -1523,7 +1612,6 @@ const MobileDetail = () => {
               </div>
             )}
 
-            {/* Utility row */}
             <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
               <button onClick={toggleFavorite} disabled={isSold}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
@@ -1561,7 +1649,7 @@ const MobileDetail = () => {
           </div>
         </div>
 
-        {/* ─── SPECIFICATION TABLE (Alibaba style) ─── */}
+        {/* ─── SPECIFICATION TABLE ─── */}
         {flatSpecs.length > 0 && (
           <section className="mt-10">
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">

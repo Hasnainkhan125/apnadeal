@@ -7,6 +7,8 @@ import { ProfileProvider } from "./contexts/ProfileContext";
 import { FilterProvider } from "./contexts/FilterContext";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { PlanProvider } from "./contexts/PlanContext";
+// ⭐ NEW — Language + Currency (global, persisted, auto-detects country)
+import { LocaleProvider } from "./contexts/LocaleContext";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import FloatingChat from "./components/FloatingChat";
@@ -349,14 +351,28 @@ const SmartCheckout = () => {
   );
 };
 
-/* ⭐ GLOBAL CHAT DOCK — ONLY on Feed page */
+/* ⭐ GLOBAL CHAT DOCK — mount on all pages EXCEPT the ones that already have chat */
 const GuestAwareChatDock = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
 
-  if (location.pathname !== "/feed") return null;
   if (loading) return null;
   if (!user) return null;
+
+  // Don't mount on pages that already handle chat / auth / admin
+  const HIDDEN_PREFIXES = [
+    "/marketplace-chat",
+    "/chat",
+    "/study-group-chat",
+    "/signin",
+    "/signup",
+    "/reset-password",
+    "/admin",
+  ];
+
+  if (HIDDEN_PREFIXES.some((p) => location.pathname.startsWith(p))) {
+    return null;
+  }
 
   return <GlobalChatDock />;
 };
@@ -375,290 +391,293 @@ function App() {
 
   return (
     <Router>
-      <AuthProvider>
-        <PlanProvider>
-          <ProfileProvider>
-            <SettingsProvider>
-              <TimerProvider>
-                <FilterProvider>
-                  <OnboardingProvider>
-                    <GlobalThemeStyles />
+      {/* ⭐ Language + Currency — wraps everything so useLocale() works app-wide */}
+      <LocaleProvider>
+        <AuthProvider>
+          <PlanProvider>
+            <ProfileProvider>
+              <SettingsProvider>
+                <TimerProvider>
+                  <FilterProvider>
+                    <OnboardingProvider>
+                      <GlobalThemeStyles />
 
-                    <GlobalToaster />
-                    <PaymentListener />
-                    <PremiumWelcomePopup />
+                      <GlobalToaster />
+                      <PaymentListener />
+                      <PremiumWelcomePopup />
 
-                    <div className="min-h-screen duration-300 app-shell">
-                      <Routes>
-                        {/* ═══ Auth Pages ═══ */}
-                        <Route path="/signin" element={<Layout><SignIn /></Layout>} />
-                        <Route path="/signup" element={<Layout><SignUp /></Layout>} />
-                        <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
-                        <Route path="/reset-password/verify" element={<Layout><ResetPasswordVerify /></Layout>} />
-                        <Route path="/reset-password/update" element={<Layout><ResetPasswordUpdate /></Layout>} />
+                      <div className="min-h-screen duration-300 app-shell">
+                        <Routes>
+                          {/* ═══ Auth Pages ═══ */}
+                          <Route path="/signin" element={<Layout><SignIn /></Layout>} />
+                          <Route path="/signup" element={<Layout><SignUp /></Layout>} />
+                          <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
+                          <Route path="/reset-password/verify" element={<Layout><ResetPasswordVerify /></Layout>} />
+                          <Route path="/reset-password/update" element={<Layout><ResetPasswordUpdate /></Layout>} />
 
-                        {/* ═══ ADMIN ═══ */}
-                        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                        <Route path="/admin/onboarding" element={<AdminRoute><AdminOnboarding /></AdminRoute>} />
+                          {/* ═══ ADMIN ═══ */}
+                          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                          <Route path="/admin/onboarding" element={<AdminRoute><AdminOnboarding /></AdminRoute>} />
 
-                        {/* ═══ AI TOOLS ═══ */}
-                        <Route path="/ai-image" element={<AIImageGenerator />} />
-                        <Route path="/image-generator" element={<Img_GeneratorPro />} />
-                        <Route path="/library" element={<Library />} />
-                        <Route path="/remove-bg" element={<RemoveBackground />} />
-                        <Route path="/ai-chat" element={<AIChat />} />
+                          {/* ═══ AI TOOLS ═══ */}
+                          <Route path="/ai-image" element={<AIImageGenerator />} />
+                          <Route path="/image-generator" element={<Img_GeneratorPro />} />
+                          <Route path="/library" element={<Library />} />
+                          <Route path="/remove-bg" element={<RemoveBackground />} />
+                          <Route path="/ai-chat" element={<AIChat />} />
 
-                        {/* ═══ Chat pages ═══ */}
-                        <Route path="/chat" element={
-                          <Layout>
-                            <ChatPage />
-                          </Layout>
-                        } />
-                        <Route path="/marketplace-chat" element={
-                          <Layout>
-                            <MarketplaceChat />
-                          </Layout>
-                        } />
+                          {/* ═══ Chat pages ═══ */}
+                          <Route path="/chat" element={
+                            <Layout>
+                              <ChatPage />
+                            </Layout>
+                          } />
+                          <Route path="/marketplace-chat" element={
+                            <Layout>
+                              <MarketplaceChat />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Public Pages ═══ */}
-                        <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
+                          {/* ═══ Public Pages ═══ */}
+                          <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
 
-                        <Route path="/" element={<SmartLanding />} />
+                          <Route path="/" element={<SmartLanding />} />
 
-                        <Route path="/home" element={<Layout><Home /></Layout>} />
-                        <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
-                        <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
+                          <Route path="/home" element={<Layout><Home /></Layout>} />
+                          <Route path="/privacy" element={<Layout><PrivacyPage /></Layout>} />
+                          <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
 
-                        {/* ═══ Premium ═══ */}
-                        <Route path="/premium" element={<Layout><Premium /></Layout>} />
-                        <Route path="/subscription" element={<Navigate to="/premium" replace />} />
+                          {/* ═══ Premium ═══ */}
+                          <Route path="/premium" element={<Layout><Premium /></Layout>} />
+                          <Route path="/subscription" element={<Navigate to="/premium" replace />} />
 
-                        {/* ═══ Vehicles ═══ */}
-                        <Route path="/vehicles" element={<Layout><Vehicles /></Layout>} />
-                        <Route path="/vehicle/:id" element={
-                          <Layout>
-                            <VehicleDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ Vehicles ═══ */}
+                          <Route path="/vehicles" element={<Layout><Vehicles /></Layout>} />
+                          <Route path="/vehicle/:id" element={
+                            <Layout>
+                              <VehicleDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Mobiles ═══ */}
-                        <Route path="/mobiles" element={<Layout><Mobiles /></Layout>} />
-                        <Route path="/mobile/:id" element={
-                          <Layout>
-                            <MobileDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ Mobiles ═══ */}
+                          <Route path="/mobiles" element={<Layout><Mobiles /></Layout>} />
+                          <Route path="/mobile/:id" element={
+                            <Layout>
+                              <MobileDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Property ═══ */}
-                        <Route path="/property" element={<Layout><Property /></Layout>} />
-                        <Route path="/property/:id" element={
-                          <Layout>
-                            <PropertyDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ Property ═══ */}
+                          <Route path="/property" element={<Layout><Property /></Layout>} />
+                          <Route path="/property/:id" element={
+                            <Layout>
+                              <PropertyDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Electronics ═══ */}
-                        <Route path="/electronics" element={<Layout><Electronics /></Layout>} />
-                        <Route path="/electronic/:id" element={
-                          <Layout>
-                            <ElectronicsDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ Electronics ═══ */}
+                          <Route path="/electronics" element={<Layout><Electronics /></Layout>} />
+                          <Route path="/electronic/:id" element={
+                            <Layout>
+                              <ElectronicsDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Toys ═══ */}
-                        <Route path="/toy/:id" element={
-                          <Layout>
-                            <ToyDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ Toys ═══ */}
+                          <Route path="/toy/:id" element={
+                            <Layout>
+                              <ToyDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Cart & Orders ═══ */}
-                        <Route path="/cart" element={
-                          <Layout>
-                            <Orders initialTab="cart" />
-                          </Layout>
-                        } />
-                        <Route path="/orders/cart" element={
-                          <Layout>
-                            <Orders initialTab="cart" />
-                          </Layout>
-                        } />
-                        <Route path="/orders" element={
-                          <Layout>
-                            <Orders initialTab="orders" />
-                          </Layout>
-                        } />
-                        <Route path="/orders/list" element={
-                          <Layout>
-                            <Orders initialTab="orders" />
-                          </Layout>
-                        } />
-                        <Route path="/orders/track" element={<Navigate to="/orders" replace />} />
+                          {/* ═══ Cart & Orders ═══ */}
+                          <Route path="/cart" element={
+                            <Layout>
+                              <Orders initialTab="cart" />
+                            </Layout>
+                          } />
+                          <Route path="/orders/cart" element={
+                            <Layout>
+                              <Orders initialTab="cart" />
+                            </Layout>
+                          } />
+                          <Route path="/orders" element={
+                            <Layout>
+                              <Orders initialTab="orders" />
+                            </Layout>
+                          } />
+                          <Route path="/orders/list" element={
+                            <Layout>
+                              <Orders initialTab="orders" />
+                            </Layout>
+                          } />
+                          <Route path="/orders/track" element={<Navigate to="/orders" replace />} />
 
-                        {/* ⭐ Checkout ═══ */}
-                        <Route path="/checkout" element={
-                          <Layout>
-                            <SmartCheckout />
-                          </Layout>
-                        } />
+                          {/* ⭐ Checkout ═══ */}
+                          <Route path="/checkout" element={
+                            <Layout>
+                              <SmartCheckout />
+                            </Layout>
+                          } />
 
-                        {/* ⭐ Boost ═══ */}
-                        <Route path="/boost" element={
-                          <Layout>
-                            <ProtectedRoute>
-                              <BoostCheckout />
-                            </ProtectedRoute>
-                          </Layout>
-                        } />
+                          {/* ⭐ Boost ═══ */}
+                          <Route path="/boost" element={
+                            <Layout>
+                              <ProtectedRoute>
+                                <BoostCheckout />
+                              </ProtectedRoute>
+                            </Layout>
+                          } />
 
-                        {/* ═══ Feed ═══ */}
-                        <Route path="/feed" element={
-                          <Layout>
-                            <Feed />
-                          </Layout>
-                        } />
+                          {/* ═══ Feed ═══ */}
+                          <Route path="/feed" element={
+                            <Layout>
+                              <Feed />
+                            </Layout>
+                          } />
 
-                        {/* ═══ My Listings ═══ */}
-                        <Route path="/my-listings" element={
-                          <Layout>
-                            <MyListings />
-                          </Layout>
-                        } />
+                          {/* ═══ My Listings ═══ */}
+                          <Route path="/my-listings" element={
+                            <Layout>
+                              <MyListings />
+                            </Layout>
+                          } />
 
-                        {/* ⭐ Listing status ═══ */}
-                        <Route path="/listing/:id" element={
-                          <Layout>
-                            <ListingStatusPage />
-                          </Layout>
-                        } />
-                        <Route path="/listing/:id/status" element={
-                          <Layout>
-                            <ListingStatusPage />
-                          </Layout>
-                        } />
+                          {/* ⭐ Listing status ═══ */}
+                          <Route path="/listing/:id" element={
+                            <Layout>
+                              <ListingStatusPage />
+                            </Layout>
+                          } />
+                          <Route path="/listing/:id/status" element={
+                            <Layout>
+                              <ListingStatusPage />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Post Ad ═══ */}
-                        <Route path="/post-ad" element={
-                          <Layout>
-                            <PostAd />
-                          </Layout>
-                        } />
+                          {/* ═══ Post Ad ═══ */}
+                          <Route path="/post-ad" element={
+                            <Layout>
+                              <PostAd />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Wallet ═══ */}
-                        <Route path="/wallet" element={
-                          <Layout>
-                            <Wallet />
-                          </Layout>
-                        } />
+                          {/* ═══ Wallet ═══ */}
+                          <Route path="/wallet" element={
+                            <Layout>
+                              <Wallet />
+                            </Layout>
+                          } />
 
-                        {/* ═══ User Services ═══ */}
-                        <Route path="/user-services/:userId" element={
-                          <Layout>
-                            <UserServices />
-                          </Layout>
-                        } />
-                        <Route path="/service/:serviceId" element={
-                          <Layout>
-                            <ServiceDetail />
-                          </Layout>
-                        } />
+                          {/* ═══ User Services ═══ */}
+                          <Route path="/user-services/:userId" element={
+                            <Layout>
+                              <UserServices />
+                            </Layout>
+                          } />
+                          <Route path="/service/:serviceId" element={
+                            <Layout>
+                              <ServiceDetail />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Study Groups ═══ */}
-                        <Route path="/study-groups" element={
-                          <Layout>
-                            <StudyGroups />
-                          </Layout>
-                        } />
-                        <Route path="/study-groups/:groupId" element={
-                          <Layout>
-                            <GroupDetail />
-                          </Layout>
-                        } />
-                        <Route path="/study-groups/register" element={
-                          <Layout>
-                            <ProtectedRoute requirePremium={true}>
-                              <StudyPartnerRegister />
-                            </ProtectedRoute>
-                          </Layout>
-                        } />
-                        <Route path="/study-group-chat/:groupId" element={
-                          <Layout>
-                            <ProtectedRoute>
-                              <StudyChat />
-                            </ProtectedRoute>
-                          </Layout>
-                        } />
+                          {/* ═══ Study Groups ═══ */}
+                          <Route path="/study-groups" element={
+                            <Layout>
+                              <StudyGroups />
+                            </Layout>
+                          } />
+                          <Route path="/study-groups/:groupId" element={
+                            <Layout>
+                              <GroupDetail />
+                            </Layout>
+                          } />
+                          <Route path="/study-groups/register" element={
+                            <Layout>
+                              <ProtectedRoute requirePremium={true}>
+                                <StudyPartnerRegister />
+                              </ProtectedRoute>
+                            </Layout>
+                          } />
+                          <Route path="/study-group-chat/:groupId" element={
+                            <Layout>
+                              <ProtectedRoute>
+                                <StudyChat />
+                              </ProtectedRoute>
+                            </Layout>
+                          } />
 
-                        {/* ═══ Momento ═══ */}
-                        <Route path="/momento" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
+                          {/* ═══ Momento ═══ */}
+                          <Route path="/momento" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
 
-                        {/* ⭐ Deep links — posts, shorts, videos, reels */}
-                        <Route path="/momento/post/:id" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
-                        <Route path="/momento/short/:id" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
-                        <Route path="/momento/video/:id" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
-                        <Route path="/momento/reel/:id" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
+                          {/* ⭐ Deep links — posts, shorts, videos, reels */}
+                          <Route path="/momento/post/:id" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
+                          <Route path="/momento/short/:id" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
+                          <Route path="/momento/video/:id" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
+                          <Route path="/momento/reel/:id" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
 
-                        {/* ⭐ Shorts deep-link routes (path + query) */}
-                        <Route path="/momento/shorts" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
-                        <Route path="/momento/shorts/:id" element={
-                          <Layout>
-                            <Momento />
-                          </Layout>
-                        } />
+                          {/* ⭐ Shorts deep-link routes (path + query) */}
+                          <Route path="/momento/shorts" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
+                          <Route path="/momento/shorts/:id" element={
+                            <Layout>
+                              <Momento />
+                            </Layout>
+                          } />
 
-                        {/* ═══ Settings / Dashboard ═══ */}
-                        <Route path="/settings" element={
-                          <Layout>
-                            <SettingsPage />
-                          </Layout>
-                        } />
-                        <Route path="/dashboard" element={
-                          <Layout>
-                            <DashboardPage />
-                          </Layout>
-                        } />
+                          {/* ═══ Settings / Dashboard ═══ */}
+                          <Route path="/settings" element={
+                            <Layout>
+                              <SettingsPage />
+                            </Layout>
+                          } />
+                          <Route path="/dashboard" element={
+                            <Layout>
+                              <DashboardPage />
+                            </Layout>
+                          } />
 
-                        {/* ⭐ Fallback ═══ */}
-                        <Route path="*" element={<SmartLanding />} />
-                      </Routes>
+                          {/* ⭐ Fallback ═══ */}
+                          <Route path="*" element={<SmartLanding />} />
+                        </Routes>
 
-                      <GlobalOnboarding />
+                        <GlobalOnboarding />
 
-                      <GlobalAIAssistant />
+                        <GlobalAIAssistant />
 
-                      <GuestAwareChatDock />
-                    </div>
-                  </OnboardingProvider>
-                </FilterProvider>
-              </TimerProvider>
-            </SettingsProvider>
-          </ProfileProvider>
-        </PlanProvider>
-      </AuthProvider>
+                        <GuestAwareChatDock />
+                      </div>
+                    </OnboardingProvider>
+                  </FilterProvider>
+                </TimerProvider>
+              </SettingsProvider>
+            </ProfileProvider>
+          </PlanProvider>
+        </AuthProvider>
+      </LocaleProvider>
     </Router>
   );
 }

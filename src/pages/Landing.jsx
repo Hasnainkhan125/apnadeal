@@ -1,5 +1,5 @@
-// src/pages/Landing.jsx — Dealora animated landing page (FULL)
-// ⭐ Brand: #e66000 (unified) + modern view
+// src/pages/Landing.jsx — Dealora animated landing page (GLOBAL / FULL)
+// ⭐ Brand: #e66000 (unified) + modern global marketplace view
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -12,14 +12,14 @@ import {
 } from "framer-motion";
 import {
   FaArrowRight, FaChevronDown, FaChevronRight, FaBars, FaTimes,
-  FaStore, FaHandshake, FaShieldAlt, FaBolt, FaTruck, FaClock,  FaEnvelope, FaMapMarkerAlt, FaPhone, FaTiktok,
+  FaStore, FaHandshake, FaShieldAlt, FaBolt, FaTruck, FaClock, FaEnvelope, FaMapMarkerAlt, FaPhone, FaTiktok,
   FaPlay, FaCheck, FaCheckCircle, FaStar, FaCog, FaSun, FaMoon,
   FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaYoutube,
   FaMobileAlt, FaLaptop, FaCar, FaHome, FaGem, FaGamepad,
   FaTshirt, FaCouch, FaBicycle, FaCamera,
   FaLock, FaHeadset, FaUndo, FaShippingFast,
   FaUserPlus, FaBoxOpen, FaCreditCard,
-  FaQuoteLeft, FaPlus, FaMinus,FaComments, FaImages, FaMagic,
+  FaQuoteLeft, FaPlus, FaMinus, FaComments, FaImages, FaMagic,
   FaApple, FaGooglePlay, FaCrown, FaRocket, FaChartLine,
   FaUsers, FaThumbsUp, FaAward, FaArrowUp,
 } from "react-icons/fa";
@@ -386,7 +386,7 @@ const HERO_VIDEOS = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   STYLES — brand #e66000
+   STYLES — brand #e66000 (GLOBAL MODERN)
    ═══════════════════════════════════════════════════════════════ */
 const LandingStyles = () => (
   <style>{`
@@ -652,8 +652,8 @@ const LandingStyles = () => (
       .land-premium-btn-shine { transition: none !important; }
     }
 
-    .land-section { padding: 80px 0; position: relative; }
-    @media (min-width: 1024px) { .land-section { padding: 120px 0; } }
+    .land-section { padding: 96px 0; position: relative; }
+    @media (min-width: 1024px) { .land-section { padding: 140px 0; } }
 
     .land-section-label {
       font-family: 'Manrope', sans-serif;
@@ -666,10 +666,10 @@ const LandingStyles = () => (
     .land-section-title {
       font-family: 'Fraunces', serif;
       font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.05;
+      letter-spacing: -0.035em;
+      line-height: 1.02;
       color: var(--land-txt);
-      font-size: clamp(28px, 4.5vw, 52px);
+      font-size: clamp(32px, 5vw, 60px);
     }
 
     .land-card {
@@ -748,6 +748,15 @@ const LandingStyles = () => (
       .land-float,
       .land-bubble,
       .land-shimmer::before { animation: none !important; }
+    }
+
+    /* Enhanced focus states for accessibility */
+    .land-premium-btn-primary:focus-visible,
+    .land-premium-btn-ghost:focus-visible,
+    .land-btn-primary:focus-visible,
+    .land-btn-amber:focus-visible {
+      outline: 2px solid #e66000;
+      outline-offset: 3px;
     }
   `}</style>
 );
@@ -980,7 +989,7 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
     { label: "Home",     href: "#home",     badge: null },
     { label: "Features", href: "#features", badge: null },
     { label: "Plans",    href: "#pricing",  badge: "Save 17%" },
-    { label: "selling ",  href: "#sellers",  badge: null },
+    { label: "Sellers",  href: "#sellers",  badge: null },
     { label: "FAQ",      href: "#faq",      badge: null },
   ];
 
@@ -1016,11 +1025,9 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
               transition: "box-shadow 0.35s ease",
             }}
           >
-
-         {/* ─── LEFT: Logo + audience toggle ─── */}
-<div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
-{/* Logo only — no wordmark */}
-<Link
+            {/* ─── LEFT: Logo + audience toggle ─── */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
+         <Link
   to="/"
   className="flex items-center flex-shrink-0"
   aria-label="Dealora home"
@@ -1031,6 +1038,12 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
+      padding: 2,
+      borderRadius: 9999,
+      background: "var(--nav-panel)",
+      border: "1px solid var(--nav-line)",
+      boxShadow: "var(--nav-shadow)",
+      transition: "background 0.35s ease, border-color 0.35s ease",
     }}
   >
     <motion.img
@@ -1039,47 +1052,65 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
       whileHover={{ scale: 1.06, rotate: -3 }}
       whileTap={{ scale: 0.95 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      className="h-10 sm:h-10 md:h-12 rounded-full w-auto object-contain flex-shrink-0"
+      draggable={false}
+      className="h-8 sm:h-8 md:h-8 rounded-full w-auto object-contain flex-shrink-0"
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent && !parent.querySelector(".logo-fallback")) {
+          const span = document.createElement("span");
+          span.className = "logo-fallback font-ticket-display font-black";
+          span.textContent = "AD";
+          span.style.cssText = `
+            display:inline-flex;align-items:center;justify-content:center;
+            height:48px;min-width:48px;padding:0 12px;
+            border-radius:9999px;color:#fff;letter-spacing:-0.04em;
+            font-size:18px;
+            background:linear-gradient(135deg,#FF6A00 0%,#E85D04 60%,#C8531B 100%);
+            box-shadow:0 2px 10px -4px rgba(232,93,4,0.6);
+          `;
+          parent.appendChild(span);
+        }
+      }}
     />
   </div>
-
 </Link>
+              {/* Audience pill toggle */}
+              <div
+                className="inline-flex items-center rounded-full p-0.5 relative flex-shrink-0"
+                style={{
+                  background: "var(--land-surface)",
+                  border: "1px solid var(--land-line)",
+                }}
+              >
+                {["individual", "company"].map((opt) => {
+                  const active = audience === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => setAudience(opt)}
+                      className="relative px-2 sm:px-3 py-1 rounded-full text-[10.5px] sm:text-[11.5px] font-semibold capitalize transition-colors z-10"
+                      style={{ color: active ? "var(--land-bg)" : "var(--land-txt-soft)" }}
+                      aria-pressed={active}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="audience-pill"
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            background: "var(--land-txt)",
+                            boxShadow: "0 4px 12px -6px rgba(0,0,0,0.3)",
+                          }}
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-  {/* Audience pill toggle */}
-  <div
-    className="inline-flex items-center rounded-full p-0.5 relative flex-shrink-0"
-    style={{
-      background: "var(--land-surface)",
-      border: "1px solid var(--land-line)",
-    }}
-  >
-    {["individual", "company"].map((opt) => {
-      const active = audience === opt;
-      return (
-        <button
-          key={opt}
-          onClick={() => setAudience(opt)}
-          className="relative px-2 sm:px-3 py-1 rounded-full text-[10.5px] sm:text-[11.5px] font-semibold capitalize transition-colors z-10"
-          style={{ color: active ? "var(--land-bg)" : "var(--land-txt-soft)" }}
-          aria-pressed={active}
-        >
-          {active && (
-            <motion.span
-              layoutId="audience-pill"
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: "var(--land-txt)",
-                boxShadow: "0 4px 12px -6px rgba(0,0,0,0.3)",
-              }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
-          <span className="relative z-10">{opt}</span>
-        </button>
-      );
-    })}
-  </div>
-</div>
             {/* ─── CENTER: desktop nav ─── */}
             <nav className="hidden lg:flex items-center gap-0.5">
               {navLinks.map((link) => (
@@ -1114,7 +1145,7 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
 
             {/* ─── RIGHT ─── */}
             <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
-  <ThemeToggle />
+              <ThemeToggle />
 
               <button
                 onClick={onSignin}
@@ -1221,23 +1252,21 @@ const Navbar = ({ audience, setAudience, onSignup, onSignin }) => {
               </div>
 
               <div className="px-5 pb-4 flex items-center justify-between gap-3">
-             <div className="flex items-center gap-2 min-w-0">
-  <div
-    className="logo-inner"
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <img
-      src="/logo.png"
-      alt="Dealora"
-      className="h-12 w-auto rounded-full object-contain flex-shrink-0"
-    />
-  </div>
-
-</div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="logo-inner"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <img
+                      alt="Dealora"
+                      className="h-12 w-auto rounded-full object-contain flex-shrink-0"
+                    />
+                  </div>
+                </div>
                 <div
                   className="inline-flex items-center rounded-full p-0.5 flex-shrink-0"
                   style={{
@@ -1478,13 +1507,11 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
       className="relative z-10 overflow-hidden w-full"
       style={{
         background: "transparent",
-        padding:
-          "clamp(56px, 8vw, 96px) 0 clamp(48px, 7vw, 80px)",
+        padding: "clamp(56px, 8vw, 96px) 0 clamp(48px, 7vw, 80px)",
       }}
     >
       <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10">
         <div className="w-full max-w-[1400px] mx-auto text-center">
-
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1509,41 +1536,41 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
             >
               <FaMagic style={{ fontSize: 12 }} />
             </motion.span>
-            AI Powered
+            AI Powered Studio
           </motion.div>
 
-<motion.h1
-  initial={{ opacity: 0, y: 14 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true }}
-  transition={{ duration: 0.6, delay: 0.05 }}
-  className="land-font-body"
-  style={{
-    fontSize: "clamp(32px, 6.2vw, 88px)",
-    fontWeight: 900,
-    letterSpacing: "-0.045em",
-    lineHeight: 1.05,
-    margin: "0 0 clamp(18px, 2.6vw, 24px)",
-    color: "var(--land-txt)",
-  }}
->
-  Cut out backgrounds
-  <br />
-  with one{" "}
-  <span
-    style={{
-      display: "inline-block",
-      padding: "clamp(2px, 0.6vw, 6px) clamp(10px, 1.8vw, 18px)",
-      borderRadius: 14,
-      background: isDark
-        ? "linear-gradient(135deg, rgba(230,96,0,0.35) 0%, rgba(255,122,26,0.25) 100%)"
-        : "linear-gradient(135deg, rgba(230,96,0,0.30) 0%, rgba(255,122,26,0.20) 100%)",
-      color: "#e66000",
-    }}
-  >
-    click
-  </span>
-</motion.h1>
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="land-font-body"
+            style={{
+              fontSize: "clamp(32px, 6.2vw, 88px)",
+              fontWeight: 900,
+              letterSpacing: "-0.045em",
+              lineHeight: 1.05,
+              margin: "0 0 clamp(18px, 2.6vw, 24px)",
+              color: "var(--land-txt)",
+            }}
+          >
+            Cut out backgrounds
+            <br />
+            with one{" "}
+            <span
+              style={{
+                display: "inline-block",
+                padding: "clamp(2px, 0.6vw, 6px) clamp(10px, 1.8vw, 18px)",
+                borderRadius: 14,
+                background: isDark
+                  ? "linear-gradient(135deg, rgba(230,96,0,0.35) 0%, rgba(255,122,26,0.25) 100%)"
+                  : "linear-gradient(135deg, rgba(230,96,0,0.30) 0%, rgba(255,122,26,0.20) 100%)",
+                color: "#e66000",
+              }}
+            >
+              click
+            </span>
+          </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -1560,7 +1587,7 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
               fontWeight: 500,
             }}
           >
-            Next-gen removal, fast batch processing, transparent pricing.
+            Next-gen removal, fast batch processing, transparent pricing — built for creators and brands worldwide.
           </motion.p>
 
           <motion.div
@@ -1570,26 +1597,26 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
             transition={{ duration: 0.5, delay: 0.25 }}
             className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mb-12 sm:mb-16"
           >
-<motion.button
-  whileHover={{ y: -2, scale: 1.03 }}
-  whileTap={{ scale: 0.97 }}
-  transition={{ type: "spring", stiffness: 400, damping: 20 }}
-  onClick={onStart}
-  className="inline-flex items-center justify-center gap-2.5 font-bold"
-  style={{
-    padding: "clamp(13px, 1.8vw, 15px) clamp(22px, 3vw, 30px)",
-    minWidth: "clamp(150px, 34vw, 180px)",
-    borderRadius: 999,
-    background: "#e66000",
-    color: "#FFFFFF",
-    border: "none",
-    fontSize: "clamp(13.5px, 1.5vw, 14.5px)",
-    cursor: "pointer",
-  }}
->
-  Start for free
-  <FaArrowRight style={{ fontSize: 12 }} />
-</motion.button>
+            <motion.button
+              whileHover={{ y: -2, scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              onClick={onStart}
+              className="inline-flex items-center justify-center gap-2.5 font-bold"
+              style={{
+                padding: "clamp(13px, 1.8vw, 15px) clamp(22px, 3vw, 30px)",
+                minWidth: "clamp(150px, 34vw, 180px)",
+                borderRadius: 999,
+                background: "#e66000",
+                color: "#FFFFFF",
+                border: "none",
+                fontSize: "clamp(13.5px, 1.5vw, 14.5px)",
+                cursor: "pointer",
+              }}
+            >
+              Start for free
+              <FaArrowRight style={{ fontSize: 12 }} />
+            </motion.button>
             <motion.button
               whileHover={{ y: -2, scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -1629,11 +1656,8 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
             className="w-full"
             style={{
               borderRadius: "clamp(20px, 3vw, 32px)",
-              padding:
-                "clamp(20px, 3.5vw, 40px) clamp(16px, 3vw, 40px) clamp(24px, 4vw, 44px)",
-              background: isDark
-                ? "rgba(22,22,31,0.72)"
-                : "rgba(255,255,255,0.85)",
+              padding: "clamp(20px, 3.5vw, 40px) clamp(16px, 3vw, 40px) clamp(24px, 4vw, 44px)",
+              background: isDark ? "rgba(22,22,31,0.72)" : "rgba(255,255,255,0.85)",
               border: `1px solid var(--land-line)`,
               backdropFilter: "blur(20px) saturate(150%)",
               WebkitBackdropFilter: "blur(20px) saturate(150%)",
@@ -1673,8 +1697,7 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background:
-                    "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
+                  background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
                 }}
               >
                 <img
@@ -1809,7 +1832,6 @@ const BgRemoverShowcase = ({ isDark, onStart, onPricing }) => {
               </span>
             </div>
           </motion.div>
-
         </div>
       </div>
     </section>
@@ -1906,17 +1928,17 @@ const Landing = () => {
   const heroCopy = {
     individual: {
       title: "Buy and sell with",
-      titleItalic: "complete",
+      titleItalic: "absolute",
       titleAccent: "confidence",
-      desc: "APNaDEAL connects you with verified sellers across Pakistan. Browse thousands of products, pay securely, and get fast delivery — all in one place",
-      primaryCta: "Get Started",
-      ghostCta: "Explore Classes",
+      desc: "ApexDeal connects you with verified sellers worldwide. Browse millions of products, pay securely with escrow protection, and get fast tracked delivery — all in one beautifully simple platform.",
+      primaryCta: "Start Exploring",
+      ghostCta: "Watch Demo",
     },
     company: {
       title: "Scale your business with",
       titleItalic: "unified",
       titleAccent: "commerce",
-      desc: "The complete marketplace platform for growing businesses. Manage inventory, track orders, automate invoicing, and reach millions of buyers nationwide.",
+      desc: "The complete marketplace infrastructure for modern brands. Manage inventory, track orders in real-time, automate payouts, and reach millions of high-intent buyers globally.",
       primaryCta: "Start Selling",
       ghostCta: "Book a Demo",
     },
@@ -1924,27 +1946,27 @@ const Landing = () => {
   const copy = heroCopy[audience];
 
   const categories = [
-    { icon: FaMobileAlt, label: "Mobiles", count: "2.4K+", color: "#e66000" },
-    { icon: FaLaptop, label: "Electronics", count: "1.8K+", color: "#8B5CF6" },
-    { icon: FaCar, label: "Vehicles", count: "960+", color: "#EC4899" },
-    { icon: FaHome, label: "Property", count: "740+", color: "#10B981" },
-    { icon: FaTshirt, label: "Fashion", count: "3.1K+", color: "#F59E0B" },
-    { icon: FaCouch, label: "Home & Living", count: "1.2K+", color: "#3B82F6" },
-    { icon: FaBicycle, label: "Sports", count: "820+", color: "#EF4444" },
-    { icon: FaGem, label: "Collectibles", count: "460+", color: "#A855F7" },
+    { icon: FaMobileAlt, label: "Mobiles", count: "12K+", color: "#e66000" },
+    { icon: FaLaptop, label: "Electronics", count: "18K+", color: "#8B5CF6" },
+    { icon: FaCar, label: "Vehicles", count: "6.2K+", color: "#EC4899" },
+    { icon: FaHome, label: "Real Estate", count: "4.8K+", color: "#10B981" },
+    { icon: FaTshirt, label: "Fashion", count: "24K+", color: "#F59E0B" },
+    { icon: FaCouch, label: "Home & Living", count: "9.1K+", color: "#3B82F6" },
+    { icon: FaBicycle, label: "Sports", count: "5.4K+", color: "#EF4444" },
+    { icon: FaGem, label: "Collectibles", count: "2.7K+", color: "#A855F7" },
   ];
 
   const steps = [
-    { icon: FaUserPlus, title: "Create Account", desc: "Sign up for free in under 30 seconds." },
-    { icon: FaBoxOpen, title: "Browse & Order", desc: "Explore thousands of verified listings." },
-    { icon: FaCreditCard, title: "Pay Securely", desc: "COD, Easypaisa, or bank transfer." },
-    { icon: FaShippingFast, title: "Fast Delivery", desc: "Track live. Delivered in 2–4 days." },
+    { icon: FaUserPlus, title: "Create Account", desc: "Sign up free in under 30 seconds." },
+    { icon: FaBoxOpen, title: "Browse & Order", desc: "Explore millions of verified listings." },
+    { icon: FaCreditCard, title: "Pay Securely", desc: "Card, wallet, or escrow protection." },
+    { icon: FaShippingFast, title: "Fast Delivery", desc: "Live tracking. Delivered in 2–5 days." },
   ];
 
   const testimonials = [
-    { name: "Ahmed Khan", role: "Buyer · Lahore", text: "APNaDEAL is my go-to marketplace. Fast delivery, genuine products, and COD makes it super convenient.", rating: 5 },
-    { name: "Fatima Ali", role: "Seller · Karachi", text: "As a small business owner, listing here doubled my sales in 3 months. The seller dashboard is incredibly intuitive.", rating: 5 },
-    { name: "Bilal Raza", role: "Buyer · Islamabad", text: "Best prices I've found anywhere in Pakistan. Got my laptop in 2 days with free shipping. Highly recommended!", rating: 5 },
+    { name: "Sarah Chen", role: "Buyer · Singapore", text: "ApexDeal is hands-down the best marketplace I've used. The escrow protection gave me total peace of mind, and delivery was faster than promised.", rating: 5 },
+    { name: "Marcus Reid", role: "Seller · London", text: "I scaled my vintage electronics shop from side-hustle to six figures in 8 months. The seller dashboard and AI tools are genuinely game-changing.", rating: 5 },
+    { name: "Priya Sharma", role: "Buyer · Toronto", text: "Found exactly what I was looking for at half the price I'd pay locally. The verified seller badges made the decision effortless.", rating: 5 },
   ];
 
   const plans = [
@@ -1954,64 +1976,63 @@ const Landing = () => {
       priceMonthly: 0, priceYearly: 0,
       cta: "Start Free", popular: false, isFree: true,
       features: [
-        { title: "5 Active Listing", desc: "Post one item at a time." },
-        { title: "3 AI Images / month", desc: "Try NanoBanana image generation." },
-        { title: "Live Seller Chat", desc: "Message buyers and sellers in real time." },
+        { title: "5 Active Listings", desc: "Post up to 5 items at once." },
+        { title: "10 AI Images / month", desc: "Try our AI image generation." },
+        { title: "Live Buyer Chat", desc: "Message buyers and sellers in real time." },
         { title: "Social Feed", desc: "Post, like, comment and share." },
         { title: "Escrow Checkout", desc: "Safe payments until both sides confirm." },
-        { title: "Buy Any Item", desc: "Browse and purchase without limits." },
+        { title: "Unlimited Browsing", desc: "Buy any item without limits." },
       ],
     },
     {
       id: "seller", name: "Seller", badgeIcon: FaBolt,
       tagline: "For serious sellers who want more reach",
-      priceMonthly: 500, priceYearly: 5000,
+      priceMonthly: 19, priceYearly: 190,
       badge: "Most Popular", cta: "Upgrade to Seller",
       popular: true, isFree: false,
       features: [
-        { title: "30 Active Listings", desc: "6× more than the free plan." },
-        { title: "30 AI Images / month", desc: "Clean product photos without effort." },
-        { title: "1 Featured Boost / month", desc: "Top of category for 7 days." },
+        { title: "50 Active Listings", desc: "10× more than the free plan." },
+        { title: "100 AI Images / month", desc: "Clean product photos without effort." },
+        { title: "2 Featured Boosts / month", desc: "Top of category for 7 days." },
         { title: "Verified Seller Badge", desc: "Build trust with every buyer." },
         { title: "Background Remover", desc: "One-click cut-outs for any item." },
-        { title: "Priority in Search", desc: "Rank above free sellers." },
+        { title: "Priority Search Ranking", desc: "Rank above free sellers." },
       ],
-      mutedFeatures: [{ title: "Listing Analytics", desc: "Pro Seller only." }],
     },
     {
       id: "pro", name: "Pro Seller", badgeIcon: FaCrown,
-      tagline: "For power sellers and dealers",
-      priceMonthly: 1500, priceYearly: 15000,
+      tagline: "For power sellers and enterprise brands",
+      priceMonthly: 59, priceYearly: 590,
       cta: "Upgrade to Pro", popular: false, isFree: false,
       features: [
-        { title: "Unlimited Listings", desc: "List your whole inventory." },
-        { title: "200 AI Images / month", desc: "Full AI Studio access." },
-        { title: "4 Featured Boosts / month", desc: "Stay at the top." },
-        { title: "Listing Analytics", desc: "Views, clicks, chats and conversions." },
+        { title: "Unlimited Listings", desc: "List your entire inventory." },
+        { title: "1,000 AI Images / month", desc: "Full AI Studio access." },
+        { title: "10 Featured Boosts / month", desc: "Stay at the top of search." },
+        { title: "Advanced Analytics", desc: "Views, clicks, chats, conversions." },
         { title: "Priority Support", desc: "Chat with a human within minutes." },
-        { title: "Gold Business Badge", desc: "Stand out as a verified dealer." },
+        { title: "Gold Business Badge", desc: "Stand out as a verified brand." },
       ],
     },
   ];
 
   const faqs = [
-    { q: "How do I place my first order?", a: "Simply create a free account, browse any of our 8 categories, add items to your cart, and checkout. We accept Cash on Delivery, Easypaisa, and Bank transfers." },
-    { q: "What payment methods do you accept?", a: "We accept Cash on Delivery (COD), Easypaisa mobile wallet, and direct Bank transfers. All methods are 100% secure." },
-    { q: "How long does delivery take?", a: "Standard delivery takes 2-4 business days across Pakistan." },
-    { q: "Can I return an item?", a: "Yes! You can return any item within 7 days of delivery for a full refund." },
-    { q: "How do I become a seller?", a: "Sign up, complete KYC verification, and upgrade to a Premium plan." },
-    { q: "Is my payment information safe?", a: "Absolutely. All transactions are encrypted end-to-end." },
+    { q: "How do I place my first order?", a: "Create a free account, browse any category, add items to your cart, and checkout. We accept cards, digital wallets, and bank transfers — all protected by Dealora Escrow." },
+    { q: "What payment methods do you accept?", a: "We accept all major credit and debit cards, Apple Pay, Google Pay, PayPal, and direct bank transfers. Every transaction is encrypted end-to-end." },
+    { q: "How long does delivery take?", a: "Standard delivery takes 2–5 business days depending on your region. Express options are available at checkout for most items." },
+    { q: "Can I return an item?", a: "Yes — every purchase is covered by our 14-day money-back guarantee. Return any item within 14 days of delivery for a full refund." },
+    { q: "How do I become a seller?", a: "Sign up, complete identity verification, and upgrade to a Seller or Pro plan. Approval typically takes under 24 hours." },
+    { q: "Is my payment information safe?", a: "Absolutely. All transactions use bank-grade 256-bit encryption, and funds are held in escrow until both parties confirm the deal." },
   ];
 
   const stats = [
-    { value: 1000, suffix: "+", label: "Active users" },
-    { value: 120, suffix: "+", label: "Products sold" },
-    { value: 900, suffix: "+", label: "Verified sellers" },
-    { value: 4.2, suffix: "★", label: "Average rating", decimals: 1 },
+    { value: 250000, suffix: "+", label: "Active users" },
+    { value: 1800000, suffix: "+", label: "Items sold" },
+    { value: 42000, suffix: "+", label: "Verified sellers" },
+    { value: 4.9, suffix: "★", label: "Average rating", decimals: 1 },
   ];
 
   const heroAvatars = [
-    "https://i.pravatar.cc/64?img=12",
+    "https://i.pravatar.cc/64?img=5",
     "https://i.pravatar.cc/64?img=32",
     "https://i.pravatar.cc/64?img=45",
     "https://i.pravatar.cc/64?img=68",
@@ -2095,7 +2116,7 @@ const Landing = () => {
                   ))}
                 </div>
                 <span className="text-[11px] sm:text-[12.5px] font-semibold whitespace-nowrap" style={{ color: "var(--land-txt)" }}>
-                  Thousands  Already Joined
+                  Loved by 250,000+ users
                 </span>
               </div>
             </motion.div>
@@ -2140,17 +2161,15 @@ const Landing = () => {
               className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-8 sm:mb-10 w-full sm:w-auto px-4 sm:px-0"
             >
               <Magnetic strength={0.25}>
-               <Magnetic strength={0.25}>
-  <button onClick={() => navigate("/feed")} className="land-premium-btn-primary group w-full sm:w-auto">
-    <span className="relative z-10 flex items-center gap-2.5">
-      {copy.primaryCta}
-      <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
-    </span>
-    <span className="land-premium-btn-shine" />
-  </button>
-</Magnetic>
+                <button onClick={() => navigate("/feed")} className="land-premium-btn-primary group w-full sm:w-auto">
+                  <span className="relative z-10 flex items-center gap-2.5">
+                    {copy.primaryCta}
+                    <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
+                  </span>
+                  <span className="land-premium-btn-shine" />
+                </button>
               </Magnetic>
-              <button onClick={() => {}} className="land-premium-btn-ghost group w-full sm:w-auto">
+              <button onClick={() => setDemoOpen(true)} className="land-premium-btn-ghost group w-full sm:w-auto">
                 <span className="relative z-10 flex items-center gap-2.5">
                   <FaPlay className="text-[10px]" />
                   {copy.ghostCta}
@@ -2165,7 +2184,7 @@ const Landing = () => {
               transition={{ delay: 0.75, duration: 0.6 }}
               className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-2"
             >
-              {["Secure shopping", "Verified sellers", "Smart Ai Tools."].map((item) => (
+              {["Escrow protected", "Verified sellers", "AI-powered tools"].map((item) => (
                 <span key={item} className="inline-flex items-center gap-2 text-[12.5px] sm:text-[13.5px] font-medium" style={{ color: "var(--land-txt-soft)" }}>
                   <FaCheck className="text-[10px]" style={{ color: "var(--land-txt)" }} />
                   {item}
@@ -2265,14 +2284,14 @@ const Landing = () => {
                   Sell <span className="italic" style={{ color: "var(--land-primary)", fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic", fontWeight: 500 }}>Smarter</span>
                 </h2>
                 <p className="text-[13.5px] sm:text-[14.5px] leading-relaxed mb-4 sm:mb-5 max-w-[440px]" style={{ color: "var(--land-txt)" }}>
-                  Post items on the marketplace in seconds with built-in AI. Generate stunning product images, create short videos, and remove backgrounds with one click — no design skills needed.
+                  List anything in seconds with built-in AI. Generate stunning product images, create short-form videos, and remove backgrounds with one click — no design skills required.
                 </p>
                 <ul className="space-y-2 mb-5 sm:mb-6 max-w-[440px]">
                   {[
                     { icon: FaBolt, text: "AI product image generation in seconds" },
                     { icon: FaCamera, text: "Auto-generate videos for any listing" },
                     { icon: FaGem, text: "One-click background removal" },
-                    { icon: FaRocket, text: "Post & publish on the marketplace instantly" },
+                    { icon: FaRocket, text: "Post & publish to the marketplace instantly" },
                   ].map((item, i) => {
                     const Icon = item.icon;
                     return (
@@ -2287,14 +2306,14 @@ const Landing = () => {
                 </ul>
                 <div className="flex flex-col sm:flex-row items-center gap-2.5">
                   <Magnetic strength={0.2}>
-                  <button onClick={() => navigate("/ai-image")}
-  className="land-shimmer relative overflow-hidden inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-bold text-[13px] transition-transform hover:scale-105 w-full sm:w-auto"
-  style={{ background: "#0A0A12", color: "#FFFFFF" }}>
-  <FaBolt className="text-[10px]" />
-  Start Selling — It's Free
-</button>
+                    <button onClick={() => navigate("/ai-image")}
+                      className="land-shimmer relative overflow-hidden inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-bold text-[13px] transition-transform hover:scale-105 w-full sm:w-auto"
+                      style={{ background: "#0A0A12", color: "#FFFFFF" }}>
+                      <FaBolt className="text-[10px]" />
+                      Start Selling — It's Free
+                    </button>
                   </Magnetic>
-                  <button onClick={() => {}}
+                  <button onClick={() => setDemoOpen(true)}
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-semibold text-[13px] transition-colors w-full sm:w-auto"
                     style={{ background: "transparent", border: "1px solid var(--land-line-str)", color: "var(--land-txt)" }}>
                     <FaArrowRight className="text-[10px]" />
@@ -2393,7 +2412,7 @@ const Landing = () => {
                 </h2>
                 <p className="text-[15px] sm:text-[16px] leading-relaxed mb-8 max-w-[480px]"
                   style={{ color: isDark ? "rgba(255,255,255,0.65)" : "var(--land-txt-soft)" }}>
-                  Post, price, and publish on APNaDEAL 24/7 — AI generates images, videos, and removes backgrounds automatically.
+                  Post, price, and publish on Dealora 24/7 — AI generates images, videos, and removes backgrounds automatically.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <Magnetic strength={0.2}>
@@ -2475,130 +2494,116 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
-{/* ═══ CATEGORY ILLUSTRATION + Vehicles CTA ═══ */}
-<section
-  className="land-section relative z-10 px-0"
-  style={{ background: "var(--land-bg-2)" }}
->
-  <div className="w-full mx-auto px-4 sm:px-6 lg:px-10">
-    <div className="relative grid lg:grid-cols-2 gap-8 lg:gap-16 items-center mb-16 sm:mb-20">
-
-      <motion.div
-        initial={{ opacity: 0, x: -24 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="relative flex justify-center lg:justify-start"
+      {/* ═══ CATEGORY ILLUSTRATION + CTA ═══ */}
+      <section
+        className="land-section relative z-10 px-0"
+        style={{ background: "var(--land-bg-2)" }}
       >
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 50%, var(--land-primary-glow) 0%, transparent 65%)",
-            filter: "blur(60px)",
-            opacity: 0.35,
-          }}
-        />
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="relative grid lg:grid-cols-2 gap-8 lg:gap-16 items-center mb-16 sm:mb-20">
+            <motion.div
+              initial={{ opacity: 0, x: -24 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="relative flex justify-center lg:justify-start"
+            >
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{
+                  background: "radial-gradient(circle at 50% 50%, var(--land-primary-glow) 0%, transparent 65%)",
+                  filter: "blur(60px)",
+                  opacity: 0.35,
+                }}
+              />
+              <img
+                src="https://cdn.dribbble.com/userupload/43865763/file/original-25635eb5c3d08bc89ee616666299be18.png"
+                alt="People shopping"
+                className="relative w-full max-w-[460px] sm:max-w-[520px] h-auto select-none pointer-events-none"
+                loading="lazy"
+              />
+            </motion.div>
 
-        <img
-          src="https://cdn.dribbble.com/userupload/43865763/file/original-25635eb5c3d08bc89ee616666299be18.png"
-          alt="People shopping"
-          className="relative w-full max-w-[460px] sm:max-w-[520px] h-auto select-none pointer-events-none"
-          loading="lazy"
-        />
-      </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 24 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="max-w-[520px] mx-auto lg:mx-0 text-center lg:text-left"
+            >
+              <div className="inline-flex items-center gap-2 mb-5">
+                <span
+                  className="h-[2px] w-8 rounded-full"
+                  style={{ background: "linear-gradient(90deg, #e66000 0%, #ff7a1a 100%)" }}
+                />
+                <span
+                  className="text-[11px] font-bold uppercase tracking-[0.22em]"
+                  style={{ color: "var(--land-primary)" }}
+                >
+                  Marketplace
+                </span>
+              </div>
 
-      <motion.div
-        initial={{ opacity: 0, x: 24 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-[520px] mx-auto lg:mx-0 text-center lg:text-left"
-      >
-        <div className="inline-flex items-center gap-2 mb-5">
-          <span
-            className="h-[2px] w-8 rounded-full"
-            style={{
-              background:
-                "linear-gradient(90deg, #e66000 0%, #ff7a1a 100%)",
-            }}
-          />
-          <span
-            className="text-[11px] font-bold uppercase tracking-[0.22em]"
-            style={{ color: "var(--land-primary)" }}
-          >
-            Marketplace
-          </span>
+              <h2
+                className="land-font-body font-black tracking-[-0.035em] mb-5 leading-[1.05]"
+                style={{ fontSize: "clamp(30px, 4.6vw, 52px)", color: "var(--land-txt)" }}
+              >
+                Unforgettable{" "}
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                  }}
+                >
+                  Deals
+                </span>
+              </h2>
+
+              <p
+                className="text-[14.5px] sm:text-[15.5px] leading-[1.75] mb-7"
+                style={{ color: "var(--land-txt-soft)" }}
+              >
+                Curated listings, verified sellers, and full buyer protection — all in one place. From tech to real estate, we help buyers worldwide find exactly what they need and declare:{" "}
+                <span className="font-bold" style={{ color: "var(--land-txt)" }}>
+                  I found it!
+                </span>
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
+                <Link
+                  to="/vehicles"
+                  className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full font-bold text-[14px] transition-all duration-300 hover:scale-[1.03] w-full sm:w-auto"
+                  style={{
+                    background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
+                    color: "#FFFFFF",
+                    boxShadow: "none",
+                  }}
+                >
+                  <FaCar className="text-[13px]" />
+                  Browse Vehicles
+                  <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+                <Link
+                  to="/browse"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-semibold text-[14px] transition-all duration-300 w-full sm:w-auto"
+                  style={{
+                    background: "#FFFFFF",
+                    border: "1px solid rgba(20,20,30,0.10)",
+                    color: "#1A1613",
+                  }}
+                >
+                  See all categories
+                  <FaChevronRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-0.5" />
+                </Link>
+              </div>
+            </motion.div>
+          </div>
         </div>
-
-        <h2
-          className="land-font-body font-black tracking-[-0.035em] mb-5 leading-[1.05]"
-          style={{
-            fontSize: "clamp(30px, 4.6vw, 52px)",
-            color: "var(--land-txt)",
-          }}
-        >
-          Unforgettable{" "}
-          <span
-            style={{
-              background:
-                "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
-          >
-            Deals
-          </span>
-        </h2>
-
-        <p
-          className="text-[14.5px] sm:text-[15.5px] leading-[1.75] mb-7"
-          style={{ color: "var(--land-txt-soft)" }}
-        >
-          Products just seem to stick. That's why we curate the best listings to help
-          you find exactly what you need — verified sellers, fast delivery, and full
-          buyer protection. From mobiles to property, we help all buyers — young and
-          old, across Pakistan — reach their goals and declare:{" "}
-          <span className="font-bold" style={{ color: "var(--land-txt)" }}>
-            I found it!
-          </span>
-        </p>
-
-<div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-
-  <Link
-    to="/vehicles"
-    className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full font-bold text-[14px] transition-all duration-300 hover:scale-[1.03] w-full sm:w-auto"
-    style={{
-      background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
-      color: "#FFFFFF",
-      boxShadow: "none",
-    }}
-  >
-    <FaCar className="text-[13px]" />
-    Browse Vehicles
-    <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
-  </Link>
-<Link
-  to="/browse"
-  className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-semibold text-[14px] transition-all duration-300 w-full sm:w-auto"
-  style={{
-    background: "#FFFFFF",
-    border: "1px solid rgba(20,20,30,0.10)",
-    color: "#1A1613",
-  }}
->
-  See all categories
-  <FaChevronRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-0.5" />
-</Link>
-</div>
-      </motion.div>
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* ═══ HOW IT WORKS — video bg ═══ */}
       <section id="how" className="relative z-10 w-full">
@@ -2622,10 +2627,10 @@ const Landing = () => {
             style={{ background: "radial-gradient(ellipse at center, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.85) 60%, #0A0A0F 100%)" }} />
           <div className="relative w-full max-w-[1400px] mx-auto px-5 sm:px-8 py-20 text-center flex flex-col items-center">
             <p className="font-extrabold uppercase text-[11px] sm:text-[12px] tracking-[0.28em] mb-5 sm:mb-6"
-              style={{ color: "#e66000" }}>How Video Works</p>
+              style={{ color: "#e66000" }}>How Dealora Works</p>
             <h3 className="text-white w-full mb-6 px-2 sm:px-4"
               style={{ fontFamily: "'Manrope', system-ui, sans-serif", fontWeight: 900, fontSize: "clamp(28px, 7.5vw, 96px)", lineHeight: 1.05, letterSpacing: "-0.04em", textShadow: "0 4px 40px rgba(0,0,0,0.45)" }}>
-              <span className="block">From browse to Doorstep</span>
+              <span className="block">From browse to doorstep</span>
               <span className="block" style={{
                 background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 60%, #c75200 100%)",
                 WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent",
@@ -2643,7 +2648,7 @@ const Landing = () => {
               <button onClick={goSignup}
                 className="group inline-flex items-center justify-center gap-3 px-10 py-5 rounded-full font-extrabold text-[15px] sm:text-[17px] transition-all duration-300 hover:scale-[1.05]"
                 style={{ background: "linear-gradient(135deg, #ff7a1a 0%, #c75200 100%)", color: "#FFFFFF", boxShadow: "0 20px 50px -14px rgba(230,96,0,0.7)" }}>
-                Generate Video
+                Get Started
                 <FaArrowRight className="text-[13px] transition-transform duration-300 group-hover:translate-x-1.5" />
               </button>
             </Magnetic>
@@ -2651,500 +2656,494 @@ const Landing = () => {
         </div>
       </section>
 
-{/* ═══════════════════════════════════════════════════════
-    SELLERS CTA — centered + iPhone mockup
-   ═══════════════════════════════════════════════════════ */}
-<section id="sellers" className="relative z-10 py-14 sm:py-20 lg:py-28 overflow-hidden">
-  <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.65 }}
-      className="text-center mb-8 sm:mb-10"
-    >
-      <h2
-        className="font-black tracking-[-0.03em] leading-[1.08] mb-5 sm:mb-6 mx-auto"
-        style={{
-          fontFamily: "'Manrope', system-ui, sans-serif",
-          fontSize: "clamp(26px, 4.8vw, 56px)",
-          color: isDark ? "var(--land-txt)" : "#1A1613",
-          maxWidth: 780,
-        }}
-      >
-        The best way to grow your{" "}
-        <span style={{ color: "#e66000" }}> business</span>
-      </h2>
-
-      <p
-        className="text-[14px] sm:text-[15.5px] leading-relaxed max-w-[640px] mx-auto mb-8 px-2"
-        style={{ color: isDark ? "var(--land-txt-soft)" : "#6B7280" }}
-      >
-        Join 10,00+ sellers reaching thousend of buyers. List unlimited products,
-        track orders in real-time, and get paid instantly — all from one app.
-      </p>
-
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 mb-4">
-        <button
-          onClick={goSignup}
-          className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full font-bold text-[14px] transition-all duration-300 hover:scale-[1.04] w-full sm:w-auto"
-          style={{
-            background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
-            color: "#FFFFFF",
-            boxShadow: "0 16px 34px -12px rgba(230,96,0,0.6)",
-          }}
-        >
-          Start selling free
-          <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
-        </button>
-
-        <a
-          href="#pricing"
-          className="group inline-flex items-center gap-1.5 text-[14px] font-semibold transition-colors hover:opacity-80"
-          style={{ color: "#e66000" }}
-        >
-          See pricing
-          <FaChevronRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-0.5" />
-        </a>
-      </div>
-
-      <p
-        className="text-[11.5px] font-medium"
-        style={{ color: isDark ? "var(--land-txt-faint)" : "#9CA3AF" }}
-      >
-        No listing fees · Cancel anytime
-      </p>
-    </motion.div>
-
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.6, delay: 0.1 }}
-      className="flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-12 gap-y-5 mb-10 sm:mb-16"
-    >
-      {[
-        {
-          left: (
-            <div
-              className="h-11 w-11 sm:h-12 sm:w-12 rounded-full flex items-center justify-center font-black text-[9px] text-center leading-none flex-shrink-0"
-              style={{ border: "2px dashed #e66000", color: "#e66000", transform: "rotate(-6deg)" }}
+      {/* ═══ SELLERS CTA — centered + iPhone mockup ═══ */}
+      <section id="sellers" className="relative z-10 py-14 sm:py-20 lg:py-28 overflow-hidden">
+        <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.65 }}
+            className="text-center mb-8 sm:mb-10"
+          >
+            <h2
+              className="font-black tracking-[-0.03em] leading-[1.08] mb-5 sm:mb-6 mx-auto"
+              style={{
+                fontFamily: "'Manrope', system-ui, sans-serif",
+                fontSize: "clamp(26px, 4.8vw, 56px)",
+                color: isDark ? "var(--land-txt)" : "#1A1613",
+                maxWidth: 780,
+              }}
             >
-              ★<br />4.2
-            </div>
-          ),
-          label: "Endorsed as",
-          value: "Best Seller Hub",
-        },
-        {
-          left: (
-            <div
-              className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg flex items-center justify-center font-black text-[10px] flex-shrink-0"
-              style={{ background: "#1A1613", color: "#e66000" }}
-            >
-              ★5
-            </div>
-          ),
-          label: "Ranked",
-          value: "#1 Marketplace",
-        },
-        {
-          left: (
-            <div className="flex -space-x-2 flex-shrink-0">
-              {[
-                "https://i.pravatar.cc/64?img=12",
-                "https://i.pravatar.cc/64?img=32",
-                "https://i.pravatar.cc/64?img=45",
-              ].map((src, i) => (
-                <img
-                  key={i}
-                  src={src}
-                  alt=""
-                  className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover"
-                  style={{ border: `2px solid ${isDark ? "#1A1A2E" : "#FFFFFF"}` }}
-                />
-              ))}
-            </div>
-          ),
-          label: "Trusted by over",
-          value: "2000+ people",
-        },
-      ].map((badge, i) => (
-        <div key={i} className="flex items-center gap-3">
-          {badge.left}
-          <div className="text-left">
+              The best way to grow your{" "}
+              <span style={{ color: "#e66000" }}> business</span>
+            </h2>
+
             <p
-              className="text-[11px] sm:text-[11.5px] font-medium leading-tight"
+              className="text-[14px] sm:text-[15.5px] leading-relaxed max-w-[640px] mx-auto mb-8 px-2"
+              style={{ color: isDark ? "var(--land-txt-soft)" : "#6B7280" }}
+            >
+              Join 42,000+ sellers reaching millions of buyers. List unlimited products, track orders in real-time, and get paid instantly — all from one dashboard.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 mb-4">
+              <button
+                onClick={goSignup}
+                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full font-bold text-[14px] transition-all duration-300 hover:scale-[1.04] w-full sm:w-auto"
+                style={{
+                  background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
+                  color: "#FFFFFF",
+                  boxShadow: "0 16px 34px -12px rgba(230,96,0,0.6)",
+                }}
+              >
+                Start selling free
+                <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
+              </button>
+
+              <a
+                href="#pricing"
+                className="group inline-flex items-center gap-1.5 text-[14px] font-semibold transition-colors hover:opacity-80"
+                style={{ color: "#e66000" }}
+              >
+                See pricing
+                <FaChevronRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-0.5" />
+              </a>
+            </div>
+
+            <p
+              className="text-[11.5px] font-medium"
               style={{ color: isDark ? "var(--land-txt-faint)" : "#9CA3AF" }}
             >
-              {badge.label}
+              No listing fees · Cancel anytime
             </p>
-            <p
-              className="text-[12.5px] sm:text-[13.5px] font-bold leading-tight"
-              style={{ color: isDark ? "var(--land-txt)" : "#1A1613" }}
-            >
-              {badge.value}
-            </p>
-          </div>
-        </div>
-      ))}
-    </motion.div>
+          </motion.div>
 
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.8, delay: 0.15 }}
-      className="relative w-full max-w-[720px] mx-auto"
-    >
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="flex flex-wrap items-center justify-center gap-x-6 sm:gap-x-12 gap-y-5 mb-10 sm:mb-16"
+          >
+            {[
+              {
+                left: (
+                  <div
+                    className="h-11 w-11 sm:h-12 sm:w-12 rounded-full flex items-center justify-center font-black text-[9px] text-center leading-none flex-shrink-0"
+                    style={{ border: "2px dashed #e66000", color: "#e66000", transform: "rotate(-6deg)" }}
+                  >
+                    ★<br />4.9
+                  </div>
+                ),
+                label: "Endorsed as",
+                value: "Best Marketplace",
+              },
+              {
+                left: (
+                  <div
+                    className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg flex items-center justify-center font-black text-[10px] flex-shrink-0"
+                    style={{ background: "#1A1613", color: "#e66000" }}
+                  >
+                    ★5
+                  </div>
+                ),
+                label: "Ranked",
+                value: "#1 Global Platform",
+              },
+              {
+                left: (
+                  <div className="flex -space-x-2 flex-shrink-0">
+                    {[
+                      "https://i.pravatar.cc/64?img=5",
+                      "https://i.pravatar.cc/64?img=32",
+                      "https://i.pravatar.cc/64?img=45",
+                    ].map((src, i) => (
+                      <img
+                        key={i}
+                        src={src}
+                        alt=""
+                        className="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover"
+                        style={{ border: `2px solid ${isDark ? "#1A1A2E" : "#FFFFFF"}` }}
+                      />
+                    ))}
+                  </div>
+                ),
+                label: "Trusted by over",
+                value: "250,000+ users",
+              },
+            ].map((badge, i) => (
+              <div key={i} className="flex items-center gap-3">
+                {badge.left}
+                <div className="text-left">
+                  <p
+                    className="text-[11px] sm:text-[11.5px] font-medium leading-tight"
+                    style={{ color: isDark ? "var(--land-txt-faint)" : "#9CA3AF" }}
+                  >
+                    {badge.label}
+                  </p>
+                  <p
+                    className="text-[12.5px] sm:text-[13.5px] font-bold leading-tight"
+                    style={{ color: isDark ? "var(--land-txt)" : "#1A1613" }}
+                  >
+                    {badge.value}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </motion.div>
 
-      <div
-        className="absolute inset-0 -z-10 pointer-events-none"
-        style={{
-          backgroundImage: "radial-gradient(rgba(230,96,0,0.35) 1.2px, transparent 1.2px)",
-          backgroundSize: "14px 14px",
-          maskImage: "radial-gradient(ellipse at 50% 55%, black 0%, transparent 70%)",
-          WebkitMaskImage: "radial-gradient(ellipse at 50% 55%, black 0%, transparent 70%)",
-          opacity: isDark ? 0.5 : 0.55,
-        }}
-        aria-hidden="true"
-      />
-
-      <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[500px] h-[340px] sm:h-[500px] rounded-full blur-3xl opacity-30 pointer-events-none"
-        style={{ background: "radial-gradient(circle, #e66000, transparent 70%)" }}
-        aria-hidden="true"
-      />
-
-<div className="relative mx-auto w-full max-w-[280px] xs:max-w-[300px] sm:max-w-[340px] md:max-w-[380px] aspect-[9/18] sm:aspect-[9/18.5] md:aspect-[9/18.5]">
-        <div
-          className="relative h-full w-full rounded-[40px] sm:rounded-[48px] p-[8px] sm:p-[10px] overflow-hidden"
-          style={{
-            background: isDark ? "#1A1A2E" : "#0F0F1A",
-            boxShadow:
-              "0 40px 80px -30px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.06) inset",
-          }}
-        >
-          <div
-            className="relative h-full w-full rounded-[32px] sm:rounded-[38px] overflow-hidden flex flex-col"
-            style={{
-              background: isDark
-                ? "linear-gradient(180deg, #0F172A 0%, #0A0A12 100%)"
-                : "linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)",
-            }}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+            className="relative w-full max-w-[720px] mx-auto"
           >
             <div
-              className="flex items-center justify-between px-4 sm:px-6 pt-2.5 sm:pt-3 pb-1.5 text-[9px] sm:text-[10px] font-bold flex-shrink-0"
-              style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
-            >
-              <span>9:41</span>
-              <div className="flex items-center gap-1">
-                <span>▮▮▮</span>
-                <span>◆</span>
-                <span>🔋</span>
-              </div>
-            </div>
-
-            <div
-              className="absolute top-1.5 sm:top-2 left-1/2 -translate-x-1/2 h-4 sm:h-5 w-16 sm:w-20 rounded-full z-20"
-              style={{ background: "#0A0A0F" }}
+              className="absolute inset-0 -z-10 pointer-events-none"
+              style={{
+                backgroundImage: "radial-gradient(rgba(230,96,0,0.35) 1.2px, transparent 1.2px)",
+                backgroundSize: "14px 14px",
+                maskImage: "radial-gradient(ellipse at 50% 55%, black 0%, transparent 70%)",
+                WebkitMaskImage: "radial-gradient(ellipse at 50% 55%, black 0%, transparent 70%)",
+                opacity: isDark ? 0.5 : 0.55,
+              }}
+              aria-hidden="true"
             />
 
-            <div className="px-4 sm:px-5 pt-3 sm:pt-4 pb-2 sm:pb-3 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #e66000, #ff7a1a)" }}
-                >
-                  <FaStore className="text-white text-[9px]" />
-                </div>
-                <span
-                  className="text-[11px] font-black tracking-tight"
-                  style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
-                >
-                  Deal<span style={{ color: "#e66000" }}>ora</span>
-                </span>
-                <span className="ml-auto text-[9px] font-bold" style={{ color: "#e66000" }}>
-                  ● Live
-                </span>
-              </div>
-            </div>
-
             <div
-              className="mx-3 sm:mx-4 rounded-2xl p-2.5 sm:p-3.5 flex-shrink-0"
-              style={{
-                background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.08)"
-                  : "1px solid rgba(20,20,30,0.06)",
-              }}
-            >
-              <div className="flex items-center gap-1.5 mb-2">
-                <FaShieldAlt className="text-[10px]" style={{ color: "#10B981" }} />
-                <span
-                  className="text-[10px] font-bold"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[500px] h-[340px] sm:h-[500px] rounded-full blur-3xl opacity-30 pointer-events-none"
+              style={{ background: "radial-gradient(circle, #e66000, transparent 70%)" }}
+              aria-hidden="true"
+            />
+
+            <div className="relative mx-auto w-full max-w-[280px] xs:max-w-[300px] sm:max-w-[340px] md:max-w-[380px] aspect-[9/18] sm:aspect-[9/18.5] md:aspect-[9/18.5]">
+              <div
+                className="relative h-full w-full rounded-[40px] sm:rounded-[48px] p-[8px] sm:p-[10px] overflow-hidden"
+                style={{
+                  background: isDark ? "#1A1A2E" : "#0F0F1A",
+                  boxShadow: "0 40px 80px -30px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.06) inset",
+                }}
+              >
+                <div
+                  className="relative h-full w-full rounded-[32px] sm:rounded-[38px] overflow-hidden flex flex-col"
+                  style={{
+                    background: isDark
+                      ? "linear-gradient(180deg, #0F172A 0%, #0A0A12 100%)"
+                      : "linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%)",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-between px-4 sm:px-6 pt-2.5 sm:pt-3 pb-1.5 text-[9px] sm:text-[10px] font-bold flex-shrink-0"
+                    style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
+                  >
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1">
+                      <span>▮▮▮</span>
+                      <span>◆</span>
+                      <span>🔋</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="absolute top-1.5 sm:top-2 left-1/2 -translate-x-1/2 h-4 sm:h-5 w-16 sm:w-20 rounded-full z-20"
+                    style={{ background: "#0A0A0F" }}
+                  />
+
+                  <div className="px-4 sm:px-5 pt-3 sm:pt-4 pb-2 sm:pb-3 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: "linear-gradient(135deg, #e66000, #ff7a1a)" }}
+                      >
+                        <FaStore className="text-white text-[9px]" />
+                      </div>
+                      <span
+                        className="text-[11px] font-black tracking-tight"
+                        style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
+                      >
+                        Deal<span style={{ color: "#e66000" }}>ora</span>
+                      </span>
+                      <span className="ml-auto text-[9px] font-bold" style={{ color: "#e66000" }}>
+                        ● Live
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="mx-3 sm:mx-4 rounded-2xl p-2.5 sm:p-3.5 flex-shrink-0"
+                    style={{
+                      background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+                      border: isDark
+                        ? "1px solid rgba(255,255,255,0.08)"
+                        : "1px solid rgba(20,20,30,0.06)",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <FaShieldAlt className="text-[10px]" style={{ color: "#10B981" }} />
+                      <span
+                        className="text-[10px] font-bold"
+                        style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
+                      >
+                        Seller Active
+                      </span>
+                      <span
+                        className="ml-auto text-[8px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "rgba(16,185,129,0.15)", color: "#10B981" }}
+                      >
+                        On
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { v: "48", l: "Listings" },
+                        { v: "26", l: "Orders" },
+                        { v: "4.9", l: "Rating" },
+                      ].map((s, i) => (
+                        <div key={i} className="text-center">
+                          <p
+                            className="text-[13px] sm:text-[14px] font-black leading-none"
+                            style={{ color: "#e66000" }}
+                          >
+                            {s.v}
+                          </p>
+                          <p
+                            className="text-[7.5px] sm:text-[8px] uppercase tracking-wider mt-1 font-bold"
+                            style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9CA3AF" }}
+                          >
+                            {s.l}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="px-3 sm:px-4 mt-2.5 sm:mt-3 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 overflow-x-auto land-noscroll pb-1">
+                      {["All", "Vehicles", "Real Estate", "Mobiles", "Electronics"].map((cat, i) => {
+                        const active = i === 0;
+                        return (
+                          <span
+                            key={cat}
+                            className="text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0"
+                            style={{
+                              background: active
+                                ? "linear-gradient(135deg, #e66000, #ff7a1a)"
+                                : isDark
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(20,20,30,0.05)",
+                              color: active
+                                ? "#FFFFFF"
+                                : isDark
+                                ? "rgba(255,255,255,0.6)"
+                                : "#6B7280",
+                            }}
+                          >
+                            {cat}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="px-3 sm:px-4 mt-2 sm:mt-2.5 space-y-1.5 sm:space-y-2 flex-1 overflow-hidden">
+                    {[
+                      {
+                        name: "Tesla Model 3 2024",
+                        price: "$42,990",
+                        tag: "Vehicles",
+                        img: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=200&q=80",
+                      },
+                      {
+                        name: "Modern Loft · SoHo",
+                        price: "$1,250,000",
+                        tag: "Real Estate",
+                        img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=200&q=80",
+                      },
+                      {
+                        name: "iPhone 15 Pro Max",
+                        price: "$1,199",
+                        tag: "Mobiles",
+                        img: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=200&q=80",
+                      },
+                      {
+                        name: "MacBook Pro M3 Max",
+                        price: "$3,499",
+                        tag: "Electronics",
+                        img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=200&q=80",
+                      },
+                      {
+                        name: "Sony A7 IV Camera",
+                        price: "$2,499",
+                        tag: "Electronics",
+                        img: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?auto=format&fit=crop&w=200&q=80",
+                      },
+                      {
+                        name: "Rolex Submariner",
+                        price: "$14,500",
+                        tag: "Luxury",
+                        img: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=200&q=80",
+                      },
+                    ].map((p, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 sm:gap-2.5 p-1.5 sm:p-2 rounded-xl"
+                        style={{
+                          background: isDark
+                            ? "rgba(255,255,255,0.03)"
+                            : "rgba(20,20,30,0.03)",
+                        }}
+                      >
+                        <div
+                          className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex-shrink-0 overflow-hidden"
+                          style={{ background: "#F3F4F6" }}
+                        >
+                          <img
+                            src={p.img}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="text-[10px] sm:text-[10.5px] font-bold truncate"
+                            style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
+                          >
+                            {p.name}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className="text-[8.5px] sm:text-[9px] font-bold"
+                              style={{ color: "#e66000" }}
+                            >
+                              {p.price}
+                            </p>
+                            <span
+                              className="text-[7px] font-bold px-1 py-0.5 rounded"
+                              style={{
+                                background: isDark
+                                  ? "rgba(255,255,255,0.06)"
+                                  : "rgba(20,20,30,0.05)",
+                                color: isDark
+                                  ? "rgba(255,255,255,0.6)"
+                                  : "#6B7280",
+                              }}
+                            >
+                              {p.tag}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span
+                          className="text-[7.5px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: "rgba(230,96,0,0.15)", color: "#e66000" }}
+                        >
+                          Live
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    className="flex items-center justify-around py-2 sm:py-2.5 border-t flex-shrink-0"
+                    style={{
+                      borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(20,20,30,0.06)",
+                      background: isDark ? "#0A0A12" : "#FFFFFF",
+                    }}
+                  >
+                    {[FaStore, FaChartLine, FaUsers, FaCog].map((Icon, i) => {
+                      const active = i === 0;
+                      return (
+                        <Icon
+                          key={i}
+                          className="text-[12px] sm:text-[13px]"
+                          style={{
+                            color: active
+                              ? "#e66000"
+                              : isDark
+                              ? "rgba(255,255,255,0.3)"
+                              : "#9CA3AF",
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20, y: -10 }}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.5, duration: 0.6 }}
+                className="land-float absolute top-[14%] -left-4 xs:-left-6 sm:-left-12 z-20 rounded-2xl px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-xl"
+                style={{
+                  background: isDark ? "#1A1A2E" : "#FFFFFF",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid rgba(20,20,30,0.06)",
+                  minWidth: 120,
+                }}
+              >
+                <p
+                  className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider mb-0.5"
+                  style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9CA3AF" }}
+                >
+                  Your Store
+                </p>
+                <p
+                  className="text-[11.5px] sm:text-[12px] font-black"
                   style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
                 >
-                  Seller Active
-                </span>
-                <span
-                  className="ml-auto text-[8px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(16,185,129,0.15)", color: "#10B981" }}
-                >
-                  On
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { v: "48", l: "Listings" },
-                  { v: "26", l: "Orders" },
-                  { v: "4.9", l: "Rating" },
-                ].map((s, i) => (
-                  <div key={i} className="text-center">
+                  $124,500
+                </p>
+                <p className="text-[8.5px] sm:text-[9px] font-bold mt-0.5" style={{ color: "#10B981" }}>
+                  ↑ +18% this week
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20, y: 10 }}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.65, duration: 0.6 }}
+                className="land-float absolute bottom-[18%] -right-4 xs:-right-6 sm:-right-12 z-20 rounded-2xl px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-xl"
+                style={{
+                  background: isDark ? "#1A1A2E" : "#FFFFFF",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1px solid rgba(20,20,30,0.06)",
+                  animationDelay: "1.5s",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <img
+                    src="https://i.pravatar.cc/64?img=5"
+                    alt=""
+                    className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover"
+                  />
+                  <div>
                     <p
-                      className="text-[13px] sm:text-[14px] font-black leading-none"
-                      style={{ color: "#e66000" }}
-                    >
-                      {s.v}
-                    </p>
-                    <p
-                      className="text-[7.5px] sm:text-[8px] uppercase tracking-wider mt-1 font-bold"
+                      className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider"
                       style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9CA3AF" }}
                     >
-                      {s.l}
+                      New Sale
+                    </p>
+                    <p
+                      className="text-[10.5px] sm:text-[11px] font-black"
+                      style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
+                    >
+                      $42,500
                     </p>
                   </div>
-                ))}
-              </div>
+                </div>
+              </motion.div>
             </div>
-
-<div className="px-3 sm:px-4 mt-2.5 sm:mt-3 flex-shrink-0">
-  <div className="flex items-center gap-1.5 overflow-x-auto land-noscroll pb-1">
-    {["All", "Vehicles", "Property", "Mobiles", "Electronics"].map((cat, i) => {
-      const active = i === 0;
-      return (
-        <span
-          key={cat}
-          className="text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0"
-          style={{
-            background: active
-              ? "linear-gradient(135deg, #e66000, #ff7a1a)"
-              : isDark
-              ? "rgba(255,255,255,0.05)"
-              : "rgba(20,20,30,0.05)",
-            color: active
-              ? "#FFFFFF"
-              : isDark
-              ? "rgba(255,255,255,0.6)"
-              : "#6B7280",
-          }}
-        >
-          {cat}
-        </span>
-      );
-    })}
-  </div>
-</div>
-
-<div className="px-3 sm:px-4 mt-2 sm:mt-2.5 space-y-1.5 sm:space-y-2 flex-1 overflow-hidden">
-
-  {[
-    {
-      name: "Honda CD 70 2024",
-      price: "Rs 145,000",
-      tag: "Vehicles",
-      img: "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      name: "3 Bed Apartment",
-      price: "Rs 2,45,00,000",
-      tag: "Property",
-      img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      name: "iPhone 15 Pro Max",
-      price: "Rs 425,000",
-      tag: "Mobiles",
-      img: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      name: "Suzuki Alto VXL",
-      price: "Rs 2,850,000",
-      tag: "Vehicles",
-      img: "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      name: "MacBook Air M3",
-      price: "Rs 385,000",
-      tag: "Electronics",
-      img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      name: "Samsung 55\" 4K TV",
-      price: "Rs 165,000",
-      tag: "Electronics",
-      img: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=200&q=80",
-    },
-  ].map((p, i) => (
-    <div
-      key={i}
-      className="flex items-center gap-2 sm:gap-2.5 p-1.5 sm:p-2 rounded-xl"
-      style={{
-        background: isDark
-          ? "rgba(255,255,255,0.03)"
-          : "rgba(20,20,30,0.03)",
-      }}
-    >
-      <div
-        className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex-shrink-0 overflow-hidden"
-        style={{ background: "#F3F4F6" }}
-      >
-        <img
-          src={p.img}
-          alt={p.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-[10px] sm:text-[10.5px] font-bold truncate"
-          style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
-        >
-          {p.name}
-        </p>
-        <div className="flex items-center gap-1.5">
-          <p
-            className="text-[8.5px] sm:text-[9px] font-bold"
-            style={{ color: "#e66000" }}
-          >
-            {p.price}
-          </p>
-          <span
-            className="text-[7px] font-bold px-1 py-0.5 rounded"
-            style={{
-              background: isDark
-                ? "rgba(255,255,255,0.06)"
-                : "rgba(20,20,30,0.05)",
-              color: isDark
-                ? "rgba(255,255,255,0.6)"
-                : "#6B7280",
-            }}
-          >
-            {p.tag}
-          </span>
+          </motion.div>
         </div>
-      </div>
-
-      <span
-        className="text-[7.5px] sm:text-[8px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-        style={{ background: "rgba(230,96,0,0.15)", color: "#e66000" }}
-      >
-        Live
-      </span>
-    </div>
-  ))}
-</div>
-            <div
-              className="flex items-center justify-around py-2 sm:py-2.5 border-t flex-shrink-0"
-              style={{
-                borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(20,20,30,0.06)",
-                background: isDark ? "#0A0A12" : "#FFFFFF",
-              }}
-            >
-              {[FaStore, FaChartLine, FaUsers, FaCog].map((Icon, i) => {
-                const active = i === 0;
-                return (
-                  <Icon
-                    key={i}
-                    className="text-[12px] sm:text-[13px]"
-                    style={{
-                      color: active
-                        ? "#e66000"
-                        : isDark
-                        ? "rgba(255,255,255,0.3)"
-                        : "#9CA3AF",
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, x: -20, y: -10 }}
-          whileInView={{ opacity: 1, x: 0, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="land-float absolute top-[14%] -left-4 xs:-left-6 sm:-left-12 z-20 rounded-2xl px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-xl"
-          style={{
-            background: isDark ? "#1A1A2E" : "#FFFFFF",
-            border: isDark
-              ? "1px solid rgba(255,255,255,0.08)"
-              : "1px solid rgba(20,20,30,0.06)",
-            minWidth: 120,
-          }}
-        >
-          <p
-            className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider mb-0.5"
-            style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9CA3AF" }}
-          >
-            Your Store
-          </p>
-          <p
-            className="text-[11.5px] sm:text-[12px] font-black"
-            style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
-          >
-            Rs 124,500
-          </p>
-          <p className="text-[8.5px] sm:text-[9px] font-bold mt-0.5" style={{ color: "#10B981" }}>
-            ↑ +18% this week
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 20, y: 10 }}
-          whileInView={{ opacity: 1, x: 0, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.65, duration: 0.6 }}
-          className="land-float absolute bottom-[18%] -right-4 xs:-right-6 sm:-right-12 z-20 rounded-2xl px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-xl"
-          style={{
-            background: isDark ? "#1A1A2E" : "#FFFFFF",
-            border: isDark
-              ? "1px solid rgba(255,255,255,0.08)"
-              : "1px solid rgba(20,20,30,0.06)",
-            animationDelay: "1.5s",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <img
-              src="https://i.pravatar.cc/64?img=12"
-              alt=""
-              className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover"
-            />
-            <div>
-              <p
-                className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider"
-                style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9CA3AF" }}
-              >
-                New Sale
-              </p>
-              <p
-                className="text-[10.5px] sm:text-[11px] font-black"
-                style={{ color: isDark ? "#FFFFFF" : "#1A1613" }}
-              >
-                Rs 42,500
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
-  </div>
-</section>
+      </section>
 
       {/* ═══ PRICING ═══ */}
       <section id="pricing" className="relative z-10 py-14 sm:py-20 lg:py-24 overflow-hidden scroll-mt-24">
@@ -3231,7 +3230,7 @@ const Landing = () => {
                       <p className="text-[12.5px] leading-snug mb-5" style={{ color: "var(--land-txt-soft)" }}>{plan.tagline}</p>
                       <div className="flex items-baseline gap-2 flex-wrap">
                         <span className="font-black leading-none" style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(36px, 5vw, 48px)", color: "var(--land-txt)", letterSpacing: "-0.045em" }}>
-                          {priceValue === 0 ? "Free" : `Rs ${priceValue.toLocaleString()}`}
+                          {priceValue === 0 ? "Free" : `$${priceValue.toLocaleString()}`}
                         </span>
                         {priceValue > 0 && <span className="text-[12.5px] font-semibold" style={{ color: "var(--land-txt-soft)" }}>/{period}</span>}
                       </div>
@@ -3271,442 +3270,433 @@ const Landing = () => {
         </div>
       </section>
 
-<section
-  className="relative z-10 py-14 sm:py-20 lg:py-24 overflow-hidden"
-  style={{ background: "var(--land-bg-2)" }}
->
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.65 }}
-      className="text-center mb-10 sm:mb-14"
-    >
-      <p
-        className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.28em] mb-3"
-        style={{ color: "#e66000" }}
+      {/* ═══ TESTIMONIALS / SOCIAL PROOF ═══ */}
+      <section
+        className="relative z-10 py-14 sm:py-20 lg:py-24 overflow-hidden"
+        style={{ background: "var(--land-bg-2)" }}
       >
-        Loved by users
-      </p>
-      <h2
-        className="font-black tracking-[-0.03em] leading-[1.05] mb-4"
-        style={{
-          fontFamily: "'Fraunces', Georgia, serif",
-          fontSize: "clamp(28px, 4.5vw, 52px)",
-          color: "var(--land-txt)",
-        }}
-      >
-        What our customers{" "}
-        <span style={{ color: "#e66000" }}>say</span>
-      </h2>
-      <p
-        className="text-[14.5px] sm:text-[16px] leading-relaxed max-w-2xl mx-auto"
-        style={{ color: "var(--land-txt-soft)" }}
-      >
-       Thousands of people are choosing APNaDEAL to discover great products, connect with sellers, and grow their businesses. Shop with confidence 
-       and sell with powerful tools built for you.
-      </p>
-    </motion.div>
-
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.6 }}
-      className="relative rounded-3xl p-5 sm:p-8 mb-10 sm:mb-14 overflow-hidden"
-      style={{
-        background: isDark
-          ? "linear-gradient(135deg, rgba(230,96,0,0.08) 0%, rgba(255,255,255,0.02) 100%)"
-          : "linear-gradient(135deg, #FFF4E0 0%, #FFFFFF 100%)",
-        border: isDark
-          ? "1px solid rgba(230,96,0,0.15)"
-          : "1px solid rgba(230,96,0,0.15)",
-      }}
-    >
-      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 items-center">
-
-        <div className="text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <FaStar key={s} className="text-[18px] sm:text-[22px]" style={{ color: "#e66000" }} />
-            ))}
-          </div>
-          <div className="flex items-baseline gap-2 justify-center md:justify-start">
-            <span
-              className="font-black leading-none"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.65 }}
+            className="text-center mb-10 sm:mb-14"
+          >
+            <p
+              className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.28em] mb-3"
+              style={{ color: "#e66000" }}
+            >
+              Loved by users
+            </p>
+            <h2
+              className="font-black tracking-[-0.03em] leading-[1.05] mb-4"
               style={{
                 fontFamily: "'Fraunces', Georgia, serif",
-                fontSize: "clamp(40px, 6vw, 64px)",
+                fontSize: "clamp(28px, 4.5vw, 52px)",
                 color: "var(--land-txt)",
               }}
             >
-              4.9
-            </span>
-            <span className="text-[14px] font-semibold" style={{ color: "var(--land-txt-soft)" }}>
-              / 5.0
-            </span>
-          </div>
-          <p
-            className="text-[12.5px] font-medium mt-2"
-            style={{ color: "var(--land-txt-soft)" }}
+              What our customers{" "}
+              <span style={{ color: "#e66000" }}>say</span>
+            </h2>
+            <p
+              className="text-[14.5px] sm:text-[16px] leading-relaxed max-w-2xl mx-auto"
+              style={{ color: "var(--land-txt-soft)" }}
+            >
+              Thousands of people worldwide choose ApexDeal to discover great products, connect with trusted sellers, and grow their businesses. Shop with confidence and sell with powerful tools built for you.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+            className="relative rounded-3xl p-5 sm:p-8 mb-10 sm:mb-14 overflow-hidden"
+            style={{
+              background: isDark
+                ? "linear-gradient(135deg, rgba(230,96,0,0.08) 0%, rgba(255,255,255,0.02) 100%)"
+                : "linear-gradient(135deg, #FFF4E0 0%, #FFFFFF 100%)",
+              border: isDark
+                ? "1px solid rgba(230,96,0,0.15)"
+                : "1px solid rgba(230,96,0,0.15)",
+            }}
           >
-            Based on 24,800+ verified reviews
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          {[
-            { stars: 5, pct: 94 },
-            { stars: 4, pct: 5 },
-            { stars: 3, pct: 1 },
-          ].map((row) => (
-            <div key={row.stars} className="flex items-center gap-3">
-              <span
-                className="text-[11.5px] font-bold w-8 text-right flex-shrink-0"
-                style={{ color: "var(--land-txt-soft)" }}
-              >
-                {row.stars}★
-              </span>
-              <div
-                className="flex-1 h-2 rounded-full overflow-hidden"
-                style={{
-                  background: isDark ? "rgba(255,255,255,0.06)" : "rgba(20,20,30,0.06)",
-                }}
-              >
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: `${row.pct}%` }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="h-full rounded-full"
-                  style={{ background: "linear-gradient(90deg, #e66000, #ff7a1a)" }}
-                />
-              </div>
-              <span
-                className="text-[11.5px] font-bold w-10 flex-shrink-0"
-                style={{ color: "var(--land-txt-soft)" }}
-              >
-                {row.pct}%
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
-          {[
-            { v: "500+", l: "Happy users" },
-            { v: "10000+", l: "Deals closed" },
-            { v: "5000+", l: "Sellers" },
-          ].map((s, i) => (
-            <div key={i} className="text-center">
-              <p
-                className="font-black leading-none"
-                style={{
-                  fontFamily: "'Fraunces', Georgia, serif",
-                  fontSize: "clamp(20px, 2.8vw, 28px)",
-                  color: "#e66000",
-                }}
-              >
-                {s.v}
-              </p>
-              <p
-                className="text-[10.5px] font-bold uppercase tracking-wider mt-1.5"
-                style={{ color: "var(--land-txt-soft)" }}
-              >
-                {s.l}
-              </p>
-            </div>
-          ))}
-        </div>
-
-      </div>
-    </motion.div>
-
-    <div className="mb-10 sm:mb-14 relative overflow-hidden">
-      <p
-        className="text-center text-[11px] font-bold uppercase tracking-[0.28em] mb-5"
-        style={{ color: "var(--land-txt-faint)" }}
-      >
-        Trusted by teams & sellers across
-      </p>
-
-      <div className="relative">
-        <div
-          className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 z-10 pointer-events-none"
-          style={{
-            background: `linear-gradient(90deg, var(--land-bg-2) 0%, transparent 100%)`,
-          }}
-          aria-hidden="true"
-        />
-        <div
-          className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 z-10 pointer-events-none"
-          style={{
-            background: `linear-gradient(270deg, var(--land-bg-2) 0%, transparent 100%)`,
-          }}
-          aria-hidden="true"
-        />
-
-        <div className="flex gap-10 sm:gap-14 marquee-track">
-          {[...Array(2)].map((_, dupIdx) => (
-            <div key={dupIdx} className="flex gap-10 sm:gap-14 flex-shrink-0">
-              {["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta"].map((city) => (
-                <span
-                  key={`${dupIdx}-${city}`}
-                  className="text-[15px] sm:text-[17px] font-black tracking-tight whitespace-nowrap select-none"
-                  style={{ color: "var(--land-txt)", opacity: 0.55 }}
+            <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10 items-center">
+              <div className="text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <FaStar key={s} className="text-[18px] sm:text-[22px]" style={{ color: "#e66000" }} />
+                  ))}
+                </div>
+                <div className="flex items-baseline gap-2 justify-center md:justify-start">
+                  <span
+                    className="font-black leading-none"
+                    style={{
+                      fontFamily: "'Fraunces', Georgia, serif",
+                      fontSize: "clamp(40px, 6vw, 64px)",
+                      color: "var(--land-txt)",
+                    }}
+                  >
+                    4.9
+                  </span>
+                  <span className="text-[14px] font-semibold" style={{ color: "var(--land-txt-soft)" }}>
+                    / 5.0
+                  </span>
+                </div>
+                <p
+                  className="text-[12.5px] font-medium mt-2"
+                  style={{ color: "var(--land-txt-soft)" }}
                 >
-                  {city}
-                </span>
-              ))}
+                  Based on 128,000+ verified reviews
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {[
+                  { stars: 5, pct: 94 },
+                  { stars: 4, pct: 5 },
+                  { stars: 3, pct: 1 },
+                ].map((row) => (
+                  <div key={row.stars} className="flex items-center gap-3">
+                    <span
+                      className="text-[11.5px] font-bold w-8 text-right flex-shrink-0"
+                      style={{ color: "var(--land-txt-soft)" }}
+                    >
+                      {row.stars}★
+                    </span>
+                    <div
+                      className="flex-1 h-2 rounded-full overflow-hidden"
+                      style={{
+                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(20,20,30,0.06)",
+                      }}
+                    >
+                      <motion.div
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${row.pct}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="h-full rounded-full"
+                        style={{ background: "linear-gradient(90deg, #e66000, #ff7a1a)" }}
+                      />
+                    </div>
+                    <span
+                      className="text-[11.5px] font-bold w-10 flex-shrink-0"
+                      style={{ color: "var(--land-txt-soft)" }}
+                    >
+                      {row.pct}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                {[
+                  { v: "250K+", l: "Happy users" },
+                  { v: "1.8M+", l: "Deals closed" },
+                  { v: "42K+", l: "Sellers" },
+                ].map((s, i) => (
+                  <div key={i} className="text-center">
+                    <p
+                      className="font-black leading-none"
+                      style={{
+                        fontFamily: "'Fraunces', Georgia, serif",
+                        fontSize: "clamp(20px, 2.8vw, 28px)",
+                        color: "#e66000",
+                      }}
+                    >
+                      {s.v}
+                    </p>
+                    <p
+                      className="text-[10.5px] font-bold uppercase tracking-wider mt-1.5"
+                      style={{ color: "var(--land-txt-soft)" }}
+                    >
+                      {s.l}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
+          </motion.div>
 
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7 }}
-      className="relative rounded-3xl p-6 sm:p-10 mb-10 sm:mb-12 overflow-hidden"
-      style={{
-        background: "var(--land-bg-3)",
-        border: "1px solid var(--land-line)",
-      }}
-    >
-      <div
-        className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-25 pointer-events-none"
-        style={{ background: "radial-gradient(circle, #e66000, transparent 70%)" }}
-        aria-hidden="true"
-      />
+          <div className="mb-10 sm:mb-14 relative overflow-hidden">
+            <p
+              className="text-center text-[11px] font-bold uppercase tracking-[0.28em] mb-5"
+              style={{ color: "var(--land-txt-faint)" }}
+            >
+              Trusted by teams & sellers across
+            </p>
 
-      <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-start">
-        <div>
-          <p
-            className="leading-relaxed mb-6"
-            style={{
-              fontFamily: "'Fraunces', Georgia, serif",
-              fontSize: "clamp(18px, 2.4vw, 26px)",
-              color: "var(--land-txt)",
-              fontWeight: 500,
-              lineHeight: 1.4,
-            }}
-          >
-          APNaDeal completely changed how I run my property business. I list apartments in seconds with the AI tools, chat with buyers instantly,
-           and close deals the same week — I've tripled my sales in 3 months.
-          </p>
+            <div className="relative">
+              <div
+                className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 z-10 pointer-events-none"
+                style={{ background: `linear-gradient(90deg, var(--land-bg-2) 0%, transparent 100%)` }}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 z-10 pointer-events-none"
+                style={{ background: `linear-gradient(270deg, var(--land-bg-2) 0%, transparent 100%)` }}
+                aria-hidden="true"
+              />
 
-          <div className="flex items-center gap-3">
-            <img
-              src="https://i.pravatar.cc/80?img=12"
-              alt="Fatima Ali"
-              className="h-12 w-12 rounded-full object-cover"
-              style={{ border: "2px solid #e66000" }}
-              loading="lazy"
-            />
-            <div>
-              <p
-                className="text-[14px] font-black leading-tight"
-                style={{ color: "var(--land-txt)" }}
-              >
-                Fatima Ali
-              </p>
-              <p
-                className="text-[12px] font-medium leading-tight"
-                style={{ color: "var(--land-txt-soft)" }}
-              >
-                Verified Seller · Karachi
-              </p>
+              <div className="flex gap-10 sm:gap-14 marquee-track">
+                {[...Array(2)].map((_, dupIdx) => (
+                  <div key={dupIdx} className="flex gap-10 sm:gap-14 flex-shrink-0">
+                    {["New York", "London", "Tokyo", "Dubai", "Singapore", "Toronto", "Sydney", "Berlin"].map((city) => (
+                      <span
+                        key={`${dupIdx}-${city}`}
+                        className="text-[15px] sm:text-[17px] font-black tracking-tight whitespace-nowrap select-none"
+                        style={{ color: "var(--land-txt)", opacity: 0.55 }}
+                      >
+                        {city}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          className="rounded-2xl p-4 sm:p-5 flex-shrink-0 lg:w-52"
-          style={{
-            background: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
-            border: "1px solid var(--land-line)",
-          }}
-        >
-          <p
-            className="text-[10.5px] font-bold uppercase tracking-wider mb-2"
-            style={{ color: "var(--land-txt-soft)" }}
-          >
-            This month
-          </p>
-          <p
-            className="font-black leading-none mb-1"
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.7 }}
+            className="relative rounded-3xl p-6 sm:p-10 mb-10 sm:mb-12 overflow-hidden"
             style={{
-              fontFamily: "'Fraunces', Georgia, serif",
-              fontSize: "32px",
-              color: "#e66000",
+              background: "var(--land-bg-3)",
+              border: "1px solid var(--land-line)",
             }}
           >
-            +240%
-          </p>
-          <p className="text-[11.5px] font-semibold" style={{ color: "#10B981" }}>
-            ↑ sales growth
-          </p>
+            <div
+              className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-25 pointer-events-none"
+              style={{ background: "radial-gradient(circle, #e66000, transparent 70%)" }}
+              aria-hidden="true"
+            />
+
+            <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-start">
+              <div>
+                <p
+                  className="leading-relaxed mb-6"
+                  style={{
+                    fontFamily: "'Fraunces', Georgia, serif",
+                    fontSize: "clamp(18px, 2.4vw, 26px)",
+                    color: "var(--land-txt)",
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  ApexDeal completely transformed how I run my real estate business. I list properties in seconds with the AI tools, chat with buyers instantly, and close deals the same week — I've tripled my revenue in 3 months.
+                </p>
+
+                <div className="flex items-center gap-3">
+                  <img
+                    src="https://i.pravatar.cc/80?img=47"
+                    alt="Elena Vasquez"
+                    className="h-12 w-12 rounded-full object-cover"
+                    style={{ border: "2px solid #e66000" }}
+                    loading="lazy"
+                  />
+                  <div>
+                    <p
+                      className="text-[14px] font-black leading-tight"
+                      style={{ color: "var(--land-txt)" }}
+                    >
+                      Elena Vasquez
+                    </p>
+                    <p
+                      className="text-[12px] font-medium leading-tight"
+                      style={{ color: "var(--land-txt-soft)" }}
+                    >
+                      Verified Seller · Miami
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="rounded-2xl p-4 sm:p-5 flex-shrink-0 lg:w-52"
+                style={{
+                  background: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
+                  border: "1px solid var(--land-line)",
+                }}
+              >
+                <p
+                  className="text-[10.5px] font-bold uppercase tracking-wider mb-2"
+                  style={{ color: "var(--land-txt-soft)" }}
+                >
+                  This month
+                </p>
+                <p
+                  className="font-black leading-none mb-1"
+                  style={{
+                    fontFamily: "'Fraunces', Georgia, serif",
+                    fontSize: "32px",
+                    color: "#e66000",
+                  }}
+                >
+                  +240%
+                </p>
+                <p className="text-[11.5px] font-semibold" style={{ color: "#10B981" }}>
+                  ↑ sales growth
+                </p>
+
+                <div
+                  className="mt-4 pt-4"
+                  style={{ borderTop: "1px solid var(--land-line)" }}
+                >
+                  <div className="flex items-center gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <FaStar key={s} className="text-[10px]" style={{ color: "#e66000" }} />
+                    ))}
+                  </div>
+                  <p className="text-[10.5px] font-medium" style={{ color: "var(--land-txt-soft)" }}>
+                    Seller rating
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
           <div
-            className="mt-4 pt-4"
-            style={{ borderTop: "1px solid var(--land-line)" }}
+            className="
+              tm-scroll
+              flex md:grid md:grid-cols-3
+              gap-4 sm:gap-5 md:gap-5
+              md:overflow-visible
+              snap-x snap-mandatory
+              pb-3 md:pb-0
+            "
           >
-            <div className="flex items-center gap-1 mb-1">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <FaStar key={s} className="text-[10px]" style={{ color: "#e66000" }} />
-              ))}
-            </div>
-            <p className="text-[10.5px] font-medium" style={{ color: "var(--land-txt-soft)" }}>
-              Seller rating
-            </p>
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ delay: i * 0.1, duration: 0.55 }}
+                whileHover={{ y: -6 }}
+                className="
+                  relative rounded-2xl p-5 sm:p-6
+                  transition-shadow duration-300
+                  flex-shrink-0
+                  w-[82vw] xs:w-[74vw] sm:w-[56vw] md:w-auto
+                  snap-center md:snap-align-none
+                "
+                style={{
+                  background: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
+                  border: "1px solid var(--land-line)",
+                  boxShadow: isDark
+                    ? "0 6px 24px -14px rgba(0,0,0,0.5)"
+                    : "0 6px 24px -14px rgba(20,20,30,0.08)",
+                }}
+              >
+                <p
+                  className="text-[13.5px] leading-relaxed mb-5"
+                  style={{ color: "var(--land-txt)" }}
+                >
+                  {t.text}
+                </p>
+
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(t.rating)].map((_, idx) => (
+                    <FaStar key={idx} className="text-[11px]" style={{ color: "#e66000" }} />
+                  ))}
+                </div>
+
+                <div
+                  className="flex items-center gap-3 pt-4"
+                  style={{ borderTop: "1px solid var(--land-line)" }}
+                >
+                  <div
+                    className="h-10 w-10 rounded-full flex items-center justify-center font-black text-[13px] flex-shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #e66000, #ff7a1a)",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {t.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-[13px] font-bold truncate"
+                      style={{ color: "var(--land-txt)" }}
+                    >
+                      {t.name}
+                    </p>
+                    <p
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--land-txt-soft)" }}
+                    >
+                      {t.role}
+                    </p>
+                  </div>
+
+                  <span
+                    className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9.5px] font-bold"
+                    style={{
+                      background: "rgba(16,185,129,0.12)",
+                      color: "#10B981",
+                    }}
+                  >
+                    ✓ Verified
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      </div>
-    </motion.div>
 
-<div
-  className="
-    tm-scroll
-    flex md:grid md:grid-cols-3
-    gap-4 sm:gap-5 md:gap-5
-    md:overflow-visible
-    snap-x snap-mandatory
-    pb-3 md:pb-0
-  "
->
-  {testimonials.map((t, i) => (
-    <motion.div
-      key={t.name}
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ delay: i * 0.1, duration: 0.55 }}
-      whileHover={{ y: -6 }}
-      className="
-        relative rounded-2xl p-5 sm:p-6
-        transition-shadow duration-300
-        flex-shrink-0
-        w-[82vw] xs:w-[74vw] sm:w-[56vw] md:w-auto
-        snap-center md:snap-align-none
-      "
-      style={{
-        background: isDark ? "rgba(255,255,255,0.03)" : "#FFFFFF",
-        border: "1px solid var(--land-line)",
-        boxShadow: isDark
-          ? "0 6px 24px -14px rgba(0,0,0,0.5)"
-          : "0 6px 24px -14px rgba(20,20,30,0.08)",
-      }}
-    >
-      <p
-        className="text-[13.5px] leading-relaxed mb-5"
-        style={{ color: "var(--land-txt)" }}
-      >
-        {t.text}
-      </p>
-
-      <div className="flex items-center gap-1 mb-4">
-        {[...Array(t.rating)].map((_, idx) => (
-          <FaStar key={idx} className="text-[11px]" style={{ color: "#e66000" }} />
-        ))}
-      </div>
-
-      <div
-        className="flex items-center gap-3 pt-4"
-        style={{ borderTop: "1px solid var(--land-line)" }}
-      >
-        <div
-          className="h-10 w-10 rounded-full flex items-center justify-center font-black text-[13px] flex-shrink-0"
-          style={{
-            background: "linear-gradient(135deg, #e66000, #ff7a1a)",
-            color: "#FFFFFF",
-          }}
-        >
-          {t.name.charAt(0)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p
-            className="text-[13px] font-bold truncate"
-            style={{ color: "var(--land-txt)" }}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3, duration: 0.55 }}
+            className="text-center mt-10 sm:mt-14"
           >
-            {t.name}
-          </p>
-          <p
-            className="text-[11px] truncate"
-            style={{ color: "var(--land-txt-soft)" }}
-          >
-            {t.role}
-          </p>
+            <p
+              className="text-[13.5px] sm:text-[14.5px] font-semibold mb-4"
+              style={{ color: "var(--land-txt-soft)" }}
+            >
+              Join thousands of happy buyers & sellers today
+            </p>
+            <button
+              onClick={goSignup}
+              className="group inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-full font-bold text-[13.5px] transition-all duration-300 hover:scale-[1.04]"
+              style={{
+                background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
+                color: "#FFFFFF",
+                boxShadow: "0 14px 30px -12px rgba(230,96,0,0.6)",
+              }}
+            >
+              Create free account
+              <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
+            </button>
+          </motion.div>
         </div>
 
-        <span
-          className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9.5px] font-bold"
-          style={{
-            background: "rgba(16,185,129,0.12)",
-            color: "#10B981",
-          }}
-        >
-          ✓ Verified
-        </span>
-      </div>
-    </motion.div>
-  ))}
-</div>
-
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: 0.3, duration: 0.55 }}
-      className="text-center mt-10 sm:mt-14"
-    >
-      <p
-        className="text-[13.5px] sm:text-[14.5px] font-semibold mb-4"
-        style={{ color: "var(--land-txt-soft)" }}
-      >
-        Join thousands of happy buyers & sellers today
-      </p>
-      <button
-        onClick={goSignup}
-        className="group inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-full font-bold text-[13.5px] transition-all duration-300 hover:scale-[1.04]"
-        style={{
-          background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 100%)",
-          color: "#FFFFFF",
-          boxShadow: "0 14px 30px -12px rgba(230,96,0,0.6)",
-        }}
-      >
-        Create free account
-        <FaArrowRight className="text-[11px] transition-transform duration-300 group-hover:translate-x-1" />
-      </button>
-    </motion.div>
-
-  </div>
-
-  <style>{`
-    @keyframes testimonials-marquee {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-    .marquee-track {
-      width: max-content;
-      animation: testimonials-marquee 30s linear infinite;
-    }
-    .marquee-track:hover {
-      animation-play-state: paused;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .marquee-track { animation: none; }
-    }
-  `}</style>
-</section>
+        <style>{`
+          @keyframes testimonials-marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          .marquee-track {
+            width: max-content;
+            animation: testimonials-marquee 30s linear infinite;
+          }
+          .marquee-track:hover {
+            animation-play-state: paused;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .marquee-track { animation: none; }
+          }
+        `}</style>
+      </section>
 
       {/* ═══ FAQ ═══ */}
       <section id="faq" className="land-section relative z-10 px-4 sm:px-6 lg:px-8" style={{ background: "var(--land-bg-2)" }}>
         <div className="max-w-3xl mx-auto">
-          <SectionHeader label="FAQ" title="Questions? We've got answers" subtitle="Everything you need to know about buying and selling on APNaDEAL." />
+          <SectionHeader label="FAQ" title="Questions? We've got answers" subtitle="Everything you need to know about buying and selling on Dealora." />
           <div className="space-y-3">
             {faqs.map((faq, i) => (
               <FAQItem key={i} faq={faq} index={i} />
@@ -3728,17 +3718,17 @@ const Landing = () => {
             <div className="absolute inset-0" style={{ background: isDark ? "linear-gradient(135deg, #0F0F1A 0%, #0A0A12 100%)" : "linear-gradient(135deg, #1A1613 0%, #0F0F1A 100%)" }} />
             <div className="relative px-6 sm:px-10 lg:px-16 py-14 sm:py-16 lg:py-20 text-center">
               <p className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.28em] mb-5" style={{ color: "#e66000" }}>Get started today</p>
-                 <h3 className="text-white w-full mb-6 px-2 sm:px-4"
-              style={{ fontFamily: "'Manrope', system-ui, sans-serif", fontWeight: 900, fontSize: "clamp(28px, 7.5vw, 96px)", lineHeight: 1.05, letterSpacing: "-0.04em", textShadow: "0 4px 40px rgba(0,0,0,0.45)" }}>
-              <span className="block">  Ready to start </span>
-              <span className="block" style={{
-                background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 60%, #c75200 100%)",
-                WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent",
-                fontStyle: "italic", fontWeight: 800,
-              }}> Journey?</span>
-            </h3>
+              <h3 className="text-white w-full mb-6 px-2 sm:px-4"
+                style={{ fontFamily: "'Manrope', system-ui, sans-serif", fontWeight: 900, fontSize: "clamp(28px, 7.5vw, 96px)", lineHeight: 1.05, letterSpacing: "-0.04em", textShadow: "0 4px 40px rgba(0,0,0,0.45)" }}>
+                <span className="block">Ready to start</span>
+                <span className="block" style={{
+                  background: "linear-gradient(135deg, #e66000 0%, #ff7a1a 60%, #c75200 100%)",
+                  WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent",
+                  fontStyle: "italic", fontWeight: 800,
+                }}>your journey?</span>
+              </h3>
               <p className="text-[14px] sm:text-[16px] leading-relaxed max-w-[560px] mx-auto mb-9 sm:mb-10" style={{ color: "rgba(255,255,255,0.62)" }}>
-                Join over 1,0000 users on Pakistan's fastest-growing marketplace. Sign up free — no credit card needed.
+                Join over 250,000 users on the world's fastest-growing marketplace. Sign up free — no credit card needed.
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-8 sm:mb-10">
                 <Magnetic strength={0.25}>
@@ -3768,160 +3758,181 @@ const Landing = () => {
         </div>
       </section>
 
-{/* ═══ FOOTER ═══ */}
-<footer
-  className="relative z-10 border-t land-safe-bottom"
-  style={{ borderColor: "var(--land-line)", background: "var(--land-bg)" }}
->
-  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-8 mb-10">
-
-      <div className="col-span-2 sm:col-span-4 lg:col-span-2">
-      <Link to="/" className="inline-flex items-center gap-2.5 mb-4 group">
+      {/* ═══ FOOTER ═══ */}
+      <footer
+        className="relative z-10 border-t land-safe-bottom"
+        style={{ borderColor: "var(--land-line)", background: "var(--land-bg)" }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-8 mb-10">
+            <div className="col-span-2 sm:col-span-4 lg:col-span-2">
+         <Link to="/" className="inline-flex items-center gap-2.5 mb-4 group">
   <div
     className="logo-inner"
     style={{
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
+      padding: 2,
+      borderRadius: 9999,
+      background: "var(--nav-panel)",
+      border: "1px solid var(--nav-line)",
+      boxShadow: "var(--nav-shadow)",
+      transition: "background 0.35s ease, border-color 0.35s ease",
     }}
   >
     <img
       src="/logo.png"
       alt="Dealora"
-      className="h-10 sm:h-10 w-auto rounded-full object-contain"
+      draggable={false}
+      className="h-8 sm:h-8 w-auto rounded-full object-contain"
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+        const parent = e.currentTarget.parentElement;
+        if (parent && !parent.querySelector(".logo-fallback")) {
+          const span = document.createElement("span");
+          span.className = "logo-fallback font-ticket-display font-black";
+          span.textContent = "AD";
+          span.style.cssText = `
+            display:inline-flex;align-items:center;justify-content:center;
+            height:48px;min-width:48px;padding:0 12px;
+            border-radius:9999px;color:#fff;letter-spacing:-0.04em;
+            font-size:18px;
+            background:linear-gradient(135deg,#FF6A00 0%,#E85D04 60%,#C8531B 100%);
+            box-shadow:0 2px 10px -4px rgba(232,93,4,0.6);
+          `;
+          parent.appendChild(span);
+        }
+      }}
     />
   </div>
-
 </Link>
 
-        <p
-          className="text-[13px] leading-relaxed mb-5 max-w-xs"
-          style={{ color: "var(--land-txt-soft)" }}
-        >
-        Fastest-growing marketplace. Post your ad Right now
-           AI handles everything, and your item sells Fast.
-        </p>
+              <p
+                className="text-[13px] leading-relaxed mb-5 max-w-xs"
+                style={{ color: "var(--land-txt-soft)" }}
+              >
+"ApexDeal — The AI marketplace to buy, sell & rent. Create pro listings in 10 seconds with AI tools for photos.</p>
 
-        <div className="space-y-2 mb-5">
-          <div
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "var(--land-txt-soft)" }}
-          >
-            <FaEnvelope className="text-[11px]" style={{ color: "var(--land-primary)" }} />
-            <span>contact@APNaDEAL.com</span>
-          </div>
-          <div
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "var(--land-txt-soft)" }}
-          >
-            <FaPhone className="text-[11px]" style={{ color: "var(--land-primary)" }} />
-            <span>+92 314 0972575</span>
-          </div>
-          <div
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "var(--land-txt-soft)" }}
-          >
-            <FaMapMarkerAlt className="text-[11px]" style={{ color: "var(--land-primary)" }} />
-            <span>Islamabad Bahria, Pakistan</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {[
-            { Icon: FaFacebook,  label: "Facebook" },
-            { Icon: FaTiktok,    label: "TikTok" },
-            { Icon: FaYoutube,   label: "YouTube" },
-            { Icon: FaInstagram, label: "Instagram" },
-          ].map(({ Icon, label }, i) => (
-            <a
-              key={i}
-              href="#"
-              aria-label={label}
-              className="h-9 w-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-              style={{
-                border: "1px solid var(--land-line-str)",
-                color: "var(--land-txt-soft)",
-              }}
-            >
-              <Icon className="text-[11px]" />
-            </a>
-          ))}
-        </div>
-      </div>
-
-      {[
-        {
-          title: "Marketplace",
-          links: [
-            { name: "Vehicles",    path: "/vehicles" },
-            { name: "Mobiles",     path: "/mobiles" },
-            { name: "Property",    path: "/property" },
-            { name: "Electronics", path: "/electronics" },
-          ],
-        },
-        {
-          title: "Company",
-          links: [
-            { name: "About Us",        path: "/about" },
-            { name: "Post Your Ad",    path: "/post-ad" },
-            { name: "Browse Listings", path: "/browse" },
-            { name: "Contact",         path: "/contact" },
-          ],
-        },
-        {
-          title: "Legal",
-          links: [
-            { name: "Privacy Policy",   path: "/privacy" },
-            { name: "Terms of Service", path: "/terms" },
-            { name: "Cookie Policy",    path: "/cookies" },
-            { name: "Disclaimer",       path: "/disclaimer" },
-          ],
-        },
-      ].map((col) => (
-        <div key={col.title}>
-          <h4
-            className="text-[11px] font-bold uppercase tracking-widest mb-4"
-            style={{ color: "var(--land-txt)" }}
-          >
-            {col.title}
-          </h4>
-          <ul className="space-y-2.5">
-            {col.links.map((link) => (
-              <li key={link.name}>
-                <Link
-                  to={link.path}
-                  className="text-[13px] transition-colors"
+              <div className="space-y-2 mb-5">
+                <div
+                  className="flex items-center gap-2 text-xs"
                   style={{ color: "var(--land-txt-soft)" }}
                 >
-                  {link.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+                  <FaEnvelope className="text-[11px]" style={{ color: "var(--land-primary)" }} />
+                  <span>hello@Apexdeal.com</span>
+                </div>
+                <div
+                  className="flex items-center gap-2 text-xs"
+                  style={{ color: "var(--land-txt-soft)" }}
+                >
+                  <FaPhone className="text-[11px]" style={{ color: "var(--land-primary)" }} />
+                  <span>+92 (314) 097-2575</span>
+                </div>
+                <div
+                  className="flex items-center gap-2 text-xs"
+                  style={{ color: "var(--land-txt-soft)" }}
+                >
+                  <FaMapMarkerAlt className="text-[11px]" style={{ color: "var(--land-primary)" }} />
+                  <span>Pakistan Islamabad, Bahria enclave </span>
+                </div>
+              </div>
 
-    <div
-      className="pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
-      style={{ borderColor: "var(--land-line)" }}
-    >
-      <p className="text-[11px]" style={{ color: "var(--land-txt-faint)" }}>
-        © {new Date().getFullYear()}{" "}
-        <span className="font-bold" style={{ color: "var(--land-txt)" }}>
-          APNaDEAL
-        </span>{" "}
-        Marketplace. All rights reserved.
-      </p>
-      <div className="flex items-center gap-5 text-[11px]">
-        <Link to="/privacy" style={{ color: "var(--land-txt-faint)" }}>Privacy</Link>
-        <Link to="/terms"   style={{ color: "var(--land-txt-faint)" }}>Terms</Link>
-        <Link to="/cookies" style={{ color: "var(--land-txt-faint)" }}>Cookies</Link>
-      </div>
-    </div>
-  </div>
-</footer>
+              <div className="flex items-center gap-2">
+                {[
+                  { Icon: FaFacebook, label: "Facebook" },
+                  { Icon: FaTiktok, label: "TikTok" },
+                  { Icon: FaYoutube, label: "YouTube" },
+                  { Icon: FaInstagram, label: "Instagram" },
+                ].map(({ Icon, label }, i) => (
+                  <a
+                    key={i}
+                    href="#"
+                    aria-label={label}
+                    className="h-9 w-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                    style={{
+                      border: "1px solid var(--land-line-str)",
+                      color: "var(--land-txt-soft)",
+                    }}
+                  >
+                    <Icon className="text-[11px]" />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {[
+              {
+                title: "Marketplace",
+                links: [
+                  { name: "Vehicles", path: "/vehicles" },
+                  { name: "Mobiles", path: "/mobiles" },
+                  { name: "Real Estate", path: "/property" },
+                  { name: "Electronics", path: "/electronics" },
+                ],
+              },
+              {
+                title: "Company",
+                links: [
+                  { name: "About Us", path: "/about" },
+                  { name: "Post Your Ad", path: "/post-ad" },
+                  { name: "Browse Listings", path: "/browse" },
+                  { name: "Contact", path: "/contact" },
+                ],
+              },
+              {
+                title: "Legal",
+                links: [
+                  { name: "Privacy Policy", path: "/privacy" },
+                  { name: "Terms of Service", path: "/terms" },
+                  { name: "Cookie Policy", path: "/cookies" },
+                  { name: "Disclaimer", path: "/disclaimer" },
+                ],
+              },
+            ].map((col) => (
+              <div key={col.title}>
+                <h4
+                  className="text-[11px] font-bold uppercase tracking-widest mb-4"
+                  style={{ color: "var(--land-txt)" }}
+                >
+                  {col.title}
+                </h4>
+                <ul className="space-y-2.5">
+                  {col.links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        to={link.path}
+                        className="text-[13px] transition-colors"
+                        style={{ color: "var(--land-txt-soft)" }}
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
+            style={{ borderColor: "var(--land-line)" }}
+          >
+            <p className="text-[11px]" style={{ color: "var(--land-txt-faint)" }}>
+              © {new Date().getFullYear()}{" "}
+              <span className="font-bold" style={{ color: "var(--land-txt)" }}>
+                ApexDeal
+              </span>{" "}
+              Marketplace. All rights reserved.
+            </p>
+            <div className="flex items-center gap-5 text-[11px]">
+              <Link to="/privacy" style={{ color: "var(--land-txt-faint)" }}>Privacy</Link>
+              <Link to="/terms" style={{ color: "var(--land-txt-faint)" }}>Terms</Link>
+              <Link to="/cookies" style={{ color: "var(--land-txt-faint)" }}>Cookies</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

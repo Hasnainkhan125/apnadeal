@@ -1,4 +1,4 @@
-// pages/Momento.jsx — Seller marketplace + Shorts + Profile + Universal Share
+// pages/Momento.jsx — Seller marketplace + Shorts + Profile + Universal Share + Deep-link URLs
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -268,6 +268,56 @@ const parseDeepLink = () => {
     return null;
   }
 };
+
+/* ⭐ Push a post deep-link into the URL (replaceState, no reload) */
+const pushPostUrl = (postId) => {
+  if (!postId) return;
+  try { window.history.pushState({ momentoPost: postId }, "", `/momento/post/${postId}`); } catch {}
+};
+
+/* ⭐ Push a short deep-link into the URL */
+const pushShortUrl = (shortId) => {
+  if (!shortId) return;
+  try { window.history.pushState({ momentoShort: shortId }, "", `/momento/short/${shortId}`); } catch {}
+};
+
+/* ⭐ Reset back to /momento */
+const resetMomentoUrl = () => {
+  try { window.history.pushState({}, "", "/momento"); } catch {}
+};
+
+/* ⭐ Copy full shareable URL to clipboard */
+const copyShareUrl = async (url, pushToast) => {
+  try {
+    await navigator.clipboard.writeText(url);
+    if (pushToast) pushToast("success", "Link copied", "Share this URL anywhere");
+    return true;
+  } catch {
+    // Fallback for older browsers
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (pushToast) pushToast("success", "Link copied", "Share this URL anywhere");
+      return true;
+    } catch {
+      if (pushToast) pushToast("error", "Copy failed", url);
+      return false;
+    }
+  }
+};
+
+/* ⭐ Build the full absolute URL for a post or short */
+const buildPostShareUrl = (postId) =>
+  postId ? `${window.location.origin}/momento/post/${postId}` : `${window.location.origin}/momento`;
+
+const buildShortShareUrl = (shortId) =>
+  shortId ? `${window.location.origin}/momento/short/${shortId}` : `${window.location.origin}/momento/shorts`;
 
 /* ═══════════════════════════════════════════════════════════════
    USER AVATAR
@@ -898,10 +948,23 @@ const Momento = () => {
   };
   const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
-  /* ⭐ UNIVERSAL SHARE */
+  /* ⭐ UNIVERSAL SHARE — now uses full shareable URLs */
   const handleSharePost = async (post, e) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
-    await shareContent(post, pushToast);
+    if (!post) return;
+
+    const url = buildPostShareUrl(post.id);
+    const title = post.title || post.content?.slice(0, 60) || "Momento post";
+
+    // Native share on mobile
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch { /* user cancelled or not supported — fall through */ }
+    }
+    // Fallback: copy URL to clipboard
+    await copyShareUrl(url, pushToast);
   };
 
   const focusPost = (postId) => {
@@ -947,9 +1010,21 @@ const Momento = () => {
     if (saved) { try { setSavedPosts(JSON.parse(saved)); } catch {} }
   }, []);
 
-  /* ⭐ Re-check deep link when URL changes */
+  /* ⭐ Re-check deep link when URL changes (back/forward button) */
   useEffect(() => {
-    const handleUrlChange = () => setDeepLink(parseDeepLink());
+    const handleUrlChange = () => {
+      const parsed = parseDeepLink();
+      setDeepLink(parsed);
+
+      // If URL is now plain /momento, close any open overlays
+      if (!parsed) {
+        setFullscreenMedia(null);
+        setFullscreenMediaItem(null);
+        setShowShortsViewer(false);
+        setDeepLinkPost(null);
+        setDeepLinkNotFound(false);
+      }
+    };
     window.addEventListener("popstate", handleUrlChange);
     return () => window.removeEventListener("popstate", handleUrlChange);
   }, []);
@@ -960,9 +1035,16 @@ const Momento = () => {
       if (e.key === 'Escape') {
         if (showCreateDialog) setShowCreateDialog(false);
         else if (editingPost) setEditingPost(null);
-        else if (fullscreenMedia) { setFullscreenMedia(null); setFullscreenMediaItem(null); }
+        else if (fullscreenMedia) {
+          setFullscreenMedia(null);
+          setFullscreenMediaItem(null);
+          resetMomentoUrl();
+        }
         else if (openMenuPostId) setOpenMenuPostId(null);
-        else if (showShortsViewer) setShowShortsViewer(false);
+        else if (showShortsViewer) {
+          setShowShortsViewer(false);
+          resetMomentoUrl();
+        }
         else if (showVideoUpload) setShowVideoUpload(false);
       }
     };
@@ -1125,19 +1207,6 @@ const Momento = () => {
 
       setHighlightedPostId(deepLinkPost.id);
       setTimeout(() => setHighlightedPostId(null), 3200);
-
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("post");
-        url.searchParams.delete("short");
-        const hasPath = /^\/momento\/(post|short|reel|video)\//.test(window.location.pathname);
-        if (hasPath) {
-          window.history.replaceState({}, "", "/momento");
-        } else {
-          window.history.replaceState({}, "", url.pathname + url.search);
-        }
-        setDeepLink(null);
-      } catch {}
     }, 400);
 
     return () => clearTimeout(t);
@@ -1526,7 +1595,7 @@ const Momento = () => {
     return new Date(date).toLocaleDateString();
   };
 
-  /* ⭐ filteredPosts — pure feed filter (deep link handled separately above) */
+  /* ⭐ filteredPosts — pure feed filter */
   const filteredPosts = React.useMemo(() => {
     let f = posts;
 
@@ -1551,9 +1620,7 @@ const Momento = () => {
 
   /* ⭐ What actually renders — if post deep link active, show ONLY that post */
   const postsToRender = React.useMemo(() => {
-    // Shorts are handled by the viewer, not the feed
     if (deepLinkType === "short" || deepLinkType === "shorts-list") return filteredPosts;
-
     if (!deepLinkId && !deepLinkPost) return filteredPosts;
     if (deepLinkPost) return [deepLinkPost];
     return [];
@@ -1562,6 +1629,11 @@ const Momento = () => {
   const handleOnboardingComplete = () => {
     try { localStorage.setItem('momento.onboarded', 'true'); } catch {}
     setShowOnboarding(false);
+  };
+
+  /* ⭐ Handle short index change from the viewer → update URL */
+  const handleActiveShortChange = (shortId) => {
+    if (shortId) pushShortUrl(shortId);
   };
 
   /* Render gates */
@@ -1574,10 +1646,11 @@ const Momento = () => {
         <StudyPostsStyles />
         <MomentoShorts
           startIndex={shortsStartIndex}
+          onActiveShortChange={handleActiveShortChange}
           onClose={() => {
             setShowShortsViewer(false);
             setDeepLink(null);
-            try { window.history.replaceState({}, "", "/momento"); } catch {}
+            resetMomentoUrl();
           }}
         />
       </>
@@ -1823,7 +1896,7 @@ const Momento = () => {
                         setDeepLink(null);
                         setDeepLinkPost(null);
                         setDeepLinkNotFound(false);
-                        try { window.history.replaceState({}, "", "/momento"); } catch {}
+                        resetMomentoUrl();
                       }}
                       className="px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 flex-shrink-0"
                       style={{ background: "var(--sp-primary)", color: "#fff" }}
@@ -1863,7 +1936,7 @@ const Momento = () => {
                         setDeepLinkPost(null);
                         setDeepLinkNotFound(false);
                         setDeepLinkLoading(false);
-                        try { window.history.replaceState({}, "", "/momento"); } catch {}
+                        resetMomentoUrl();
                       }}
                       className="mt-6 px-7 py-3 rounded-2xl text-white font-black text-sm inline-flex items-center gap-2"
                       style={{ background: `linear-gradient(135deg, var(--sp-primary), var(--sp-primary-2))` }}
@@ -2016,12 +2089,16 @@ const Momento = () => {
 
                           {post.image_url && (
                             <div className="px-4 pb-2">
-                              <div className="rounded-2xl overflow-hidden cursor-pointer"
+                              <div
+                                className="rounded-2xl overflow-hidden cursor-pointer relative group/media"
                                 onClick={() => {
+                                  // ⭐ Update URL so this post becomes shareable
+                                  pushPostUrl(post.id);
                                   setFullscreenMedia(post.image_url);
                                   setFullscreenMediaType(post.media_type || getMediaTypeFromUrl(post.image_url));
                                   setFullscreenMediaItem(post);
-                                }}>
+                                }}
+                              >
                                 {(post.media_type || getMediaTypeFromUrl(post.image_url)) === 'video' ? (
                                   <video ref={el => videoRefs.current[post.id] = el}
                                     src={post.image_url} className="w-full object-cover max-h-[560px]"
@@ -2029,6 +2106,19 @@ const Momento = () => {
                                 ) : (
                                   <img src={post.image_url} alt={post.title} className="w-full object-cover max-h-[700px]" loading="lazy" />
                                 )}
+
+                                {/* ⭐ Copy-link button — appears on hover over the media */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyShareUrl(buildPostShareUrl(post.id), pushToast);
+                                  }}
+                                  className="absolute top-3 right-3 h-9 w-9 rounded-full flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity"
+                                  style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(8px)" }}
+                                  title="Copy link"
+                                >
+                                  <FaExternalLinkAlt className="text-[11px]" />
+                                </button>
                               </div>
                             </div>
                           )}
@@ -2303,7 +2393,11 @@ const Momento = () => {
         {fullscreenMedia && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[110] flex items-center justify-center p-4"
-            onClick={() => { setFullscreenMedia(null); setFullscreenMediaItem(null); }}>
+            onClick={() => {
+              setFullscreenMedia(null);
+              setFullscreenMediaItem(null);
+              resetMomentoUrl();
+            }}>
             <motion.div initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }}
               className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center"
               onClick={e => e.stopPropagation()}>
@@ -2318,18 +2412,23 @@ const Momento = () => {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (fullscreenMediaItem) {
-                      handleSharePost(fullscreenMediaItem);
+                      copyShareUrl(buildPostShareUrl(fullscreenMediaItem.id), pushToast);
                     } else {
-                      copyContentLink({ id: null }, pushToast);
+                      copyShareUrl(`${window.location.origin}/momento`, pushToast);
                     }
                   }}
                   className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white transition"
-                  title="Share"
+                  title="Copy link"
                 >
                   <FaShare className="text-lg" />
                 </button>
 
-                <button onClick={() => { setFullscreenMedia(null); setFullscreenMediaItem(null); }}
+                <button
+                  onClick={() => {
+                    setFullscreenMedia(null);
+                    setFullscreenMediaItem(null);
+                    resetMomentoUrl();
+                  }}
                   className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white transition">
                   <FaTimes className="text-lg" />
                 </button>

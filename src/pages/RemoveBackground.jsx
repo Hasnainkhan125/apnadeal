@@ -247,7 +247,8 @@ const HeroScreen = ({ onStart, theme }) => {
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      overflow: "hidden",
+  overflowX: "hidden",     // ✅ stops horizontal overflow only
+  overflowY: "auto",       // ✅ allows vertical scroll
     }}>
       {/* Ambient brand glows */}
       <div aria-hidden style={{
@@ -1698,7 +1699,7 @@ const RemoveBackground = () => {
                 ) : (
                   <>
                     <FaWandMagicSparkles style={{ fontSize: 14 }} />
-                    <span>{sourceImage ? "Remove Background" : "Generate"}</span>
+                    <span>{sourceImage ? "Removign Background" : "Remove Background"}</span>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 3,
                       marginLeft: 4, padding: "2px 8px", borderRadius: 999,

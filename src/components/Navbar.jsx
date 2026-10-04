@@ -1,14 +1,6 @@
-// components/Navbar.jsx — Advanced Modern Navbar (brand #fc9d03 · dark + light)
-// Floating glass capsule · animated gradient border · premium micro-interactions
-// ⭐ Plan-aware: reads free / seller / pro from PlanContext
-// ⭐ Mobile drawer is now a BOTTOM SHEET (menu only — cart + theme live in the navbar)
-// ⭐ Menu (hamburger) moved to LEFT — hover opens full-width mega dropdown
-// ⭐ Profile + Cart — NO background, plain icon/avatar
-// ⭐ Theme toggle lives INSIDE the profile dropdown + mobile sheet
-// ⭐ Hamburger hidden on mobile — profile opens the bottom sheet
-// ⭐ Search submit button — subtle background, no contrast
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+
 import {
   FaSearch, FaUser, FaTimes, FaMoon, FaSun, FaSignOutAlt, FaCrown,
   FaCommentDots, FaNewspaper, FaChevronDown, FaCog, FaSignInAlt, FaChevronRight,
@@ -23,6 +15,8 @@ import { supabase } from "../lib/supabase";
 import { readCart, writeCart } from "../lib/cartStore";
 import { useTheme } from "../hooks/useTheme";
 import { usePlan } from "../contexts/PlanContext";
+import { FaGlobe, FaGlobeAmericas, FaLanguage, FaMoneyBillWave, FaChevronUp } from "react-icons/fa";
+import { useLocale } from "../contexts/LocaleContext";
 
 /* ═══════════════════════════════════════════════════════════════
    ADMIN EMAILS
@@ -681,35 +675,74 @@ const FontStyles = () => (
   `}</style>
 );
 
-const LogoImage = ({ className = "h-full w-full rounded-full object-contain p-1" }) => {
+const LogoImage = ({ className = "" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);
 
+  // Fallback: modern gradient monogram
   if (failed) {
     return (
       <div
-        className="h-full w-full flex items-center justify-center font-bold text-lg"
-        style={{ color: "var(--nav-primary-2)" }}
+        className={`relative flex items-center justify-center overflow-hidden ${className}`}
+        style={{
+          background: "linear-gradient(135deg, #FF6A00 0%, #E85D04 60%, #C8531B 100%)",
+          borderRadius: "inherit",
+        }}
       >
-        D
+        {/* Soft radial glow */}
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            background:
+              "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.55), transparent 60%)",
+          }}
+        />
+        <span
+          className="relative font-ticket-display font-black text-white select-none"
+          style={{
+            fontSize: "42%",
+            letterSpacing: "-0.04em",
+            textShadow: "0 1px 2px rgba(0,0,0,0.18)",
+          }}
+        >
+          AD
+        </span>
       </div>
     );
   }
 
   return (
-    <img
-      src={sources[idx]}
-      alt="ApnaDeal"
-      className={className}
-      onError={() => {
-        if (idx < sources.length - 1) setIdx(idx + 1);
-        else setFailed(true);
+    <div
+      className={`relative flex items-center justify-center overflow-hidden ${className}`}
+      style={{
+        background: "var(--nav-panel)",
+        border: "1px solid var(--nav-line)",
+        borderRadius: "inherit",
+        transition: "background 0.35s ease, border-color 0.35s ease",
       }}
-    />
+    >
+      {/* Subtle top highlight for depth (light + dark both) */}
+      <div
+        className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 100%)",
+        }}
+      />
+      <img
+        src={sources[idx]}
+        alt="ApnaDeal"
+        className="relative h-full w-full object-contain p-[12%]"
+        onError={() => {
+          if (idx < sources.length - 1) setIdx(idx + 1);
+          else setFailed(true);
+        }}
+        draggable={false}
+      />
+    </div>
   );
 };
-
 const ICON_COLORS = {
   "/mobiles":         { fg: "#2A6FB8", bg: "rgba(42,111,184,0.12)" },
   "/vehicles":        { fg: "#164B3B", bg: "rgba(22,75,59,0.12)" },
@@ -770,8 +803,191 @@ const SEARCH_SUGGESTIONS = [
   { label: "AI Studio",         path: "/ai-image",    icon: FaMagic },
 ];
 
+
 /* ═══════════════════════════════════════════════════════════════
-   MINI CART  (unchanged)
+   ⭐ LOCALE SWITCHER — language + currency dropdown
+   ═══════════════════════════════════════════════════════════════ */
+const LocaleSwitcher = ({ isMobile = false }) => {
+  const { currency, language, setCurrency, setLanguage, CURRENCIES, LANGUAGES } = useLocale();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const langLabel = LANGUAGES.find((l) => l.code === language)?.label || "English";
+
+  return (
+    <div className="relative" ref={ref}>
+      <motion.button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        transition={{ type: "spring", stiffness: 420, damping: 22 }}
+        className="nav-plain-btn"
+        aria-label="Language and currency"
+        aria-expanded={open}
+        title="Language & currency"
+      >
+        <FaGlobe
+          className="text-[14px] sm:text-[15px]"
+          style={{
+            color: open ? "var(--nav-primary-2)" : "var(--nav-txt)",
+            transition: "color 0.25s ease",
+          }}
+        />
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            className={[
+              "z-[200] nav-panel rounded-2xl overflow-hidden",
+              isMobile
+                ? "fixed left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+4.5rem)]"
+                : "absolute right-0 mt-3 w-[320px] max-w-[calc(100vw-1rem)]",
+            ].join(" ")}
+            role="dialog"
+            aria-label="Language & currency"
+          >
+            {/* Top accent */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-px"
+              style={{ background: "linear-gradient(90deg, transparent, var(--nav-primary-2), transparent)" }}
+            />
+
+            {/* Header */}
+            <div className="px-4 pt-4 pb-3 flex items-start gap-2.5">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-xl flex-shrink-0"
+                style={{
+                  background: "var(--nav-primary-soft)",
+                  color: "var(--nav-primary-2)",
+                }}
+              >
+                <FaGlobeAmericas className="text-[13px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-ticket-display text-[15px] font-bold text-[var(--nav-txt)] leading-tight">
+                  Set language and currency
+                </p>
+                <p className="font-ticket-body text-[11px] text-[var(--nav-txt-soft)] mt-0.5 leading-snug">
+                  Select your preferred language and currency. You can update the settings at any time.
+                </p>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ color: "var(--nav-txt-faint)" }}
+                aria-label="Close"
+              >
+                <FaTimes className="text-[10px]" />
+              </button>
+            </div>
+
+            {/* Language */}
+            <div className="px-4 pb-3">
+              <label className="flex items-center gap-1.5 mb-1.5">
+                <FaLanguage className="text-[11px]" style={{ color: "var(--nav-txt-faint)" }} />
+                <span className="font-ticket-body text-[10.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                  Language
+                </span>
+              </label>
+              <div className="relative">
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-9 py-2.5 rounded-xl font-ticket-body text-[13px] font-medium outline-none cursor-pointer"
+                  style={{
+                    background: "var(--nav-surface)",
+                    border: "1px solid var(--nav-line)",
+                    color: "var(--nav-txt)",
+                  }}
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag} {l.label}
+                    </option>
+                  ))}
+                </select>
+                <FaChevronDown
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none"
+                  style={{ color: "var(--nav-txt-faint)" }}
+                />
+              </div>
+            </div>
+
+            {/* Currency */}
+            <div className="px-4 pb-3">
+              <label className="flex items-center gap-1.5 mb-1.5">
+                <FaMoneyBillWave className="text-[11px]" style={{ color: "var(--nav-txt-faint)" }} />
+                <span className="font-ticket-body text-[10.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                  Currency
+                </span>
+              </label>
+              <div className="relative">
+                <select
+                  value={currency.code}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-9 py-2.5 rounded-xl font-ticket-body text-[13px] font-medium outline-none cursor-pointer"
+                  style={{
+                    background: "var(--nav-surface)",
+                    border: "1px solid var(--nav-line)",
+                    color: "var(--nav-txt)",
+                  }}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.label}
+                    </option>
+                  ))}
+                </select>
+                <FaChevronDown
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none"
+                  style={{ color: "var(--nav-txt-faint)" }}
+                />
+              </div>
+            </div>
+
+            {/* Footer buttons */}
+            <div className="p-4 pt-1">
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setOpen(false)}
+                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-ticket-body text-[12.5px] font-extrabold tracking-wide transition-all"
+                style={{
+                  background: "linear-gradient(135deg, var(--nav-primary-2), var(--nav-primary-3))",
+                  color: "#FFFFFF",
+                  boxShadow: "0 10px 24px -8px var(--nav-primary-glow)",
+                }}
+              >
+                Save
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   MINI CART
    ═══════════════════════════════════════════════════════════════ */
 const MiniCart = ({ open, onClose, cart, onRemove, onOpenFull }) => {
   const ref = useRef(null);
@@ -1081,12 +1297,14 @@ const AvatarWithPlan = ({
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   PROFILE DROPDOWN  — includes THEME TOGGLE
+   PROFILE DROPDOWN  — includes THEME TOGGLE + REAL RATING
    ═══════════════════════════════════════════════════════════════ */
 const ProfileDropdown = ({
   user, onClose, onLogout, navigate,
   planId = "free", planName = "Starter", isVerified,
   theme, onToggleTheme,
+  rating = 0,          // ⭐ real rating
+  ratingCount = 0,     // ⭐ real review count
 }) => {
   const ref = useRef(null);
   const isPremium = planId !== "free";
@@ -1114,6 +1332,10 @@ const ProfileDropdown = ({
   const email = user?.email || "";
   const avatar = user?.user_metadata?.avatar_url || null;
   const initial = displayName.charAt(0).toUpperCase();
+
+  /* ⭐ Star row helpers */
+  const rounded = Math.round(rating);
+  const hasRating = ratingCount > 0 && rating > 0;
 
   return (
     <motion.div
@@ -1155,18 +1377,32 @@ const ProfileDropdown = ({
         </div>
       </div>
 
-      <div className="mx-5 mt-4 mb-4 flex items-center rounded-2xl overflow-hidden" style={{ border: "1px solid var(--nav-line)", background: "var(--nav-surface)" }}>
-        <div className="flex-1 flex items-center justify-center gap-1.5 py-3" style={{ borderRight: "1px solid var(--nav-line)" }}>
-          <FaStar className="text-[var(--nav-primary-2)] text-[11px]" />
-          <span className="font-ticket-body text-[12px] font-bold text-[var(--nav-txt)]">0</span>
+      {/* ⭐ Stats row — now with REAL rating */}
+      <div className="mx-5 mt-4 mb-3 flex items-center rounded-2xl overflow-hidden" style={{ border: "1px solid var(--nav-line)", background: "var(--nav-surface)" }}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3" style={{ borderRight: "1px solid var(--nav-line)" }}>
+          <div className="flex items-center gap-1.5">
+            <FaStar className="text-[var(--nav-primary-2)] text-[11px]" />
+            <span className="font-ticket-body text-[13px] font-bold text-[var(--nav-txt)] tabular-nums">
+              {hasRating ? rating.toFixed(1) : "—"}
+            </span>
+          </div>
+          <span className="font-ticket-body text-[8.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+            {hasRating ? `${ratingCount} review${ratingCount === 1 ? "" : "s"}` : "No reviews"}
+          </span>
         </div>
-        <div className="flex-1 flex items-center justify-center gap-1.5 py-3">
-          <FaCrown className="text-[var(--nav-primary-2)] text-[11px]" />
-          <span className="font-ticket-body text-[12px] font-bold text-[var(--nav-txt)]">
-            {planId === "pro" ? "PRO" : planId === "seller" ? "SELLER" : "FREE"}
+        <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3">
+          <div className="flex items-center gap-1.5">
+            <FaCrown className="text-[var(--nav-primary-2)] text-[11px]" />
+            <span className="font-ticket-body text-[13px] font-bold text-[var(--nav-txt)]">
+              {planId === "pro" ? "PRO" : planId === "seller" ? "SELLER" : "FREE"}
+            </span>
+          </div>
+          <span className="font-ticket-body text-[8.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+            Current plan
           </span>
         </div>
       </div>
+
 
       <div className="py-1 px-2">
         {menuItems.map((item) => {
@@ -1198,7 +1434,7 @@ const ProfileDropdown = ({
           );
         })}
 
-        {/* ⭐ THEME TOGGLE — inside profile dropdown */}
+        {/* ⭐ THEME TOGGLE */}
         <div className="mt-1 pt-1" style={{ borderTop: "1px solid var(--nav-line)" }}>
           <button
             onClick={() => { if (onToggleTheme) onToggleTheme(); }}
@@ -1315,6 +1551,10 @@ const Navbar = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
 
+  /* ⭐ NEW — real user rating from listings */
+  const [userRating, setUserRating] = useState(0);
+  const [userRatingCount, setUserRatingCount] = useState(0);
+
   const profileRef = useRef(null);
   const searchRef = useRef(null);
   const notificationRef = useRef(null);
@@ -1348,21 +1588,22 @@ const Navbar = () => {
     return () => clearTimeout(t);
   }, [location.pathname, location.hash]);
 
-/* ⭐ MEGA MENU LINKS — with web image URLs */
-const menuSimpleLinks = [
-  { path: "/vehicles",         img: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2FyfGVufDB8fDB8fHww", label: "Vehicles",    desc: "Cars, bikes, trucks" },
-  { path: "/mobiles",          img: "https://images.unsplash.com/photo-1758186477159-99418b83a42f?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDl8fHxlbnwwfHx8fHw%3D", label: "Mobiles",     desc: "Phones & tablets" },
-  { path: "/electronics",      img: "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fGVsZWN0cm9uaWNzfGVufDB8fDB8fHww", label: "Electronics", desc: "Laptops, TVs, audio" },
-  { path: "/property",         img: "https://plus.unsplash.com/premium_photo-1689609950112-d66095626efb?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvcGVydHl8ZW58MHx8MHx8fDA%3D", label: "Property",    desc: "Homes, plots, commercial" },
-  { path: "/feed",             img: "https://plus.unsplash.com/premium_photo-1681488262364-8aeb1b6aac56?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8bWFya2V0cGxhY2V8ZW58MHx8MHx8fDA%3D", label: "Marketplace",        desc: "All live listings", badge: "New" },
-  { path: "/marketplace-chat", img: "https://images.unsplash.com/photo-1611606063065-ee7946f0787a?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fG1lc3NhZ2V8ZW58MHx8MHx8fDA%3D", label: "Messenger",    desc: "Buyer & seller chat" },
-  { path: "/momento",          img: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", label: "Momento",     desc: "Stories & reels", badge: "New" },
-  { path: "/ai-image",         img: "https://images.unsplash.com/photo-1770170389700-eb0f9b910ed8?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGFpJTIwaW1hZ2UlMjBnZW5lcmF0aW9ufGVufDB8fDB8fHww", label: "AI Studio",   desc: "Generate & edit images", badge: "Pro" },
-  { path: "/post-ad",          img: "https://images.unsplash.com/photo-1663124178703-d2d6a333e6c2?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fHVwbG9hZCUyMGl0ZW18ZW58MHx8MHx8fDA%3D", label: "Post an Ad",  desc: "List a new item" },
-{ path: "/my-listings", img: "/mylisting.png", label: "My Listings", desc: "Manage your ads" },
-  { path: "/wallet",           img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200&h=200&fit=crop", label: "Live Sales",  desc: "Sales & wallet" },
-  { path: "/premium",          img: "https://plus.unsplash.com/premium_photo-1682309553075-c84ea8d9d49a?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8dXBncmFkZXxlbnwwfHwwfHx8MA%3D%3D", label: "Premium",     desc: "Upgrade & manage plan" },
-];
+  /* ⭐ MEGA MENU LINKS — with web image URLs */
+  const menuSimpleLinks = [
+    { path: "/vehicles",         img: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=60", label: "Vehicles",    desc: "Cars, bikes, trucks" },
+    { path: "/mobiles",          img: "https://images.unsplash.com/photo-1758186477159-99418b83a42f?w=800&auto=format&fit=crop&q=60", label: "Mobiles",     desc: "Phones & tablets" },
+    { path: "/electronics",      img: "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800&auto=format&fit=crop&q=60", label: "Electronics", desc: "Laptops, TVs, audio" },
+    { path: "/property",         img: "https://plus.unsplash.com/premium_photo-1689609950112-d66095626efb?w=800&auto=format&fit=crop&q=60", label: "Property",    desc: "Homes, plots, commercial" },
+    { path: "/feed",             img: "https://plus.unsplash.com/premium_photo-1681488262364-8aeb1b6aac56?w=800&auto=format&fit=crop&q=60", label: "Marketplace", desc: "All live listings", badge: "New" },
+    { path: "/marketplace-chat", img: "https://images.unsplash.com/photo-1611606063065-ee7946f0787a?w=800&auto=format&fit=crop&q=60", label: "Messenger",    desc: "Buyer & seller chat" },
+    { path: "/momento",          img: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=1974&auto=format&fit=crop", label: "Momento",     desc: "Stories & reels", badge: "New" },
+    { path: "/ai-image",         img: "https://images.unsplash.com/photo-1770170389700-eb0f9b910ed8?w=800&auto=format&fit=crop&q=60", label: "AI Studio",   desc: "Generate & edit images", badge: "Pro" },
+    { path: "/post-ad",          img: "https://images.unsplash.com/photo-1663124178703-d2d6a333e6c2?w=800&auto=format&fit=crop&q=60", label: "Post an Ad",  desc: "List a new item" },
+    { path: "/my-listings",      img: "/mylisting.png", label: "My Listings", desc: "Manage your ads" },
+    { path: "/wallet",           img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=200&h=200&fit=crop", label: "Live Sales",  desc: "Sales & wallet" },
+    { path: "/premium",          img: "https://plus.unsplash.com/premium_photo-1682309553075-c84ea8d9d49a?w=800&auto=format&fit=crop&q=60", label: "Premium",     desc: "Upgrade & manage plan" },
+  ];
+
   const browseGroups = [
     {
       title: "Buy & Sell",
@@ -1425,7 +1666,6 @@ const menuSimpleLinks = [
     navigate("/cart");
   };
 
-  /* ⭐ Left menu hover handlers */
   const openMenuDrop = () => {
     if (menuDropTimer.current) clearTimeout(menuDropTimer.current);
     setIsMenuDropOpen(true);
@@ -1439,9 +1679,13 @@ const menuSimpleLinks = [
     setIsMenuDropOpen(false);
   };
 
+  /* ═══════════════════════════════════════════════════════════════
+     ⭐ LOAD USER DATA + REAL RATING
+     ═══════════════════════════════════════════════════════════════ */
   const loadUserData = async () => {
     if (!user) { setIsLoading(false); return; }
     try {
+      /* --- 1. user_settings --- */
       const { data: settingsData } = await supabase
         .from("user_settings")
         .select("*")
@@ -1456,6 +1700,7 @@ const menuSimpleLinks = [
       if (!userEmail && user?.email) setUserEmail(user.email);
       if (!userFullName && user?.user_metadata?.full_name) setUserFullName(user.user_metadata.full_name);
 
+      /* --- 2. user_stats --- */
       const { data: statsData } = await supabase
         .from("user_stats")
         .select("*")
@@ -1468,6 +1713,39 @@ const menuSimpleLinks = [
         setUserStreak(statsData.streak || 0);
         setIsVerified(statsData.verified || false);
       }
+
+     /* --- 3. ⭐ REAL RATING from seller_ratings (keyed by seller_id) --- */
+try {
+  const { data: ratings, error: rErr } = await supabase
+    .from("seller_ratings")
+    .select("rating")
+    .eq("seller_id", user.id);
+
+  if (rErr) throw rErr;
+
+  const valid = (ratings || []).filter(
+    (r) => typeof r.rating === "number" && r.rating >= 1 && r.rating <= 5
+  );
+
+  if (valid.length > 0) {
+    const sum = valid.reduce((s, r) => s + r.rating, 0);
+    const avg = sum / valid.length;
+    setUserRating(Number(avg.toFixed(1)));
+    setUserRatingCount(valid.length);
+  } else {
+    setUserRating(0);
+    setUserRatingCount(0);
+  }
+} catch (ratingErr) {
+  console.warn("Rating load failed, falling back:", ratingErr);
+  if (statsData) {
+    setUserRating(Number(statsData.avg_rating || 0));
+    setUserRatingCount(Number(statsData.rating_count || 0));
+  } else {
+    setUserRating(0);
+    setUserRatingCount(0);
+  }
+}
     } catch (error) {
       console.error("❌ Error loading user data:", error);
     } finally {
@@ -1600,7 +1878,7 @@ const menuSimpleLinks = [
                     backgroundClip: "text",
                   }}
                 >
-                  ApnaDeal
+                  ApexDeal
                 </span>
                 <span
                   className="font-ticket-body text-[8px] sm:text-[9px] font-bold tracking-[0.28em] mt-[2px]"
@@ -1640,10 +1918,8 @@ const menuSimpleLinks = [
           <div className={`nav-advanced-glass ${isScrolled ? "is-scrolled" : ""}`} style={{ padding: "0 12px" }}>
             <div className="flex items-center justify-between h-[52px] sm:h-[56px] gap-2 sm:gap-3">
 
-              {/* ═══ LEFT: MENU (desktop only) + LOGO ═══ */}
+              {/* ═══ LEFT: MENU + LOGO ═══ */}
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-
-                {/* ⭐ Hamburger — DESKTOP ONLY (hidden on mobile via CSS) */}
                 <div
                   className="relative nav-burger-wrapper"
                   ref={menuDropRef}
@@ -1660,7 +1936,6 @@ const menuSimpleLinks = [
                   </button>
                 </div>
 
-                {/* Logo — slightly larger on mobile */}
                 <Link to="/feed" className="group flex items-center flex-shrink-0">
                   <div className="h-10 w-10 sm:h-10 sm:w-10 flex items-center justify-center overflow-hidden">
                     <div
@@ -1707,7 +1982,6 @@ const menuSimpleLinks = [
                     </button>
                   </form>
 
-                  {/* Suggestions dropdown */}
                   <AnimatePresence>
                     {isSearchFocused && (
                       <motion.div
@@ -1763,8 +2037,7 @@ const menuSimpleLinks = [
 
               {/* ═══ RIGHT SIDE — cart + profile ═══ */}
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-
-                {/* Cart — NO background, small on mobile */}
+                  <LocaleSwitcher />
                 {user && (
                   <div ref={cartRef} className="relative">
                     <motion.button
@@ -1805,9 +2078,7 @@ const menuSimpleLinks = [
                       >
                         <FaShoppingCart
                           className="text-[13px] sm:text-[15px]"
-                          style={{
-                            transition: "color 0.35s ease, filter 0.35s ease",
-                          }}
+                          style={{ transition: "color 0.35s ease, filter 0.35s ease" }}
                         />
                       </motion.span>
 
@@ -1848,10 +2119,8 @@ const menuSimpleLinks = [
                   </div>
                 )}
 
-                {/* Profile — NO background */}
                 {user ? (
                   <div className="relative" ref={profileRef}>
-                    {/* Mobile: opens bottom sheet */}
                     <button
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
                       className="lg:hidden flex items-center gap-0.5 p-0.5 rounded-full"
@@ -1872,7 +2141,6 @@ const menuSimpleLinks = [
                       <FaChevronDown className={`text-[var(--nav-txt)] text-[8px] transition-transform duration-200 ${isMenuOpen ? "rotate-180" : ""}`} />
                     </button>
 
-                    {/* Desktop: profile dropdown — plain, no bg */}
                     <button
                       onClick={() => setIsProfileOpen(!isProfileOpen)}
                       className="hidden lg:flex items-center gap-1.5 p-0.5 rounded-full"
@@ -1905,17 +2173,15 @@ const menuSimpleLinks = [
                           isVerified={isVerified}
                           theme={theme}
                           onToggleTheme={toggleTheme}
+                          rating={userRating}                 /* ⭐ */
+                          ratingCount={userRatingCount}       /* ⭐ */
                         />
                       )}
                     </AnimatePresence>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-                    <motion.div
-                      whileHover={{ y: -1 }}
-                      whileTap={{ scale: 0.96 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 24 }}
-                    >
+                    <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.96 }} transition={{ type: "spring", stiffness: 400, damping: 24 }}>
                       <Link
                         to="/signin"
                         className="group/login relative inline-flex items-center gap-1.5 rounded-full overflow-hidden font-ticket-body font-semibold transition-colors duration-300"
@@ -1937,11 +2203,7 @@ const menuSimpleLinks = [
                       </Link>
                     </motion.div>
 
-                    <motion.div
-                      whileHover={{ y: -1, scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                    >
+                    <motion.div whileHover={{ y: -1, scale: 1.03 }} whileTap={{ scale: 0.96 }} transition={{ type: "spring", stiffness: 400, damping: 22 }}>
                       <Link
                         to="/signup"
                         className="nav-cta-pill group/signup relative inline-flex items-center gap-1.5 rounded-full overflow-hidden font-ticket-body font-bold transition-all duration-300 flex-shrink-0"
@@ -1968,7 +2230,7 @@ const menuSimpleLinks = [
           </div>
         </div>
 
-        {/* ⭐ FULL-WIDTH MEGA DROPDOWN (desktop hover) */}
+        {/* ⭐ FULL-WIDTH MEGA DROPDOWN */}
         <AnimatePresence>
           {isMenuDropOpen && (
             <motion.div
@@ -1996,48 +2258,46 @@ const menuSimpleLinks = [
                     animate="visible"
                     className="nav-mega-body"
                   >
-           {menuSimpleLinks.map((item) => {
-  const active = isActive(item.path);
-  const colors = getIconColor(item.path);
+                    {menuSimpleLinks.map((item) => {
+                      const active = isActive(item.path);
+                      const colors = getIconColor(item.path);
 
-  return (
-    <motion.div key={item.label} variants={itemVariants}>
-      <Link
-        to={item.path}
-        onClick={handleMenuLinkClick}
-        className={`nav-mega-item ${active ? "is-active" : ""}`}
-      >
-        {/* ⭐ IMAGE thumbnail */}
-        <span className="nav-mega-thumb">
-          <img
-            src={item.img}
-            alt={item.label}
-            loading="lazy"
-            onError={(e) => {
-              // If image fails → replace with fallback icon colored by path
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                parent.outerHTML = `
-                  <span class="nav-mega-thumb-fallback"
-                    style="background:${colors.bg};color:${colors.fg}">
-                  </span>
-                `;
-              }
-            }}
-          />
-        </span>
+                      return (
+                        <motion.div key={item.label} variants={itemVariants}>
+                          <Link
+                            to={item.path}
+                            onClick={handleMenuLinkClick}
+                            className={`nav-mega-item ${active ? "is-active" : ""}`}
+                          >
+                            <span className="nav-mega-thumb">
+                              <img
+                                src={item.img}
+                                alt={item.label}
+                                loading="lazy"
+                                onError={(e) => {
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.outerHTML = `
+                                      <span class="nav-mega-thumb-fallback"
+                                        style="background:${colors.bg};color:${colors.fg}">
+                                      </span>
+                                    `;
+                                  }
+                                }}
+                              />
+                            </span>
 
-        <span className="nav-mega-text">
-          <span className="nav-mega-label">
-            {item.label}
-            {item.badge && <span className="nav-mega-badge">{item.badge}</span>}
-          </span>
-          {item.desc && <span className="nav-mega-desc">{item.desc}</span>}
-        </span>
-      </Link>
-    </motion.div>
-  );
-})}
+                            <span className="nav-mega-text">
+                              <span className="nav-mega-label">
+                                {item.label}
+                                {item.badge && <span className="nav-mega-badge">{item.badge}</span>}
+                              </span>
+                              {item.desc && <span className="nav-mega-desc">{item.desc}</span>}
+                            </span>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
                   </motion.div>
                 </div>
               </div>
@@ -2047,7 +2307,7 @@ const menuSimpleLinks = [
       </nav>
 
       {/* ═══════════════════════════════════════════════════════════════
-          ⭐ MOBILE BOTTOM SHEET — with THEME TOGGLE row inside
+          ⭐ MOBILE BOTTOM SHEET
          ═══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -2134,6 +2394,7 @@ const menuSimpleLinks = [
                 className="nav-sheet-scroll flex-1 overflow-y-auto px-4 py-4"
                 style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
               >
+                {/* ⭐ USER CARD with REAL RATING */}
                 {user && (
                   <motion.div
                     initial={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -2191,32 +2452,77 @@ const menuSimpleLinks = [
                       {userEmail}
                     </p>
 
+                    {/* ⭐ 4-cell stat row: Rating · Level · XP · Plan */}
                     <div
-                      className="relative mt-3 flex items-center rounded-xl overflow-hidden"
+                      className="relative mt-3 grid grid-cols-4 rounded-xl overflow-hidden"
                       style={{ border: "1px solid var(--nav-line)", background: "var(--nav-surface)" }}
                     >
-                      {[
-                        { icon: FaStar, label: "Level", value: userLevel },
-                        { icon: FaBolt, label: "XP",    value: userXp },
-                        { icon: FaCrown, label: "Plan", value: planId === "pro" ? "PRO" : planId === "seller" ? "SELLER" : "FREE" },
-                      ].map((s, idx, arr) => {
-                        const Icon = s.icon;
-                        return (
-                          <div
-                            key={s.label}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5"
-                            style={{ borderRight: idx < arr.length - 1 ? "1px solid var(--nav-line)" : "none" }}
-                          >
-                            <Icon className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
-                            <span className="font-ticket-body text-[11px] font-bold text-[var(--nav-txt)]">{s.value}</span>
-                          </div>
-                        );
-                      })}
+                      <div className="flex flex-col items-center justify-center gap-0.5 py-2.5" style={{ borderRight: "1px solid var(--nav-line)" }}>
+                        <FaStar className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
+                        <span className="font-ticket-body text-[11px] font-bold text-[var(--nav-txt)] tabular-nums">
+                          {userRatingCount > 0 ? userRating.toFixed(1) : "—"}
+                        </span>
+                        <span className="font-ticket-body text-[7.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                          Rating
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-0.5 py-2.5" style={{ borderRight: "1px solid var(--nav-line)" }}>
+                        <FaBolt className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
+                        <span className="font-ticket-body text-[11px] font-bold text-[var(--nav-txt)]">
+                          {userLevel}
+                        </span>
+                        <span className="font-ticket-body text-[7.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                          Level
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-0.5 py-2.5" style={{ borderRight: "1px solid var(--nav-line)" }}>
+                        <FaFire className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
+                        <span className="font-ticket-body text-[11px] font-bold text-[var(--nav-txt)]">
+                          {userXp}
+                        </span>
+                        <span className="font-ticket-body text-[7.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                          XP
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-0.5 py-2.5">
+                        <FaCrown className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
+                        <span className="font-ticket-body text-[10px] font-bold text-[var(--nav-txt)]">
+                          {planId === "pro" ? "PRO" : planId === "seller" ? "SELL" : "FREE"}
+                        </span>
+                        <span className="font-ticket-body text-[7.5px] font-bold uppercase tracking-widest text-[var(--nav-txt-faint)]">
+                          Plan
+                        </span>
+                      </div>
                     </div>
+
+                    {/* ⭐ Star breakdown row */}
+                    {userRatingCount > 0 && (
+                      <div className="relative mt-3 flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <FaStar
+                              key={i}
+                              className="text-[11px]"
+                              style={{
+                                color: i <= Math.round(userRating)
+                                  ? "var(--nav-primary-2)"
+                                  : "var(--nav-line-str)",
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="font-ticket-body text-[11.5px] font-bold text-[var(--nav-txt)] tabular-nums">
+                          {userRating.toFixed(1)}
+                        </span>
+                        <span className="font-ticket-body text-[11px] text-[var(--nav-txt-faint)]">
+                          ({userRatingCount})
+                        </span>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
-                {/* ⭐ THEME TOGGLE ROW (mobile sheet) */}
+                {/* ⭐ THEME TOGGLE */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -2226,17 +2532,11 @@ const menuSimpleLinks = [
                   <button
                     onClick={toggleTheme}
                     className="flex w-full items-center gap-3 px-3 py-3 rounded-2xl transition-colors"
-                    style={{
-                      background: "var(--nav-panel-2)",
-                      border: "1px solid var(--nav-line)",
-                    }}
+                    style={{ background: "var(--nav-panel-2)", border: "1px solid var(--nav-line)" }}
                   >
                     <span
                       className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0"
-                      style={{
-                        background: "var(--nav-primary-soft)",
-                        color: "var(--nav-primary-2)",
-                      }}
+                      style={{ background: "var(--nav-primary-soft)", color: "var(--nav-primary-2)" }}
                     >
                       {theme === "light" ? <FaMoon className="text-[13px]" /> : <FaSun className="text-[13px]" />}
                     </span>
@@ -2299,7 +2599,8 @@ const menuSimpleLinks = [
                               className="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
                               style={{ background: active ? "var(--nav-primary-soft)" : "transparent" }}
                             >
-                              <div                                className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
+                              <div
+                                className="flex items-center justify-center h-9 w-9 rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
                                 style={{ backgroundColor: item.color.bg, color: item.color.fg }}
                               >
                                 <Icon className="text-[13px]" />
@@ -2614,7 +2915,7 @@ const menuSimpleLinks = [
                   <div className="flex items-center justify-center gap-2">
                     <FaBolt className="text-[10px]" style={{ color: "var(--nav-primary-2)" }} />
                     <p className="font-ticket-body text-[10px] font-bold text-[var(--nav-txt-faint)] tracking-wide">
-                      APNaDeal v2.0
+                      ApexDeal v2.0
                     </p>
                   </div>
                 </div>

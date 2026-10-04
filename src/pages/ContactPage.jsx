@@ -1,4 +1,4 @@
-// pages/ContactPage.jsx — Modern contact page with #fc9d03 accent
+// pages/ContactPage.jsx — Simple, modern contact page (black / white / gray)
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -22,238 +22,274 @@ import {
   FaHeadset,
   FaWhatsapp,
   FaChevronDown,
-  FaBolt,
-  FaCrown,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
+/* ═══════════════════════════════════════════════════════════════
+   GOOGLE MAPS CONFIG
+   ═══════════════════════════════════════════════════════════════ */
+const OFFICE = {
+  name: "Apex Office",
+  address: "Bahria Town Phase 4, Islamabad, Pakistan",
+  query: "Bahria Town Phase 4, Islamabad, Pakistan",
+  zoom: 14,
+};
+
+const buildMapEmbedUrl = () =>
+  `https://maps.google.com/maps?q=${encodeURIComponent(OFFICE.query)}&t=&z=${OFFICE.zoom}&ie=UTF8&iwloc=&output=embed`;
+
+const buildMapExternalUrl = () =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(OFFICE.query)}`;
+
+const buildDirectionsUrl = () =>
+  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(OFFICE.query)}`;
+
+/* ═══════════════════════════════════════════════════════════════
+   FONTS + THEME TOKENS — black / white / gray
+   ═══════════════════════════════════════════════════════════════ */
 const FontStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Manrope:wght@400;500;600;700;800&display=swap');
-    .font-ticket-display { font-family: 'Fraunces', Georgia, serif; }
-    .font-ticket-body { font-family: 'Manrope', system-ui, sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    /* ═══ CONTACT PAGE THEME TOKENS ═══ */
+    .cp-font { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+    /* ═══ DARK ═══ */
     .theme-dark {
-      --cp-bg:           #0A0A12;
-      --cp-bg-2:         #0F0F1A;
-      --cp-panel:        #13131C;
-      --cp-panel-2:      #1A1A24;
-      --cp-surface:      rgba(255,255,255,0.045);
+      --cp-bg:           #0B0B0B;
+      --cp-bg-2:         #121212;
+      --cp-panel:        #171717;
+      --cp-panel-2:      #1E1E1E;
       --cp-line:         rgba(255,255,255,0.08);
-      --cp-line-str:     rgba(255,255,255,0.15);
+      --cp-line-str:     rgba(255,255,255,0.16);
       --cp-txt:          #FFFFFF;
-      --cp-txt-soft:     rgba(255,255,255,0.65);
+      --cp-txt-soft:     rgba(255,255,255,0.66);
       --cp-txt-faint:    rgba(255,255,255,0.42);
-      --cp-dot:          rgba(252,157,3,0.08);
-      --cp-accent:       #fc9d03;
-      --cp-accent-2:     #ffb733;
-      --cp-accent-3:     #eb7d34;
-      --cp-accent-soft:  rgba(252,157,3,0.14);
-      --cp-accent-glow:  rgba(252,157,3,0.45);
-      --cp-accent-txt:   #fc9d03;
-      --cp-accent-dark:  #0A0A12;
-      --cp-danger:       #FF6B6B;
-      --cp-success:      #4ADE80;
       --cp-input-bg:     rgba(255,255,255,0.04);
+      --cp-accent:       #FFFFFF;
+      --cp-accent-soft:  rgba(255,255,255,0.06);
+      --cp-danger:       #F87171;
+      --cp-success:      #4ADE80;
+      --cp-map-bg:       #121212;
     }
+
+    /* ═══ LIGHT ═══ */
     .theme-light {
       --cp-bg:           #FFFFFF;
-      --cp-bg-2:         #FAF7F3;
+      --cp-bg-2:         #FAFAFA;
       --cp-panel:        #FFFFFF;
-      --cp-panel-2:      #F6F7F9;
-      --cp-surface:      rgba(20,20,30,0.04);
-      --cp-line:         rgba(20,20,30,0.08);
-      --cp-line-str:     rgba(20,20,30,0.14);
-      --cp-txt:          #1A1613;
-      --cp-txt-soft:     rgba(26,22,19,0.62);
-      --cp-txt-faint:    rgba(26,22,19,0.42);
-      --cp-dot:          rgba(224,137,0,0.08);
-      --cp-accent:       #e08900;
-      --cp-accent-2:     #fc9d03;
-      --cp-accent-3:     #eb7d34;
-      --cp-accent-soft:  rgba(224,137,0,0.10);
-      --cp-accent-glow:  rgba(224,137,0,0.35);
-      --cp-accent-txt:   #B87B00;
-      --cp-accent-dark:  #0A0A12;
+      --cp-panel-2:      #F4F4F5;
+      --cp-line:         rgba(0,0,0,0.08);
+      --cp-line-str:     rgba(0,0,0,0.16);
+      --cp-txt:          #0B0B0B;
+      --cp-txt-soft:     rgba(11,11,11,0.66);
+      --cp-txt-faint:    rgba(11,11,11,0.42);
+      --cp-input-bg:     rgba(0,0,0,0.03);
+      --cp-accent:       #0B0B0B;
+      --cp-accent-soft:  rgba(0,0,0,0.04);
       --cp-danger:       #DC2626;
       --cp-success:      #16A34A;
-      --cp-input-bg:     rgba(20,20,30,0.03);
+      --cp-map-bg:       #F4F4F5;
     }
 
     .cp-bg {
-      background:
-        radial-gradient(1200px 600px at 15% -10%, var(--cp-accent-soft), transparent 60%),
-        linear-gradient(180deg, var(--cp-bg) 0%, var(--cp-bg-2) 100%);
+      background: var(--cp-bg);
       color: var(--cp-txt);
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
-    /* Gradient CTA (amber) */
+    /* ═══ CTA BUTTON — simple solid ═══ */
     .cp-cta {
-      background: linear-gradient(135deg, var(--cp-accent) 0%, var(--cp-accent-2) 50%, var(--cp-accent-3) 100%);
-      color: var(--cp-accent-dark);
-      font-weight: 800;
-      box-shadow: 0 15px 40px -15px var(--cp-accent-glow);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      background: var(--cp-txt);
+      color: var(--cp-bg);
+      font-weight: 700;
+      transition: transform 0.18s ease, opacity 0.18s ease;
     }
-    .cp-cta:hover:not(:disabled) {
-      transform: translateY(-2px);
-      filter: brightness(1.05);
-      box-shadow: 0 20px 50px -15px var(--cp-accent-glow);
-    }
+    .cp-cta:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.9; }
     .cp-cta:active:not(:disabled) { transform: scale(0.98); }
+    .cp-cta:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    /* Green WhatsApp CTA */
-    .cp-cta-green {
-      background: linear-gradient(135deg, #164B3B 0%, #1f6b52 100%);
-      color: #FFFFFF;
-      font-weight: 800;
-      box-shadow: 0 15px 40px -15px rgba(22,75,59,0.6);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    /* ═══ WhatsApp CTA — solid dark/green ═══ */
+    .cp-cta-wa {
+      background: var(--cp-panel-2);
+      color: var(--cp-txt);
+      border: 1px solid var(--cp-line-str);
+      font-weight: 700;
+      transition: transform 0.18s ease, border-color 0.18s ease;
     }
-    .cp-cta-green:hover {
+    .cp-cta-wa:hover {
       transform: translateY(-2px);
-      box-shadow: 0 20px 50px -15px rgba(22,75,59,0.8);
+      border-color: var(--cp-txt);
     }
-    .cp-cta-green:active { transform: scale(0.98); }
 
-    /* Panel */
+    /* ═══ PANELS & CARDS — flat, minimal ═══ */
     .cp-panel {
       background: var(--cp-panel);
       border: 1px solid var(--cp-line);
-      box-shadow: 0 20px 60px -25px rgba(0,0,0,0.25);
-      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+      border-radius: 14px;
     }
-
-    /* Contact card */
     .cp-card {
       background: var(--cp-panel);
       border: 1px solid var(--cp-line);
-      box-shadow: 0 10px 30px -20px rgba(0,0,0,0.3);
-      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+      border-radius: 12px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
     .cp-card:hover {
-      border-color: var(--cp-accent);
-      box-shadow: 0 20px 40px -20px var(--cp-accent-glow);
-      transform: translateY(-4px);
+      border-color: var(--cp-line-str);
+      transform: translateY(-2px);
     }
 
-    /* Input */
+    /* ═══ INPUTS ═══ */
     .cp-input {
       width: 100%;
       padding: 12px 16px 12px 40px;
-      border-radius: 12px;
+      border-radius: 10px;
       background: var(--cp-input-bg);
       color: var(--cp-txt);
       border: 1px solid var(--cp-line);
-      font-family: 'Manrope', system-ui, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       font-size: 14px;
       outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .cp-input::placeholder { color: var(--cp-txt-faint); }
     .cp-input:focus {
-      border-color: var(--cp-accent);
-      background: var(--cp-input-bg);
+      border-color: var(--cp-txt);
       box-shadow: 0 0 0 3px var(--cp-accent-soft);
     }
     .cp-input.cp-input-error {
       border-color: var(--cp-danger);
-      box-shadow: 0 0 0 3px rgba(220,38,38,0.15);
     }
 
-    /* Social icon */
+    /* ═══ SOCIAL ICON — simple square ═══ */
     .cp-social {
-      background: var(--cp-surface);
+      background: var(--cp-panel-2);
       border: 1px solid var(--cp-line);
       color: var(--cp-txt-soft);
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
     }
     .cp-social:hover {
-      color: #FFFFFF;
-      border-color: transparent;
-      transform: translateY(-3px) scale(1.08);
+      color: var(--cp-txt);
+      border-color: var(--cp-line-str);
+      transform: translateY(-2px);
     }
-    .cp-social.tw:hover  { background: #1DA1F2; box-shadow: 0 10px 25px -10px rgba(29,161,242,0.5); }
-    .cp-social.li:hover  { background: #0A66C2; box-shadow: 0 10px 25px -10px rgba(10,102,194,0.5); }
-    .cp-social.gh:hover  { background: #333333; box-shadow: 0 10px 25px -10px rgba(51,51,51,0.5); }
-    .cp-social.yt:hover  { background: #FF0000; box-shadow: 0 10px 25px -10px rgba(255,0,0,0.5); }
-    .cp-social.ig:hover  { background: #E4405F; box-shadow: 0 10px 25px -10px rgba(228,64,95,0.5); }
-    .cp-social.fb:hover  { background: #1877F2; box-shadow: 0 10px 25px -10px rgba(24,119,242,0.5); }
 
-    /* Shimmer sweep */
+    /* Shimmer */
     @keyframes cp-sweep {
       0%   { transform: translateX(-120%); }
       100% { transform: translateX(220%); }
     }
     .cp-sweep { animation: cp-sweep 1.1s ease-in-out infinite; }
+
+    /* ═══ MAP ═══ */
+    .cp-map-card {
+      position: relative;
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--cp-map-bg);
+      border: 1px solid var(--cp-line);
+    }
+    .cp-map-frame {
+      position: relative;
+      width: 100%;
+      height: 320px;
+    }
+    @media (min-width: 640px) { .cp-map-frame { height: 380px; } }
+    .cp-map-frame iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      filter: saturate(0.9);
+    }
+    .theme-dark .cp-map-frame iframe {
+      filter: saturate(0.7) brightness(0.92);
+    }
+    .cp-map-overlay {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 5;
+      background: var(--cp-panel);
+      border: 1px solid var(--cp-line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      backdrop-filter: saturate(160%) blur(14px);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+      max-width: 340px;
+    }
+    .cp-map-badge {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 4;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: var(--cp-panel);
+      border: 1px solid var(--cp-line);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--cp-txt-soft);
+      text-decoration: none;
+    }
+    .cp-map-badge:hover { color: var(--cp-txt); border-color: var(--cp-line-str); }
   `}</style>
 );
 
 const ContactPage = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
+  const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [openFaq, setOpenFaq] = useState(null);
 
-  // Contact info
   const contactInfo = [
     {
       icon: FaEnvelope,
       title: "Email Us",
-      details: "hello@apnadeal.com",
-      link: "mailto:hello@apnadeal.com",
-      accent: "var(--cp-accent)",
-      gradient: "linear-gradient(135deg, var(--cp-accent) 0%, var(--cp-accent-3) 100%)",
+      details: "hello@apexdeal.pk",
+      link: "mailto:hello@apexdeal.pk",
     },
     {
       icon: FaPhone,
       title: "Call Us",
       details: "+92 314 0972575",
       link: "tel:+923140972575",
-      accent: "#164B3B",
-      gradient: "linear-gradient(135deg, #164B3B 0%, #1f6b52 100%)",
     },
     {
       icon: FaMapMarkerAlt,
       title: "Visit Us",
-      details: "San Francisco, CA 94105",
-      link: "#",
-      accent: "#2A6FB8",
-      gradient: "linear-gradient(135deg, #2A6FB8 0%, #2A8FBD 100%)",
+      details: "Bahria Town, Islamabad",
+      link: buildMapExternalUrl(),
     },
     {
       icon: FaClock,
       title: "Working Hours",
-      details: "Mon–Fri: 9:00 AM – 6:00 PM",
+      details: "Mon–Sat · 9 AM – 8 PM PKT",
       link: "#",
-      accent: "#6B4A8A",
-      gradient: "linear-gradient(135deg, #6B4A8A 0%, #8B5CF6 100%)",
     },
   ];
 
-  // Social links
   const socialLinks = [
-    { icon: FaTwitter,   href: "#", label: "Twitter",   cls: "tw" },
-    { icon: FaLinkedin,  href: "#", label: "LinkedIn",  cls: "li" },
-    { icon: FaGithub,    href: "#", label: "GitHub",    cls: "gh" },
-    { icon: FaYoutube,   href: "#", label: "YouTube",   cls: "yt" },
-    { icon: FaInstagram, href: "#", label: "Instagram", cls: "ig" },
-    { icon: FaFacebook,  href: "#", label: "Facebook",  cls: "fb" },
+    { icon: FaTwitter,   href: "#", label: "Twitter" },
+    { icon: FaLinkedin,  href: "#", label: "LinkedIn" },
+    { icon: FaGithub,    href: "#", label: "GitHub" },
+    { icon: FaYoutube,   href: "#", label: "YouTube" },
+    { icon: FaInstagram, href: "#", label: "Instagram" },
+    { icon: FaFacebook,  href: "#", label: "Facebook" },
   ];
 
-  // FAQ data
   const faqs = [
     {
-      question: "How does APNa Deal work?",
+      question: "How does Apex work?",
       answer:
-        "APNa Deal connects buyers and sellers in one place. Post your ad, get verified, and sell within 3–4 days. Buyers can browse, chat, and purchase safely.",
+        "Apex connects buyers and sellers in one place. Post your ad, get verified, and sell within 3–4 days. Buyers can browse, chat, and purchase safely.",
     },
     {
       question: "Is my data secure?",
@@ -275,24 +311,17 @@ const ContactPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
     if (!formData.subject.trim()) newErrors.subject = "Subject is required";
     if (!formData.message.trim()) newErrors.message = "Message is required";
-    if (formData.message.trim().length < 10) {
-      newErrors.message = "Message must be at least 10 characters";
-    }
+    else if (formData.message.trim().length < 10) newErrors.message = "Message must be at least 10 characters";
     return newErrors;
   };
 
@@ -304,335 +333,251 @@ const ContactPage = () => {
       return;
     }
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitting(false);
     setIsSubmitted(true);
     setFormData({ name: "", email: "", subject: "", message: "" });
     setTimeout(() => setIsSubmitted(false), 5000);
   };
 
-  const container = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-  };
+  const container = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
+  const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
   return (
     <>
       <FontStyles />
-      <div className="min-h-screen pt-20 sm:pt-24 cp-bg font-ticket-body">
-        {/* decorative top gradient bar */}
-        <div
-          className="h-1 w-full"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, var(--cp-accent) 50%, transparent 100%)",
-          }}
-        />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          {/* ───── Header ───── */}
-          <div className="mb-10 sm:mb-14">
+      <div className="min-h-screen cp-bg cp-font">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+          {/* Header */}
+          <div className="mb-10">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-[12px] sm:text-sm font-semibold transition-colors mb-5"
-              style={{ color: "var(--cp-txt-soft)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--cp-accent)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--cp-txt-soft)"; }}
+              className="inline-flex items-center gap-2 text-[13px] font-medium mb-6 transition-colors"
+              style={{ color: "var(--cp-txt-faint)" }}
             >
               <FaArrowLeft className="text-[10px]" />
-              Back to Home
+              Back
             </Link>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="flex items-start gap-4">
               <div
-                className="p-4 sm:p-5 rounded-3xl"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--cp-accent) 0%, var(--cp-accent-3) 100%)",
-                  boxShadow: "0 15px 40px -15px var(--cp-accent-glow)",
-                }}
+                className="h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "var(--cp-panel-2)", border: "1px solid var(--cp-line)", color: "var(--cp-txt)" }}
               >
-                <FaHeadset className="text-2xl sm:text-3xl" style={{ color: "var(--cp-accent-dark)" }} />
+                <FaHeadset className="text-[16px]" />
               </div>
               <div>
                 <h1
-                  className="font-ticket-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight"
-                  style={{ color: "var(--cp-txt)" }}
+                  className="font-bold leading-tight mb-2"
+                  style={{ fontSize: "clamp(26px, 4vw, 34px)", letterSpacing: "-0.02em", color: "var(--cp-txt)" }}
                 >
                   Get in Touch
                 </h1>
-                <p
-                  className="mt-2 text-sm sm:text-base max-w-xl"
-                  style={{ color: "var(--cp-txt-soft)" }}
-                >
+                <p className="text-[14.5px] max-w-xl leading-relaxed" style={{ color: "var(--cp-txt-soft)" }}>
                   We'd love to hear from you. Reach out with any questions, feedback, or partnership ideas.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* ───── Contact Grid ───── */}
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid lg:grid-cols-5 gap-6 sm:gap-8"
-          >
-            {/* Left — Contact Form */}
+          {/* Contact Grid */}
+          <motion.div variants={container} initial="hidden" animate="show" className="grid lg:grid-cols-5 gap-6 mb-12">
+            {/* LEFT — Form */}
             <motion.div variants={item} className="lg:col-span-3">
-              <div className="cp-panel relative rounded-3xl p-5 sm:p-7 lg:p-8 overflow-hidden">
-                {/* decorative corner glow */}
-                <div
-                  className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full blur-3xl opacity-25"
-                  style={{ background: "var(--cp-accent)" }}
-                />
+              <div className="cp-panel p-6 sm:p-7">
+                <h2 className="font-bold text-[16px] mb-5 flex items-center gap-2" style={{ color: "var(--cp-txt)" }}>
+                  <FaComment className="text-[13px]" style={{ color: "var(--cp-txt-soft)" }} />
+                  Send a Message
+                </h2>
 
-                <div className="relative">
-                  <h2
-                    className="font-ticket-display text-xl sm:text-2xl font-bold mb-6 flex items-center gap-3"
-                    style={{ color: "var(--cp-txt)" }}
-                  >
-                    <FaComment style={{ color: "var(--cp-accent)" }} />
-                    Send a Message
-                  </h2>
-
-                  <AnimatePresence mode="wait">
-                    {isSubmitted ? (
-                      <motion.div
-                        key="success"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="p-6 sm:p-8 rounded-2xl text-center"
-                        style={{
-                          background: "rgba(22,75,59,0.08)",
-                          border: "1px solid rgba(22,75,59,0.3)",
-                        }}
+                <AnimatePresence mode="wait">
+                  {isSubmitted ? (
+                    <motion.div
+                      key="success"
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      className="p-8 rounded-xl text-center"
+                      style={{ background: "var(--cp-panel-2)", border: "1px solid var(--cp-line)" }}
+                    >
+                      <div
+                        className="h-14 w-14 mx-auto rounded-full flex items-center justify-center mb-4"
+                        style={{ background: "var(--cp-txt)", color: "var(--cp-bg)" }}
                       >
-                        <div
-                          className="h-16 w-16 mx-auto rounded-full flex items-center justify-center mb-4"
-                          style={{
-                            background: "linear-gradient(135deg, #164B3B 0%, #1f6b52 100%)",
-                            boxShadow: "0 10px 30px -10px rgba(22,75,59,0.6)",
-                          }}
-                        >
-                          <FaCheckCircle className="text-3xl text-white" />
-                        </div>
-                        <h3
-                          className="font-ticket-display text-xl font-bold"
-                          style={{ color: "var(--cp-txt)" }}
-                        >
-                          Message Sent!
-                        </h3>
-                        <p className="mt-2 text-sm" style={{ color: "var(--cp-txt-soft)" }}>
-                          Thank you for reaching out. We'll get back to you within 24 hours.
-                        </p>
-                      </motion.div>
-                    ) : (
-                      <motion.form
-                        key="form"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onSubmit={handleSubmit}
-                        className="space-y-4 sm:space-y-5"
-                      >
-                        {/* Name */}
-                        <div>
-                          <label
-                            className="block text-[12px] sm:text-sm font-semibold mb-1.5"
-                            style={{ color: "var(--cp-txt)" }}
-                          >
-                            Full Name
-                          </label>
-                          <div className="relative">
-                            <FaUser
-                              className="absolute left-4 top-1/2 -translate-y-1/2 text-xs pointer-events-none z-10"
-                              style={{ color: "var(--cp-txt-faint)" }}
-                            />
-                            <input
-                              type="text"
-                              name="name"
-                              value={formData.name}
-                              onChange={handleChange}
-                              placeholder="John Doe"
-                              className={`cp-input ${errors.name ? "cp-input-error" : ""}`}
-                            />
-                          </div>
-                          {errors.name && (
-                            <p className="mt-1 text-[11px] sm:text-xs" style={{ color: "var(--cp-danger)" }}>
-                              {errors.name}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                          <label
-                            className="block text-[12px] sm:text-sm font-semibold mb-1.5"
-                            style={{ color: "var(--cp-txt)" }}
-                          >
-                            Email Address
-                          </label>
-                          <div className="relative">
-                            <FaEnvelope
-                              className="absolute left-4 top-1/2 -translate-y-1/2 text-xs pointer-events-none z-10"
-                              style={{ color: "var(--cp-txt-faint)" }}
-                            />
-                            <input
-                              type="email"
-                              name="email"
-                              value={formData.email}
-                              onChange={handleChange}
-                              placeholder="you@example.com"
-                              className={`cp-input ${errors.email ? "cp-input-error" : ""}`}
-                            />
-                          </div>
-                          {errors.email && (
-                            <p className="mt-1 text-[11px] sm:text-xs" style={{ color: "var(--cp-danger)" }}>
-                              {errors.email}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Subject */}
-                        <div>
-                          <label
-                            className="block text-[12px] sm:text-sm font-semibold mb-1.5"
-                            style={{ color: "var(--cp-txt)" }}
-                          >
-                            Subject
-                          </label>
+                        <FaCheckCircle className="text-2xl" />
+                      </div>
+                      <h3 className="font-bold text-[16px] mb-2" style={{ color: "var(--cp-txt)" }}>
+                        Message Sent
+                      </h3>
+                      <p className="text-[13.5px]" style={{ color: "var(--cp-txt-soft)" }}>
+                        Thank you for reaching out. We'll get back to you within 24 hours.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.form
+                      key="form"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onSubmit={handleSubmit}
+                      className="space-y-5"
+                    >
+                      {/* Name */}
+                      <div>
+                        <label className="block text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--cp-txt)" }}>
+                          Full Name
+                        </label>
+                        <div className="relative">
+                          <FaUser
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] pointer-events-none z-10"
+                            style={{ color: "var(--cp-txt-faint)" }}
+                          />
                           <input
                             type="text"
-                            name="subject"
-                            value={formData.subject}
+                            name="name"
+                            value={formData.name}
                             onChange={handleChange}
-                            placeholder="What's this about?"
-                            className={`cp-input ${errors.subject ? "cp-input-error" : ""}`}
-                            style={{ paddingLeft: 16 }}
+                            placeholder="John Doe"
+                            className={`cp-input ${errors.name ? "cp-input-error" : ""}`}
                           />
-                          {errors.subject && (
-                            <p className="mt-1 text-[11px] sm:text-xs" style={{ color: "var(--cp-danger)" }}>
-                              {errors.subject}
-                            </p>
-                          )}
                         </div>
+                        {errors.name && (
+                          <p className="mt-1 text-[11.5px]" style={{ color: "var(--cp-danger)" }}>{errors.name}</p>
+                        )}
+                      </div>
 
-                        {/* Message */}
-                        <div>
-                          <label
-                            className="block text-[12px] sm:text-sm font-semibold mb-1.5"
-                            style={{ color: "var(--cp-txt)" }}
-                          >
-                            Message
-                          </label>
-                          <div className="relative">
-                            <FaComment
-                              className="absolute left-4 top-4 text-xs pointer-events-none z-10"
-                              style={{ color: "var(--cp-txt-faint)" }}
-                            />
-                            <textarea
-                              name="message"
-                              value={formData.message}
-                              onChange={handleChange}
-                              placeholder="Tell us how we can help..."
-                              rows="5"
-                              maxLength={500}
-                              className={`cp-input ${errors.message ? "cp-input-error" : ""}`}
-                              style={{ paddingLeft: 40, resize: "none", minHeight: 120 }}
-                            />
-                          </div>
-                          {errors.message ? (
-                            <p className="mt-1 text-[11px] sm:text-xs" style={{ color: "var(--cp-danger)" }}>
-                              {errors.message}
-                            </p>
-                          ) : (
-                            <p
-                              className="mt-1 text-[11px] text-right tabular-nums"
-                              style={{ color: "var(--cp-txt-faint)" }}
-                            >
-                              {formData.message.length}/500
-                            </p>
-                          )}
+                      {/* Email */}
+                      <div>
+                        <label className="block text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--cp-txt)" }}>
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <FaEnvelope
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] pointer-events-none z-10"
+                            style={{ color: "var(--cp-txt-faint)" }}
+                          />
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="you@example.com"
+                            className={`cp-input ${errors.email ? "cp-input-error" : ""}`}
+                          />
                         </div>
+                        {errors.email && (
+                          <p className="mt-1 text-[11.5px]" style={{ color: "var(--cp-danger)" }}>{errors.email}</p>
+                        )}
+                      </div>
 
-                        {/* Submit */}
-                        <motion.button
-                          whileHover={isSubmitting ? {} : { y: -2 }}
-                          whileTap={isSubmitting ? {} : { scale: 0.98 }}
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="cp-cta relative w-full py-3.5 sm:py-4 rounded-2xl text-sm flex items-center justify-center gap-3 overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting && (
-                            <span className="absolute inset-y-0 w-1/2 pointer-events-none cp-sweep"
-                              style={{
-                                background:
-                                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
-                              }}
-                            />
-                          )}
-                          {isSubmitting ? (
-                            <>
-                              <FaSpinner className="animate-spin relative z-10" />
-                              <span className="relative z-10">Sending…</span>
-                            </>
-                          ) : (
-                            <>
-                              <FaPaperPlane className="relative z-10" />
-                              <span className="relative z-10">Send Message</span>
-                            </>
-                          )}
-                        </motion.button>
-                      </motion.form>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      {/* Subject */}
+                      <div>
+                        <label className="block text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--cp-txt)" }}>
+                          Subject
+                        </label>
+                        <input
+                          type="text"
+                          name="subject"
+                          value={formData.subject}
+                          onChange={handleChange}
+                          placeholder="What's this about?"
+                          className={`cp-input ${errors.subject ? "cp-input-error" : ""}`}
+                          style={{ paddingLeft: 16 }}
+                        />
+                        {errors.subject && (
+                          <p className="mt-1 text-[11.5px]" style={{ color: "var(--cp-danger)" }}>{errors.subject}</p>
+                        )}
+                      </div>
+
+                      {/* Message */}
+                      <div>
+                        <label className="block text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--cp-txt)" }}>
+                          Message
+                        </label>
+                        <div className="relative">
+                          <FaComment
+                            className="absolute left-4 top-4 text-[11px] pointer-events-none z-10"
+                            style={{ color: "var(--cp-txt-faint)" }}
+                          />
+                          <textarea
+                            name="message"
+                            value={formData.message}
+                            onChange={handleChange}
+                            placeholder="Tell us how we can help..."
+                            rows="5"
+                            maxLength={500}
+                            className={`cp-input ${errors.message ? "cp-input-error" : ""}`}
+                            style={{ paddingLeft: 40, resize: "none", minHeight: 120 }}
+                          />
+                        </div>
+                        {errors.message ? (
+                          <p className="mt-1 text-[11.5px]" style={{ color: "var(--cp-danger)" }}>{errors.message}</p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-right tabular-nums" style={{ color: "var(--cp-txt-faint)" }}>
+                            {formData.message.length}/500
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Submit */}
+                      <motion.button
+                        whileHover={isSubmitting ? {} : { y: -1 }}
+                        whileTap={isSubmitting ? {} : { scale: 0.98 }}
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="cp-cta relative w-full py-3.5 rounded-xl text-[13.5px] flex items-center justify-center gap-2.5 overflow-hidden"
+                      >
+                        {isSubmitting && (
+                          <span
+                            className="absolute inset-y-0 w-1/2 pointer-events-none cp-sweep"
+                            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)" }}
+                          />
+                        )}
+                        {isSubmitting ? (
+                          <>
+                            <FaSpinner className="animate-spin relative z-10" />
+                            <span className="relative z-10">Sending…</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaPaperPlane className="relative z-10" />
+                            <span className="relative z-10">Send Message</span>
+                          </>
+                        )}
+                      </motion.button>
+                    </motion.form>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
 
-            {/* Right — Contact Info */}
-            <motion.div variants={item} className="lg:col-span-2 space-y-5 sm:space-y-6">
+            {/* RIGHT — Info */}
+            <motion.div variants={item} className="lg:col-span-2 space-y-5">
               {/* Contact Cards */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-3">
                 {contactInfo.map((info, index) => {
                   const Icon = info.icon;
                   return (
                     <motion.a
                       key={index}
                       href={info.link}
-                      whileHover={{ y: -4, scale: 1.01 }}
-                      className="cp-card group block rounded-2xl p-4 sm:p-5"
+                      target={info.link.startsWith("http") ? "_blank" : undefined}
+                      rel={info.link.startsWith("http") ? "noopener noreferrer" : undefined}
+                      whileHover={{ y: -2 }}
+                      className="cp-card block p-4"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3">
                         <div
-                          className="p-3 rounded-xl flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
-                          style={{ backgroundColor: `${info.accent}15` }}
+                          className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "var(--cp-panel-2)", border: "1px solid var(--cp-line)", color: "var(--cp-txt)" }}
                         >
-                          <div
-                            className="h-7 w-7 rounded-lg flex items-center justify-center shadow-md"
-                            style={{ background: info.gradient }}
-                          >
-                            <Icon className="text-white text-xs" />
-                          </div>
+                          <Icon className="text-[12px]" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3
-                            className="font-ticket-display font-bold text-sm"
-                            style={{ color: "var(--cp-txt)" }}
-                          >
+                          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: "var(--cp-txt-faint)" }}>
                             {info.title}
-                          </h3>
-                          <p
-                            className="text-[13px] truncate transition-colors"
-                            style={{ color: "var(--cp-txt-soft)" }}
-                          >
+                          </p>
+                          <p className="text-[13.5px] font-semibold truncate" style={{ color: "var(--cp-txt)" }}>
                             {info.details}
                           </p>
                         </div>
@@ -642,122 +587,166 @@ const ContactPage = () => {
                 })}
               </div>
 
-              {/* Social Links */}
-              <div className="cp-panel rounded-2xl p-5 sm:p-6">
-                <h3
-                  className="font-ticket-display font-bold mb-4 flex items-center gap-2 text-sm sm:text-base"
-                  style={{ color: "var(--cp-txt)" }}
-                >
-                  <FaGlobe style={{ color: "var(--cp-accent)" }} />
+              {/* Socials */}
+              <div className="cp-panel p-5">
+                <h3 className="font-bold text-[13px] mb-3.5 flex items-center gap-2" style={{ color: "var(--cp-txt)" }}>
+                  <FaGlobe className="text-[11px]" style={{ color: "var(--cp-txt-soft)" }} />
                   Connect With Us
                 </h3>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   {socialLinks.map((social, index) => {
                     const Icon = social.icon;
                     return (
                       <motion.a
                         key={index}
-                        whileHover={{ scale: 1.1, y: -3 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         href={social.href}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={social.label}
-                        className={`cp-social ${social.cls} p-2.5 sm:p-3 rounded-xl`}
+                        className="cp-social h-9 w-9 rounded-lg flex items-center justify-center"
                       >
-                        <Icon className="text-base" />
+                        <Icon className="text-[13px]" />
                       </motion.a>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Live Chat Button */}
+              {/* WhatsApp CTA */}
               <motion.a
                 href="https://wa.me/923140972575"
                 target="_blank"
                 rel="noopener noreferrer"
-                whileHover={{ y: -2, scale: 1.01 }}
+                whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className="cp-cta-green group relative w-full py-4 rounded-2xl text-sm flex items-center justify-center gap-3 overflow-hidden"
+                className="cp-cta-wa w-full py-3.5 rounded-xl text-[13.5px] flex items-center justify-center gap-2.5"
               >
-                <span className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-                </span>
-                <FaWhatsapp className="text-xl relative z-10" />
-                <span className="relative z-10">Start Live Chat</span>
+                <FaWhatsapp className="text-[16px]" />
+                <span>Start Live Chat</span>
               </motion.a>
             </motion.div>
           </motion.div>
 
-          {/* ───── FAQ Section ───── */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-16 sm:mt-20"
+          {/* ⭐ GOOGLE MAPS */}
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.4 }}
+            className="mb-12"
           >
-            <div className="text-center mb-8 sm:mb-10">
-              <span
-                className="inline-block px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] mb-3"
-                style={{
-                  background: "var(--cp-accent-soft)",
-                  color: "var(--cp-accent-txt)",
-                  border: "1px solid var(--cp-accent)",
-                }}
-              >
+            <div className="mb-4">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cp-txt-faint)" }}>
+                Find us
+              </span>
+              <h2 className="font-bold text-[20px] mt-1.5" style={{ color: "var(--cp-txt)" }}>
+                Visit Our Office
+              </h2>
+            </div>
+
+            <div className="cp-map-card">
+              <div className="cp-map-frame">
+                <iframe
+                  title={`${OFFICE.name} — Google Maps`}
+                  src={buildMapEmbedUrl()}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+
+                <div className="cp-map-overlay">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: "var(--cp-panel-2)", border: "1px solid var(--cp-line)", color: "var(--cp-txt)" }}
+                    >
+                      <FaMapMarkerAlt className="text-[11px]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: "var(--cp-txt-faint)" }}>
+                        Our Office
+                      </p>
+                      <p className="text-[13px] font-semibold leading-tight mb-0.5" style={{ color: "var(--cp-txt)" }}>
+                        {OFFICE.name}
+                      </p>
+                      <p className="text-[11.5px] leading-snug mb-2" style={{ color: "var(--cp-txt-soft)" }}>
+                        {OFFICE.address}
+                      </p>
+                      <a
+                        href={buildDirectionsUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
+                        style={{ color: "var(--cp-txt)" }}
+                      >
+                        <FaMapMarkerAlt className="text-[9px]" />
+                        Get directions
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <a href={buildMapExternalUrl()} target="_blank" rel="noopener noreferrer" className="cp-map-badge">
+                  <FaExternalLinkAlt className="text-[8px]" />
+                  Google Maps
+                </a>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* FAQ */}
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.4 }}
+            className="mb-12"
+          >
+            <div className="mb-8">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--cp-txt-faint)" }}>
                 FAQ
               </span>
-              <h2
-                className="font-ticket-display text-2xl sm:text-3xl lg:text-4xl font-bold"
-                style={{ color: "var(--cp-txt)" }}
-              >
+              <h2 className="font-bold text-[22px] mt-2 mb-2" style={{ color: "var(--cp-txt)", letterSpacing: "-0.02em" }}>
                 Frequently Asked Questions
               </h2>
-              <p className="mt-2 text-sm sm:text-base" style={{ color: "var(--cp-txt-soft)" }}>
+              <p className="text-[13.5px]" style={{ color: "var(--cp-txt-soft)" }}>
                 Find quick answers to common questions
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-3 sm:gap-4 max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-3 max-w-4xl">
               {faqs.map((faq, index) => {
                 const isOpen = openFaq === index;
                 return (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * (index + 1) }}
-                    className="cp-card rounded-2xl overflow-hidden"
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.06 * index }}
+                    className="cp-card overflow-hidden"
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : index)}
-                      className="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left transition-colors"
+                      className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors"
                       style={{ background: "transparent" }}
                     >
-                      <h3
-                        className="font-ticket-display font-bold text-sm sm:text-[15px] flex items-start gap-2 pr-2"
-                        style={{ color: "var(--cp-txt)" }}
-                      >
-                        <span style={{ color: "var(--cp-accent)" }} className="flex-shrink-0">Q:</span>
+                      <h3 className="font-semibold text-[13.5px] flex items-start gap-2 pr-2" style={{ color: "var(--cp-txt)" }}>
+                        <span style={{ color: "var(--cp-txt-faint)" }} className="flex-shrink-0 font-bold">Q:</span>
                         {faq.question}
                       </h3>
                       <span
-                        className="flex-shrink-0 h-7 w-7 rounded-full flex items-center justify-center transition-all duration-300"
-                        style={
-                          isOpen
-                            ? {
-                                background: "var(--cp-accent)",
-                                color: "var(--cp-accent-dark)",
-                                transform: "rotate(180deg)",
-                              }
-                            : {
-                                background: "var(--cp-surface)",
-                                color: "var(--cp-txt-faint)",
-                              }
-                        }
+                        className="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-all duration-300"
+                        style={{
+                          background: isOpen ? "var(--cp-txt)" : "var(--cp-panel-2)",
+                          color: isOpen ? "var(--cp-bg)" : "var(--cp-txt-faint)",
+                          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          border: "1px solid var(--cp-line)",
+                        }}
                       >
-                        <FaChevronDown className="text-[10px]" />
+                        <FaChevronDown className="text-[9px]" />
                       </span>
                     </button>
                     <AnimatePresence>
@@ -766,14 +755,14 @@ const ContactPage = () => {
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                           className="overflow-hidden"
                         >
                           <p
-                            className="px-4 sm:px-5 pb-4 sm:pb-5 text-[13px] sm:text-sm leading-relaxed"
+                            className="px-4 pb-4 text-[13px] leading-relaxed"
                             style={{ color: "var(--cp-txt-soft)" }}
                           >
-                            <span className="font-bold" style={{ color: "var(--cp-accent)" }}>A:</span>{" "}
+                            <span className="font-bold" style={{ color: "var(--cp-txt-faint)" }}>A:</span>{" "}
                             {faq.answer}
                           </p>
                         </motion.div>
@@ -783,23 +772,13 @@ const ContactPage = () => {
                 );
               })}
             </div>
-          </motion.div>
+          </motion.section>
 
-          {/* ───── Footer note ───── */}
-          <div
-            className="mt-16 sm:mt-20 pt-8 border-t"
-            style={{ borderColor: "var(--cp-line)" }}
-          >
-            <div
-              className="flex items-center justify-center gap-2"
-              style={{ color: "var(--cp-txt-soft)" }}
-            >
-              <FaBolt className="text-xs" style={{ color: "var(--cp-accent)" }} />
-              <p className="font-ticket-body text-[11px] sm:text-xs font-bold tracking-wide">
-                APNa Deal — We usually reply within 24 hours
-              </p>
-              <FaCrown className="text-xs" style={{ color: "var(--cp-accent)" }} />
-            </div>
+          {/* Footer note */}
+          <div className="pt-8 border-t" style={{ borderColor: "var(--cp-line)" }}>
+            <p className="text-center text-[12px] font-medium" style={{ color: "var(--cp-txt-faint)" }}>
+              Apex — We usually reply within 24 hours
+            </p>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 // src/components/MomentoShorts.jsx
-// TikTok-style vertical shorts viewer
+// TikTok-style vertical shorts viewer + URL deep-links
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -442,7 +442,7 @@ const CommentsSheet = ({ shortId, onClose, user, myProfile, pushToast }) => {
 /* ═══════════════════════════════════════════════════════════════
    MAIN SHORTS VIEWER
    ═══════════════════════════════════════════════════════════════ */
-const MomentoShorts = ({ onClose, startIndex = 0 }) => {
+const MomentoShorts = ({ onClose, startIndex = 0, onActiveShortChange }) => {
   const { user } = useAuth();
   const [shorts, setShorts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -553,6 +553,14 @@ const MomentoShorts = ({ onClose, startIndex = 0 }) => {
     })();
   }, [currentIndex, shorts]);
 
+  /* ⭐ NEW — Notify parent so it can update URL to /momento/short/<id> */
+  useEffect(() => {
+    const currentShort = shorts[currentIndex];
+    if (currentShort?.id && typeof onActiveShortChange === "function") {
+      onActiveShortChange(currentShort.id);
+    }
+  }, [currentIndex, shorts, onActiveShortChange]);
+
   /* Keyboard nav */
   useEffect(() => {
     const onKey = (e) => {
@@ -598,11 +606,19 @@ const MomentoShorts = ({ onClose, startIndex = 0 }) => {
     setSaved((prev) => ({ ...prev, [shortId]: !prev[shortId] }));
   };
 
+  /* ⭐ Share now uses the deep-link URL format /momento/short/<id> */
   const handleShare = async (short) => {
-    const url = `${window.location.origin}/momento/shorts?short=${short.id}`;
+    const url = `${window.location.origin}/momento/short/${short.id}`;
     try {
-      if (navigator.share) { await navigator.share({ title: short.title || "Momento Short", url }); return; }
-      if (navigator.clipboard) { await navigator.clipboard.writeText(url); pushToast("success", "Link copied"); return; }
+      if (navigator.share) {
+        await navigator.share({ title: short.title || "Momento Short", url });
+        return;
+      }
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        pushToast("success", "Link copied");
+        return;
+      }
     } catch {}
   };
 

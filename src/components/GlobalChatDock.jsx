@@ -592,37 +592,44 @@ const GlobalChatDock = () => {
     return () => window.removeEventListener("ai-open-chat-dock", onOpenFromAI);
   }, [peer?.id, navigate]);
 
-  /* ── 🔔 open-chat-dock ── */
-  useEffect(() => {
-    const onOpenDock = (e) => {
-      const peerId      = e?.detail?.peerId;
-      const prefill     = e?.detail?.prefill || "";
-      const listingIdEv = e?.detail?.listingId || null;
+/* ── 🔔 open-chat-dock ── */
+useEffect(() => {
+  const onOpenDock = (e) => {
+    const d = e?.detail || {};
 
-      if (!peerId) return;
+    // ⭐ Accept BOTH payload shapes (new + legacy)
+    const peerId      = d.peerId || d.sellerId || d.user || null;
+    const prefill     = d.prefill || d.text || "";
+    const listingIdEv = d.listingId || d.listing || null;
+    const listingTitle = d.listingTitle || null;
 
-      if (listingIdEv) {
-        setListingIdFromEvent(listingIdEv);
-        setListingIdFromLS(listingIdEv);
-        writeLS(LS_LISTING_ID, listingIdEv);
-      }
+    if (!peerId) {
+      console.warn("[GlobalChatDock] open-chat-dock missing peerId/sellerId/user", d);
+      return;
+    }
 
-      if (peer?.id === peerId) {
-        if (prefill) setInput(prefill);
-        setIsOpen(true);
-        return;
-      }
+    if (listingIdEv) {
+      setListingIdFromEvent(listingIdEv);
+      setListingIdFromLS(listingIdEv);
+      writeLS(LS_LISTING_ID, listingIdEv);
+    }
 
-      loadConversation(peerId).then(() => {
-        if (prefill) setInput(prefill);
-        setIsOpen(true);
-        setTimeout(() => inputRef.current?.focus(), 300);
-      });
-    };
+    if (peer?.id === peerId) {
+      if (prefill) setInput(prefill);
+      setIsOpen(true);
+      return;
+    }
 
-    window.addEventListener("open-chat-dock", onOpenDock);
-    return () => window.removeEventListener("open-chat-dock", onOpenDock);
-  }, [peer?.id, loadConversation]);
+    loadConversation(peerId).then(() => {
+      if (prefill) setInput(prefill);
+      setIsOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 300);
+    });
+  };
+
+  window.addEventListener("open-chat-dock", onOpenDock);
+  return () => window.removeEventListener("open-chat-dock", onOpenDock);
+}, [peer?.id, loadConversation]);
 
   /* ── Realtime listener ── */
   useEffect(() => {

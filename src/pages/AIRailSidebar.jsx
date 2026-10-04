@@ -13,7 +13,7 @@ import { supabase } from "../lib/supabase";
 /* ═══════════════════════════════════════════════════════════════
    LOGO — plain img, sized by prop, no internal filter
    ═══════════════════════════════════════════════════════════════ */
-const LogoImage = ({ size = 24, className = "border rounded-full", alt = "Dealora" }) => {
+const LogoImage = ({ size = 24, className = "rounded-full", alt = "Dealora" }) => {
   const sources = ["/logo.png", "/logo.jpg", "/logo.jpeg", "/logo.svg", "/logo.webp"];
   const [idx, setIdx] = React.useState(0);
   const [failed, setFailed] = React.useState(false);
@@ -21,39 +21,54 @@ const LogoImage = ({ size = 24, className = "border rounded-full", alt = "Dealor
   if (failed) {
     return (
       <span
+        className="inline-flex items-center justify-center flex-shrink-0 select-none"
         style={{
-          color: "#eb7d34",
-          fontWeight: 900,
-          fontSize: size * 0.9,
-          lineHeight: 1,
-          fontFamily: "'Inter', system-ui, sans-serif",
+          width: size, height: size, borderRadius: 9999,
+          color: "#FFFFFF", fontWeight: 900, fontSize: size * 0.42,
+          lineHeight: 1, fontFamily: "'Inter', system-ui, sans-serif",
+          letterSpacing: "-0.04em",
+          background: "linear-gradient(135deg, #FF6A00 0%, #E85D04 60%, #C8531B 100%)",
+          boxShadow: "0 4px 12px -4px rgba(232,93,4,0.55)",
         }}
       >
-        D
+        AD
       </span>
     );
   }
 
   return (
-    <img
-      src={sources[idx]}
-      alt={alt}
-      className={className}
-      onError={() => {
-        if (idx < sources.length - 1) setIdx(idx + 1);
-        else setFailed(true);
-      }}
+    <span
+      className="logo-chip inline-flex items-center justify-center flex-shrink-0"
       style={{
+        width: size,
         height: size,
-        width: "auto",
-        objectFit: "contain",
-        display: "block",
-        flexShrink: 0,
+        borderRadius: 9999,
+        padding: 3,
+        // ⬇️ NO hardcoded background here — let CSS control it
+        overflow: "hidden",
       }}
-    />
+    >
+      <img
+        src={sources[idx]}
+        alt={alt}
+        className={className}
+        draggable={false}
+        onError={() => {
+          if (idx < sources.length - 1) setIdx(idx + 1);
+          else setFailed(true);
+        }}
+        style={{
+          height: "100%",
+          width: "100%",
+          objectFit: "contain",
+          display: "block",
+          flexShrink: 0,
+          userSelect: "none",
+        }}
+      />
+    </span>
   );
 };
-
 /* ═══════════════════════════════════════════════════════════════
    NAV LINKS
    ═══════════════════════════════════════════════════════════════ */
@@ -422,7 +437,6 @@ const AIRailSidebar = ({ theme = "dark", onToggleTheme }) => {
                 justifyContent: "center",
                 padding: 0,
                 background: "transparent",
-                border: "none",
                 cursor: "pointer",
                 flexShrink: 0,
                 height: 28,
